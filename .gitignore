@@ -1,0 +1,4 @@
+dist/
+cabal-dev/
+*~
+*#
