@@ -1,1 +1,1 @@
-See haddock in Data.CAS
+See haddock in Data.Concurrent.LinkedQueue

@@ -1,0 +1,18 @@
+Name:                lockfree-queue
+Version:             0.1
+License:             BSD3
+License-file:        LICENSE
+Author:              Ryan R. Newton
+Maintainer:          rrnewton@gmail.com
+Category:            Data
+Build-type:          Simple
+Cabal-version:       >=1.2
+
+Synopsis: Michael and Scott lock-free queues.
+
+Library
+  exposed-modules:   Data.CAS
+  build-depends:     base >= 4.4.0.0,
+                     ghc-prim,
+-- Build failure on GHC 7.2:
+--                     queuelike
