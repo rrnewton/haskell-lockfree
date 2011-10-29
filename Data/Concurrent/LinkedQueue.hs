@@ -96,7 +96,7 @@ tryPop (LQ headPtr tailPtr) = loop
 	      -- No need to deal with Tail.  Read value before CAS.
 	      -- Otherwise, another dequeue might free the next node
 	      case next' of 
-	        Null -> error "uh oh..."
+	        Null -> error "tryPop: Internal error.  Next should not be null if head/=tail."
 		Cons value _ -> do 
                   -- Try to swing Head to the next node
 		  (b,_) <- casIORef headPtr head next'
