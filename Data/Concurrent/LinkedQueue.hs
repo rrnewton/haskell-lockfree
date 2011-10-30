@@ -6,19 +6,48 @@ module Main
   where
 
 import Control.Monad
-import Data.CAS
 import Data.IORef
 import System.Mem.StableName
 import Text.Printf
+import GHC.IO (unsafePerformIO)
+import GHC.Conc
+import Control.Concurrent.MVar
+
+#if 0
+-- Segfaulting currently:
+import Data.CAS 
+#else
+-- TEMP -- A SAFE version
+--  casIORef :: Eq a => IORef a -> a -> a -> IO (Bool,a)
+casIORef :: IORef a -> a -> a -> IO (Bool,a)
+casIORef r old new =   
+  atomicModifyIORef r $ \val -> 
+--    if val == old
+    if unsafePerformIO (ptrEq val old)
+    then (new, (True,old))
+    else (val, (False,val))
+
+-- TEMP:
+-- instance Eq a => Eq (Pair a) where 
+--   Null == Null         = True
+--   Cons a b == Cons c d = 
+--     if a == c then unsafePerformIO $ do
+--       s1 <- makeStableName b
+--       s2 <- makeStableName d
+--       return (s1 == s2)
+--     else False
+--   _ == _               = False
+#endif
+
 
 -- Considering using the Queue class definition:
--- import Data.MQueue.Class
+-- import Data.MQueue.Class28
+
 
 -- | A straightforward implementation of classic Michael & Scott Queues.
 -- 
 -- Pseudocode for this algorithm can be found here:
 --   http://www.cs.rochester.edu/research/synchronization/pseudocode/queues.html
-
 
 data LinkedQueue a = LQ 
     { head :: IORef (Pair a)
@@ -96,7 +125,8 @@ tryPop (LQ headPtr tailPtr) = loop
 	      -- No need to deal with Tail.  Read value before CAS.
 	      -- Otherwise, another dequeue might free the next node
 	      case next' of 
-	        Null -> error "tryPop: Internal error.  Next should not be null if head/=tail."
+--	        Null -> error "tryPop: Internal error.  Next should not be null if head/=tail."
+	        Null -> loop 
 		Cons value _ -> do 
                   -- Try to swing Head to the next node
 		  (b,_) <- casIORef headPtr head next'
@@ -126,6 +156,12 @@ ptrEq a b = do
 --------------------------------------------------------------------------------
 -- Scrap:
 
+spinPop q = do
+  x <- tryPop q 
+  case x of 
+    Nothing -> spinPop q
+    Just x  -> return x
+
 casStrict r !o !n = casIORef r o n
 
 testCAS = 
@@ -143,31 +179,61 @@ testCAS =
 
 testQ1 = 
   do q <- newLinkedQueue 
-     let n = 100
-     putStrLn$ "Done creating queue."
+     let n = 1000
+     putStrLn$ "Done creating queue.  Pushing elements:"
      forM_ [1..n] $ \i -> do 
-       putStrLn$ "  Pushing element " ++ show i
        push q i
-       putStrLn$ "    Pushed element " ++ show i
-     putStrLn "Done filling queue with elements.  Now popping..."
+       printf " %d" i
+     putStrLn "\nDone filling queue with elements.  Now popping..."
      sumR <- newIORef 0
      forM_ [1..n] $ \i -> do
-       let loop = do
-	    x <- tryPop q 
-            case x of 
-	      Nothing -> loop
-	      Just x  -> return x
-       x <- loop
---       printf " %d" x
-       printf " Popped: %d\n" x
+       x <- spinPop q 
+       printf " %d" x
        modifyIORef sumR (+x)
      s <- readIORef sumR
-     printf "Sum of popped vals: %d should be %d\n" s (sum [1..n] :: Int)
+     let expected = sum [1..n] :: Int
+     printf "\nSum of popped vals: %d should be %d\n" s expected
+     when (s /= expected) (error "Incorrect sum!")
      return s
 
+-- This one splits the numCapabilities threads into producers and consumers
+testQ2 :: Int -> IO ()
+testQ2 total = 
+  do q <- newLinkedQueue
+     mv <- newEmptyMVar     
+     let producers = max 1 (numCapabilities `quot` 2)
+	 consumers = producers
+	 perthread = total `quot` producers
+
+     printf "Forking %d producer threads.\n" producers 
+    
+     forM_ [0..producers-1] $ \ id -> 
+ 	forkIO $ 
+          forM_ (take perthread [id * producers .. ]) $ \ i -> do 
+	     push q i
+             printf " [%d] pushed %d \n" id i
+
+     printf "Forking %d consumer threads.\n" consumers
+
+     forM_ [0..consumers-1] $ \ id -> 
+ 	forkIO $ do 
+          sum <- newIORef 0
+          forM_ (take perthread [id * producers .. ]) $ \ i -> do
+	     x <- spinPop q 
+             printf " [%d] popped %d \n" id i
+	     modifyIORef sum (+x)
+	  s <- readIORef sum
+	  putMVar mv s
+
+     printf "Reading sums from MVar...\n" 
+     ls <- mapM (\_ -> takeMVar mv) [1..consumers]
+     let finalSum = Prelude.sum ls
+     putStrLn$ "Final sum: "++ show finalSum
+     return ()
 
 -- main = testCAS
-main = testQ1
+-- main = testQ2 (1000 * 1000)
+main = testQ2 (10)
 
 
 {- 
