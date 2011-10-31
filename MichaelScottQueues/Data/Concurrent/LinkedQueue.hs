@@ -17,15 +17,18 @@ import Control.Concurrent.MVar
 -- Segfaulting currently:
 import Data.CAS 
 #else
--- TEMP -- A SAFE version
+-- TEMP -- A non-CAS based version.  Alas, this has UNDEFINED BEHAVIOR
+-- (see ptrEq).
+-- 
 --  casIORef :: Eq a => IORef a -> a -> a -> IO (Bool,a)
 casIORef :: IORef a -> a -> a -> IO (Bool,a)
-casIORef r old new =   
+casIORef r !old !new =   
   atomicModifyIORef r $ \val -> 
 --    if val == old
     if unsafePerformIO (ptrEq val old)
     then (new, (True,old))
     else (val, (False,val))
+
 
 -- TEMP:
 -- instance Eq a => Eq (Pair a) where 
@@ -145,8 +148,11 @@ newLinkedQueue = do
 --------------------------------------------------------------------------------
 
 {-# INLINE ptrEq #-}
+-- WARNING:  This has completely implementation-defined behavior. 
+--   mkStableName + (==) provides no guarantee against false negatives.
+--     http://www.haskell.org/ghc/docs/latest/html/libraries/base/System-Mem-StableName.html
 ptrEq :: a -> a -> IO Bool
-ptrEq a b = do 
+ptrEq !a !b = do 
   s1 <- makeStableName a
   s2 <- makeStableName b
 --  printf "    comparing ptrs with stablenames %d %d...\n" (hashStableName s1) (hashStableName s2)
@@ -235,6 +241,13 @@ testQ2 total =
 -- main = testQ2 (1000 * 1000)
 main = testQ2 (10)
 
+
+--------------------------------------------------------------------------------
+
+-- TODO: Instances.  Implement the 
+
+
+--------------------------------------------------------------------------------
 
 {- 
 
