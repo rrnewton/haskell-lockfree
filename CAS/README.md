@@ -1,0 +1,1 @@
+See haddock in Data.CAS

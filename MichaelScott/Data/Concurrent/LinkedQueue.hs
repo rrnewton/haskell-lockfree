@@ -1,8 +1,7 @@
 {-# LANGUAGE BangPatterns, CPP #-}
 
--- module Data.Concurrent.LinkedQueue 
-module Main
-
+-- module Main
+module Data.Concurrent.LinkedQueue 
   where
 
 import Control.Monad
@@ -13,35 +12,14 @@ import GHC.IO (unsafePerformIO)
 import GHC.Conc
 import Control.Concurrent.MVar
 
+
+import Data.CAS.Fake (ptrEq)
 #if 0
 -- Segfaulting currently:
-import Data.CAS 
+import Data.CAS (casIORef)
 #else
--- TEMP -- A non-CAS based version.  Alas, this has UNDEFINED BEHAVIOR
--- (see ptrEq).
--- 
---  casIORef :: Eq a => IORef a -> a -> a -> IO (Bool,a)
-casIORef :: IORef a -> a -> a -> IO (Bool,a)
-casIORef r !old !new =   
-  atomicModifyIORef r $ \val -> 
---    if val == old
-    if unsafePerformIO (ptrEq val old)
-    then (new, (True,old))
-    else (val, (False,val))
-
-
--- TEMP:
--- instance Eq a => Eq (Pair a) where 
---   Null == Null         = True
---   Cons a b == Cons c d = 
---     if a == c then unsafePerformIO $ do
---       s1 <- makeStableName b
---       s2 <- makeStableName d
---       return (s1 == s2)
---     else False
---   _ == _               = False
+import Data.CAS.Fake (casIORef)
 #endif
-
 
 -- Considering using the Queue class definition:
 -- import Data.MQueue.Class28
@@ -146,21 +124,8 @@ newLinkedQueue = do
   return (LQ hd tl)
 
 --------------------------------------------------------------------------------
-
-{-# INLINE ptrEq #-}
--- WARNING:  This has completely implementation-defined behavior. 
---   mkStableName + (==) provides no guarantee against false negatives.
---     http://www.haskell.org/ghc/docs/latest/html/libraries/base/System-Mem-StableName.html
-ptrEq :: a -> a -> IO Bool
-ptrEq !a !b = do 
-  s1 <- makeStableName a
-  s2 <- makeStableName b
---  printf "    comparing ptrs with stablenames %d %d...\n" (hashStableName s1) (hashStableName s2)
-  return (s1 == s2)
-
-
+--   Testing
 --------------------------------------------------------------------------------
--- Scrap:
 
 spinPop q = do
   x <- tryPop q 
@@ -243,12 +208,10 @@ main = testQ2 (10)
 
 
 --------------------------------------------------------------------------------
-
--- TODO: Instances.  Implement the 
+-- TODO: Instances.  Implement the abstract-deque interface.
 
 
 --------------------------------------------------------------------------------
-
 {- 
 
 [2011.10.29] {Debugging}
