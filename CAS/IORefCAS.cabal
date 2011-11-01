@@ -8,6 +8,14 @@ Category:            Data
 Build-type:          Simple
 Cabal-version:       >=1.2
 
+Synopsis: Atomic compare and swap for IORefs and CASRefs.
+
+Description:
+
+  After GHC 7.2 a new `casMutVar#` primop became available, but was
+  not yet exposed in Data.IORef.  This package fills that gap until
+  such a time as Data.IORef obsoletes it.
+
 Library
   exposed-modules:   Data.CAS,
                      Data.CAS.Fake

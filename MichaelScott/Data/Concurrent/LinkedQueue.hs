@@ -1,7 +1,14 @@
 {-# LANGUAGE BangPatterns, CPP #-}
 
+
+-- | Michael and Scott lock-free, wait-free, single-ended queues.
 -- module Main
 module Data.Concurrent.LinkedQueue 
+ (
+   newLinkedQueue
+ , push 
+ , tryPop
+ )
   where
 
 import Control.Monad
@@ -37,6 +44,8 @@ data LinkedQueue a = LQ
 
 data Pair a = Null | Cons a (IORef (Pair a))
 
+-- | Push a new element onto the queue.  Because the queue can grow,
+--   this alway succeeds.
 push :: LinkedQueue a -> a  -> IO ()
 push (LQ headPtr tailPtr) val = do
    r <- newIORef Null
@@ -79,6 +88,9 @@ push (LQ headPtr tailPtr) val = do
 	     return tail
 
 
+-- | Attempt to pop an element from the queue if one is available.
+--   tryPop will always return promptly, but will return 'Nothing' if
+--   the queue is empty.
 tryPop ::  LinkedQueue a -> IO (Maybe a)
 tryPop (LQ headPtr tailPtr) = loop
  where 

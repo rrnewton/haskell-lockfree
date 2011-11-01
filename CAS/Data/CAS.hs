@@ -1,5 +1,6 @@
 {-# LANGUAGE MagicHash, UnboxedTuples #-}
 
+-- | Atomic compare and swap for IORefs and CASRefs.
 module Data.CAS where
 
 import GHC.IO
