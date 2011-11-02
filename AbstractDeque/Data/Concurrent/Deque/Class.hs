@@ -38,8 +38,8 @@ type D  = DoubleEnd
 -- Example queue creation functions:
 
 -- Minimally functional Q
-newQ :: IO (Deque NT NT S S Bound Safe elt)
-newQ = undefined
+newQ1 :: IO (Deque NT NT S S Bound Safe elt)
+newQ1 = undefined
 
 -- Maximally functional Q
 newQ2 :: IO (Deque T T D D Grow Safe elt)
@@ -57,6 +57,7 @@ newQ2 = undefined
 data family Deque lThreaded rThreaded lDbl rDbl bnd safe elt 
 
 class DequeClass d where
+   newQ  :: IO (d elt)
    pushL :: d elt -> elt -> IO ()
    popR  :: d elt -> IO elt
 
@@ -67,38 +68,10 @@ class DequeClass d => PopL d where
    popL  :: d elt -> IO elt
 class DequeClass d => PushR d where 
    pushR :: d elt -> elt -> IO ()
-class DequeClass d => Bounded d where 
+class DequeClass d => BoundedL d where 
    tryPushL :: d elt -> elt -> IO Bool
-class PushR d => BoundedPushR d where 
+class PushR d => BoundedR d where 
    tryPushR :: d elt -> elt -> IO Bool
-
-------------------------------------------------------------
--- Examples / Tests:
-
--- Test:
-data instance Deque NT NT S S Bound Safe elt = DequeL [elt]
-foo (DequeL []) = "hello"
-
-bar :: Deque T T D D Grow Safe elt -> elt
-bar q = undefined
-
-instance DequeClass (Deque T T S S Grow Safe) where 
-  pushL = undefined
-  popR  = undefined
-
-instance DequeClass (Deque T T D D Grow Safe) where 
-  pushL = undefined
-  popR  = undefined
-instance PopL       (Deque T T D D Grow Safe) where 
-  popL  = undefined
-instance PushR      (Deque T T D D Grow Safe) where 
-  pushR = undefined
-
--- The problem here is that there's no way for an implementation to 
-
-test :: (Num elt, PopL d, BoundedPushR d, Bounded d) => d elt -> IO Bool
-test x = do popL x; pushR x 3; tryPushR x 3; tryPushL x 3
-
 
 #else
 
