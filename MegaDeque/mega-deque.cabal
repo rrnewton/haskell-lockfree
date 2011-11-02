@@ -1,0 +1,27 @@
+Name:                mega-deque
+Version:             0.1
+License:             BSD3
+License-file:        LICENSE
+Author:              Ryan R. Newton
+Maintainer:          rrnewton@gmail.com
+Category:            Data
+Build-type:          Simple
+Cabal-version:       >=1.2
+
+Synopsis: Collects together queue packages and selects the right one based on a type family.
+
+
+Description:
+
+  This module aggregates other queue implementations into a single, parameterizable implementation which
+
+   * single, 1.5, and double-ended queues 
+   * bounded / unbounded capacity
+   * "safe" or potentially duplicating of elements (e.g. Idempotent Work-stealing)
+
+
+Library
+  exposed-modules:   Data.Concurrent.MegaDeque
+  build-depends:     base >= 4.4.0.0,
+                     abstract-deque,
+                     lockfree-queue

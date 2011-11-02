@@ -1,5 +1,5 @@
-{-# LANGUAGE BangPatterns, CPP #-}
-
+{-# LANGUAGE BangPatterns, CPP  #-}
+-- TypeFamilies, FlexibleInstances
 
 -- | Michael and Scott lock-free, wait-free, single-ended queues.
 -- module Main
@@ -8,6 +8,7 @@ module Data.Concurrent.LinkedQueue
    newLinkedQueue
  , push 
  , tryPop
+ , LinkedQueue()
  )
   where
 
@@ -141,13 +142,14 @@ newLinkedQueue = do
 --   Instances of abstract deque interface
 --------------------------------------------------------------------------------
 
-
 -- | This instance classifies the LinkedQueue as being single-ended and fully threadsafe.
-data instance Deque T T S S Grow Safe elt = LinkedQueue elt
+-- data instance Deque T T S S Grow Safe elt = LinkedQueue elt
 
+-- instance DequeClass (Deque T T S S Grow Safe) where 
 instance DequeClass LinkedQueue where 
-  pushL = push
-  popR  = pop
+  newQ    = newLinkedQueue
+  pushL   = push
+  tryPopR = tryPop
 
 --------------------------------------------------------------------------------
 --   Testing

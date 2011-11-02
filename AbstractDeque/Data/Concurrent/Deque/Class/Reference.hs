@@ -4,8 +4,7 @@
 --   implementation is so simple that it also makes a good reference
 --   implementation for debugging.
 module Data.Concurrent.Deque.Class.Reference 
--- ( SimpleDeque() ) 
-  ( newQueue )
+  ( SimpleDeque(), newQueue ) 
   where
 
 import Prelude hiding (Bounded)
@@ -17,36 +16,34 @@ data instance Deque lt rt l r bnd safe elt = DQ (IORef (Seq elt))
 
 type SimpleDeque elt = Deque T T D D Grow Safe elt
 
--- newQueue :: IO (Deque lt rt l r bnd safe elt)
-
 newQueue :: IO (SimpleDeque elt)
 newQueue = do r <- newIORef empty
 	      return (DQ r)
 
---instance DequeClass SimpleDeque where 
 instance DequeClass (Deque lt rt l r bnd safe) where 
   newQ = do r <- newIORef empty
 	    return (DQ r)
   pushL (DQ qr) x = atomicModifyIORef qr (\s -> (x <| s, ()))
 
-  -- This simplistic version simply spins:
-  popR q = do x <- tp q 
-	      case x of 
-	        Nothing -> popR q
-		Just x  -> return x
-   where 
-    tp (DQ qr) = atomicModifyIORef qr $ \s -> 
+  tryPopR (DQ qr) = atomicModifyIORef qr $ \s -> 
      case viewr s of
        EmptyR  -> (empty, Nothing)
        s' :> x -> (s', Just x)
 
+--   -- This simplistic version simply spins:
+--   popR q = do x <- tryPopR q 
+-- 	      case x of 
+-- 	        Nothing -> popR q
+-- 		Just x  -> return x
+
+
 instance PopL (Deque lt rt l r bnd safe) where 
-  popL q = do x <- tp q 
-	      case x of 
-	        Nothing -> popL q
-		Just x  -> return x
-   where 
-    tp (DQ qr) = atomicModifyIORef qr $ \s -> 
+--   popL q = do x <- tryPopL q 
+-- 	      case x of 
+-- 	        Nothing -> popL q
+-- 		Just x  -> return x
+
+  tryPopL (DQ qr) = atomicModifyIORef qr $ \s -> 
      case viewl s of
        EmptyL  -> (empty, Nothing)
        x :< s' -> (s', Just x)
@@ -66,12 +63,12 @@ instance BoundedR (Deque lt rt l r bnd safe) where
 foo :: Deque NT NT S S Bound Safe Int
 foo = undefined 
 
-bar = popR foo
+bar = tryPopR foo
 
 foo2 :: Deque lt rt l r bnd safe Int
 foo2 = undefined 
 
-bar2 = popR foo
+bar2 = tryPopR foo
 
 {-
 emptydeque :: Deque a 

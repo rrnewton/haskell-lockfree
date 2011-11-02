@@ -23,5 +23,6 @@ Description:
   given set of required features.
 
 Library
-  exposed-modules:   Data.Concurrent.Deque.Class
-  build-depends:     base >= 4.4.0.0
+  exposed-modules:   Data.Concurrent.Deque.Class,
+                     Data.Concurrent.Deque.Class.Reference
+  build-depends:     base >= 4.4.0.0, containers

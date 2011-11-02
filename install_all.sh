@@ -12,6 +12,8 @@ function doall () {
   (cd AbstractDeque; $CMD)
   (cd MichaelScott;  $CMD)
   # (cd ChaseLev;  $CMD)
+
+  (cd MegaDeque;     $CMD)
 }
 
 # doall "cabal haddock --with-haddock=$HADDOCK"

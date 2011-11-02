@@ -29,6 +29,7 @@ Library
   exposed-modules:   Data.Concurrent.LinkedQueue
   build-depends:     base >= 4.4.0.0,
                      ghc-prim,
+                     abstract-deque,
                      IORefCAS
 -- Build failure on GHC 7.2:
 --                     queuelike

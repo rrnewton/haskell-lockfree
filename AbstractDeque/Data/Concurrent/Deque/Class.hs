@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeFamilies, CPP, TypeSynonymInstances, MultiParamTypeClasses,
-    FlexibleInstances #-}
+    FlexibleInstances, EmptyDataDecls #-}
 
 module Data.Concurrent.Deque.Class where 
 
@@ -35,40 +35,38 @@ type S  = SingleEnd
 type D  = DoubleEnd
 
 --------------------------------------------------------------------------------
--- Example queue creation functions:
 
--- Minimally functional Q
-newQ1 :: IO (Deque NT NT S S Bound Safe elt)
-newQ1 = undefined
-
--- Maximally functional Q
-newQ2 :: IO (Deque T T D D Grow Safe elt)
-newQ2 = undefined
-
---------------------------------------------------------------------------------
-
--- Considering two formulations for the type family.  The first
--- variant separates the data family from the type class and thereby
--- hides the (excessive) six phantom-type parameters, at the expense
--- of introducing a bunch of type auxilary type classes.
+-- [Presently considering two formulations for the type family.  The
+-- first variant separates the data family from the type class and
+-- thereby hides the (excessive) six phantom-type parameters, at the
+-- expense of introducing a bunch of type auxilary type classes.]
 
 #if 1
     
 data family Deque lThreaded rThreaded lDbl rDbl bnd safe elt 
 
+-- Example, work stealing deque: (Deque NT T  D S Grow elt)
+--
+-- When accepting a queue as input to a function you probably never
+-- want to overconstrain by demanding a less-featureful option.
+--
+--   For example, rather than (Deque NT D T S Grow elt)
+--   You would probably want: (Deque nt D T s Grow elt)
+
 class DequeClass d where
    newQ  :: IO (d elt)
    pushL :: d elt -> elt -> IO ()
-   popR  :: d elt -> IO elt
+   tryPopR  :: d elt -> IO (Maybe elt)
 
 -- In spite of hiding the extra phantom type parameters in the
 --  DequeClass, we wish to retain the ability for clients to constrain
 --  the set of implementations they work with **statically**.
 class DequeClass d => PopL d where 
-   popL  :: d elt -> IO elt
+   tryPopL  :: d elt -> IO (Maybe elt)
 class DequeClass d => PushR d where 
    pushR :: d elt -> elt -> IO ()
 class DequeClass d => BoundedL d where 
+--   newBoundedQ :: Int -> IO (d elt) -- Presently leaving it up to the implementation what range of Q sizes are accepted.
    tryPushL :: d elt -> elt -> IO Bool
 class PushR d => BoundedR d where 
    tryPushR :: d elt -> elt -> IO Bool
@@ -79,14 +77,6 @@ class PushR d => BoundedR d where
 class DequeLike lThreaded rThreaded lDbl rDbl bnd safe elt where
    data Deque lThreaded rThreaded lDbl rDbl bnd safe elt :: *
 
-   -- Example, work stealing deque: (Deque NT T  D S Grow elt)
-   --
-   -- But really you never want to overconsrain by forcing the
-   -- less-functional option when accepting a queue as input to a
-   -- function.
-   --   So rather than (Deque NT D T S Grow elt)
-   --   You would probably want: (Deque nt D T s Grow elt)
-   --     Could also nest this I guess:  (Deque (D nt) (S T) Grow elt)
 
    -- ----------------------------------------------------------
    -- * Natural queue operations that hold for all single, 1.5, and double ended modes.
