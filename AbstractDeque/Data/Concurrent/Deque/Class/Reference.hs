@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies, FlexibleInstances, MultiParamTypeClasses #-}
 
 -- | A strawman implementation of concurrent Dequeus.  This
 --   implementation is so simple that it also makes a good reference
@@ -12,7 +12,7 @@ import Data.Concurrent.Deque.Class
 import Data.Sequence
 import Data.IORef
 
-data instance Deque lt rt l r bnd safe elt = DQ (IORef (Seq elt))
+-- data instance Deque lt rt l r bnd safe elt = DQ (IORef (Seq elt))
 
 type SimpleDeque elt = Deque T T D D Grow Safe elt
 
@@ -20,7 +20,10 @@ newQueue :: IO (SimpleDeque elt)
 newQueue = do r <- newIORef empty
 	      return (DQ r)
 
-instance DequeClass (Deque lt rt l r bnd safe) where 
+
+instance DequeClass lt rt l r bnd safe elt where 
+  data Deque lt rt l r bnd safe elt = DQ (IORef (Seq elt))
+
   newQ = do r <- newIORef empty
 	    return (DQ r)
   pushL (DQ qr) x = atomicModifyIORef qr (\s -> (x <| s, ()))
@@ -36,8 +39,6 @@ instance DequeClass (Deque lt rt l r bnd safe) where
 -- 	        Nothing -> popR q
 -- 		Just x  -> return x
 
-
-instance PopL (Deque lt rt l r bnd safe) where 
 --   popL q = do x <- tryPopL q 
 -- 	      case x of 
 -- 	        Nothing -> popL q
@@ -48,13 +49,10 @@ instance PopL (Deque lt rt l r bnd safe) where
        EmptyL  -> (empty, Nothing)
        x :< s' -> (s', Just x)
 
-instance PushR (Deque lt rt l r bnd safe) where 
   pushR (DQ qr) x = atomicModifyIORef qr (\s -> (s |> x, ()))
 
-instance BoundedL (Deque lt rt l r bnd safe) where 
   tryPushL q v = pushL q v >> return True
 
-instance BoundedR (Deque lt rt l r bnd safe) where 
   tryPushR q v = pushR q v >> return True
 
 ------------------------------------------------------------

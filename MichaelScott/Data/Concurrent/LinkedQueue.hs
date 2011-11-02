@@ -1,5 +1,4 @@
-{-# LANGUAGE BangPatterns, CPP  #-}
--- TypeFamilies, FlexibleInstances
+{-# LANGUAGE BangPatterns, CPP, FlexibleInstances, MultiParamTypeClasses, TypeFamilies  #-}
 
 -- | Michael and Scott lock-free, wait-free, single-ended queues.
 -- module Main
@@ -146,10 +145,19 @@ newLinkedQueue = do
 -- data instance Deque T T S S Grow Safe elt = LinkedQueue elt
 
 -- instance DequeClass (Deque T T S S Grow Safe) where 
-instance DequeClass LinkedQueue where 
-  newQ    = newLinkedQueue
-  pushL   = push
-  tryPopR = tryPop
+instance DequeClass lt rt SingleEnd SingleEnd bnd safe elt where 
+  newtype Deque lt rt SingleEnd SingleEnd bnd safe elt = DQ (LinkedQueue elt)
+
+  newQ = newLinkedQueue >>= (return . DQ)
+  pushL   (DQ q) = push q
+  tryPopR (DQ q) = tryPop q
+
+--  tryPopL :: Deque lThreaded rThreaded DoubleEnd rDbl bnd safe elt -> IO (Maybe elt)
+  tryPopL  = error "the type checker won't even let this get called"
+  pushR    = error "the type checker won't even let this get called"
+  tryPushR = error "the type checker won't even let this get called"
+  tryPushL = error "the type checker won't even let this get called"
+
 
 --------------------------------------------------------------------------------
 --   Testing
