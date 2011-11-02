@@ -9,10 +9,11 @@ fi
 function doall () {
   CMD=$1
   (cd CAS;           $CMD)
+  (cd AbstractDeque; $CMD)
   (cd MichaelScott;  $CMD)
   # (cd ChaseLev;  $CMD)
 }
 
-doall "cabal haddock --with-haddock=$HADDOCK"
+# doall "cabal haddock --with-haddock=$HADDOCK"
+# doall "cabal install --haddock"
 doall "cabal install"
-

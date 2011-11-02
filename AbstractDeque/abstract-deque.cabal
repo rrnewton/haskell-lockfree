@@ -1,0 +1,27 @@
+Name:                abstract-deque
+Version:             0.1
+License:             BSD3
+License-file:        LICENSE
+Author:              Ryan R. Newton
+Maintainer:          rrnewton@gmail.com
+Category:            Data
+Build-type:          Simple
+Cabal-version:       >=1.2
+
+Synopsis: Abstract, parameterized interface to mutable Deques.
+
+Description:
+
+  There exists a feature space for queues that extends from simple,
+  single-ended non-concurrent bounded queues to double-ended,
+  threadsafe growable queues, with important points inbetween (such as
+  the queues used for work-stealing).
+
+  The goal of this interface is to make this feature space explicit in
+  the type system.  This opens up the possibility of using type
+  families to automatically select the best queue implementation for a
+  given set of required features.
+
+Library
+  exposed-modules:   Data.Concurrent.Deque.Class
+  build-depends:     base >= 4.4.0.0

@@ -19,6 +19,7 @@ import GHC.IO (unsafePerformIO)
 import GHC.Conc
 import Control.Concurrent.MVar
 
+import Data.Concurrent.Deque.Class
 
 import Data.CAS.Fake (ptrEq)
 #if 0
@@ -134,6 +135,19 @@ newLinkedQueue = do
   hd <- newIORef newp
   tl <- newIORef newp
   return (LQ hd tl)
+
+
+--------------------------------------------------------------------------------
+--   Instances of abstract deque interface
+--------------------------------------------------------------------------------
+
+
+-- | This instance classifies the LinkedQueue as being single-ended and fully threadsafe.
+data instance Deque T T S S Grow Safe elt = LinkedQueue elt
+
+instance DequeClass LinkedQueue where 
+  pushL = push
+  popR  = pop
 
 --------------------------------------------------------------------------------
 --   Testing
