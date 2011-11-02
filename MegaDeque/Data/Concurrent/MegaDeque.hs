@@ -67,17 +67,17 @@ newtype CircBuf elt = CircBuf elt -- TEMP
 --   pushL   (CQQ2 q) = undefined
 --   tryPopR (CQQ2 q) = undefined
 
-class NonForeignQueable t where 
-class ForeignQueable t where 
+-- class NonForeignQueable t where 
+-- class ForeignQueable t where 
 
-instance NonForeignQueable t => DequeClass lt rt DoubleEnd SingleEnd bnd safe t where 
-  newtype Deque lt rt DoubleEnd SingleEnd bnd safe t = CQQ1 (CircBuf t)
-  newQ             = undefined
-  pushL   (CQQ1 q) = undefined
-  tryPopR (CQQ1 q) = undefined
+-- instance NonForeignQueable t => DequeClass lt rt DoubleEnd SingleEnd bnd safe t where 
+--   newtype Deque lt rt DoubleEnd SingleEnd bnd safe t = CQQ1 (CircBuf t)
+--   newQ             = undefined
+--   pushL   (CQQ1 q) = undefined
+--   tryPopR (CQQ1 q) = undefined
 
-instance ForeignQueable t => DequeClass lt rt DoubleEnd SingleEnd bnd safe t where 
-  newtype Deque lt rt DoubleEnd SingleEnd bnd safe t = CQQ2 (CircBuf t)
-  newQ             = undefined
-  pushL   (CQQ2 q) = undefined
-  tryPopR (CQQ2 q) = undefined
+-- instance ForeignQueable t => DequeClass lt rt DoubleEnd SingleEnd bnd safe t where 
+--   newtype Deque lt rt DoubleEnd SingleEnd bnd safe t = CQQ2 (CircBuf t)
+--   newQ             = undefined
+--   pushL   (CQQ2 q) = undefined
+--   tryPopR (CQQ2 q) = undefined
