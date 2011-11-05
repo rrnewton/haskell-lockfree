@@ -71,7 +71,8 @@ import Prelude hiding (Bounded)
    You would probably want: @(Deque nt D T s Grow elt)@
 
  -}
-data family Deque lThreaded rThreaded lDbl rDbl bnd safe elt 
+-- data family Deque lThreaded rThreaded lDbl rDbl bnd safe elt 
+type family Deque lThreaded rThreaded lDbl rDbl bnd safe elt 
 
 data Threadsafe
 data Nonthreadsafe
@@ -116,6 +117,8 @@ class DequeClass d where
    -- | Natural pop: pop from the right end of the deque.
    tryPopR  :: d elt -> IO (Maybe elt)
 
+-- TODO: It would also be possible to include blocking/spinning pops.
+-- But maybe those should go in separate type classes...
 
 class DequeClass d => PopL d where 
    -- | PopL is not the native operation for the left end, so it requires
