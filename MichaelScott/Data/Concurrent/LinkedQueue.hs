@@ -142,9 +142,6 @@ newLinkedQueue = do
 --   Instances of abstract deque interface
 --------------------------------------------------------------------------------
 
--- | This instance classifies the LinkedQueue as being single-ended and fully threadsafe.
--- data instance Deque T T S S Grow Safe elt = LinkedQueue elt
-
 -- instance DequeClass (Deque T T S S Grow Safe) where 
 instance DequeClass LinkedQueue where 
   newQ    = newLinkedQueue
