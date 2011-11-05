@@ -12,15 +12,20 @@ Synopsis: Abstract, parameterized interface to mutable Deques.
 
 Description:
 
-  There exists a feature space for queues that extends from simple,
-  single-ended non-concurrent bounded queues to double-ended,
-  threadsafe growable queues, with important points inbetween (such as
+  There exists a feature space for queues that extends between:
+  .
+    * simple, single-ended, non-concurrent, bounded queues 
+  .
+    * double-ended, threadsafe, growable queues
+  .
+  ... with important points inbetween (such as
   the queues used for work-stealing).
+ .
+  This package includes an interface for Deques that allows the
+  programmer to use a single API for all of the above, while using the
+  type-system to select an efficient implementation given the
+  requirements (using type families).
 
-  The goal of this interface is to make this feature space explicit in
-  the type system.  This opens up the possibility of using type
-  families to automatically select the best queue implementation for a
-  given set of required features.
 
 Library
   exposed-modules:   Data.Concurrent.Deque.Class,
