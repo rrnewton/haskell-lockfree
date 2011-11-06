@@ -26,7 +26,7 @@ casIORef :: IORef a -> a -> a -> IO (Bool,a)
 casIORef r !old !new =   
   atomicModifyIORef r $ \val -> 
 --    if val == old
-    if unsafePerformIO (reallyUns val old)
+    if ptrEq val old
     then (new, (True,old))
     else (val, (False,val))
 
