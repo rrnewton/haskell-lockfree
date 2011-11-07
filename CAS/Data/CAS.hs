@@ -18,6 +18,9 @@ casSTRef :: STRef s a -- ^ The 'STRef' containing a value 'current'
          -> a -- ^ The 'new' value to replace 'current' if @old == current@
          -> ST s (Bool, a) 
 casSTRef (STRef var#) old new = ST $ \s1# ->
+   -- The primop treats the boolean as a sort of error code.
+   -- Zero means the CAS worked, one that it didn't.
+   -- We flip that here:
     case casMutVar# var# old new s1# of
       (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, res) #)
 
