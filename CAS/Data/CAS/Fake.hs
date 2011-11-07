@@ -30,7 +30,6 @@ casIORef r old new = do
     then (new, (True,old))
     else (val, (False,val))
 
-
 {-# INLINE nameEq #-}
 -- WARNING:  This has completely implementation-defined behavior. 
 --   mkStableName + (==) provides no guarantee against false negatives.
@@ -41,3 +40,4 @@ nameEq !a !b = do
   s2 <- makeStableName b
 --  printf "    comparing ptrs with stablenames %d %d...\n" (hashStableName s1) (hashStableName s2)
   return (s1 == s2)
+

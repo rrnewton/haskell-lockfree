@@ -71,8 +71,7 @@ push (LQ headPtr tailPtr) val = do
  -- StableName's don't GUARANTEE that equal pointers return TRUE
 -- [2011.10.29] Umm... the infinite loop went away... No idea.
 	tail' <- readIORef tailPtr
-        b <- ptrEq tail tail'
-        if (not b) then loop newp 
+        if not (ptrEq tail tail') then loop newp 
          else case next' of 
 #else
 	case next' of 
@@ -105,10 +104,9 @@ tryPop (LQ headPtr tailPtr) = loop
         next' <- readIORef next
         -- As with push, double-check our information is up-to-date. (head,tail,next consistent)
         head' <- readIORef headPtr
-        b <- ptrEq head head' 
-        if (not b) then loop else do 
-	  b <- ptrEq head tail -- Is queue empty or tail falling behind?
-          if b then do 
+        if not (ptrEq head head') then loop else do 
+	  -- Is queue empty or tail falling behind?:
+          if ptrEq head tail then do 
 	    case next' of -- Is queue empty?
               Null -> return Nothing -- Queue is empty, couldn't dequeue
 	      Cons _ _ -> do
