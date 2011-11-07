@@ -1,0 +1,6 @@
+[submodule "DequeTester/BenchScaling"]
+	path = DequeTester/BenchScaling
+	url = git://github.com/rrnewton/HSBenchScaling.git
+[submodule "BenchThroughput"]
+	path = BenchThroughput
+	url = git://github.com/rrnewton/HSBenchThroughput.git
