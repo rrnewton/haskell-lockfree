@@ -9,7 +9,6 @@
 module Data.CAS.Foreign 
  ( 
    CASable(..), CASref
---   casIORef, ptrEq 
  )
  where 
 
@@ -32,9 +31,10 @@ import Unsafe.Coerce
 ptrEq :: a -> a -> Bool
 ptrEq x y = I# (reallyUnsafePtrEquality# x y) == 1
 
--- Convenient overlapping instances at the cost of a runtime dispatch.
--- (Compile time dispatch is not possible due to impossibility of
---  overlapping instances with associated type families.)
+-- Convenient overlapping instances of CASable are possible at the at
+-- the cost of a runtime dispatch on CASref representations.  (Compile
+-- time dispatch is not possible due to impossibility of overlapping
+-- instances with associated type families.)
 data CASref a = 
    Frgn (Ptr a)
  | Hskl (ForeignPtr (StablePtr a))
@@ -128,15 +128,3 @@ instance CASable a where
        when fired $ freeStablePtr orig'
        return (fired, orig'')
        
---    unsafeCoerce 
-
---      p <- newStablePtr val
---      withForeignPtr (`poke` p)
-
---      undefined
-  
-
--- type CASRef a = IORef (StablePtr a)
-
-
---  newStablePtr old 

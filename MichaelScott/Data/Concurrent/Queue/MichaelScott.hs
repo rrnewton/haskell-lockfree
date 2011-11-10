@@ -3,12 +3,10 @@
 
 -- | Michael and Scott lock-free, wait-free, single-ended queues.
 -- module Main
-module Data.Concurrent.LinkedQueue 
+module Data.Concurrent.Queue.MichaelScott
  (
-   newLinkedQueue
- , push 
- , tryPop
- , LinkedQueue()
+  LinkedQueue(),
+  newQ, pushL, tryPopR
  )
   where
 
@@ -20,7 +18,7 @@ import GHC.IO (unsafePerformIO)
 import GHC.Conc
 import Control.Concurrent.MVar
 
-import Data.Concurrent.Deque.Class
+import qualified Data.Concurrent.Deque.Class as C
 
 import Data.CAS.Fake (ptrEq)
 #if 0
@@ -48,8 +46,8 @@ data Pair a = Null | Cons a (IORef (Pair a))
 
 -- | Push a new element onto the queue.  Because the queue can grow,
 --   this alway succeeds.
-push :: LinkedQueue a -> a  -> IO ()
-push (LQ headPtr tailPtr) val = do
+pushL :: LinkedQueue a -> a  -> IO ()
+pushL (LQ headPtr tailPtr) val = do
    r <- newIORef Null
    let newp = Cons val r   -- Create the new cell that stores val.
    tail <- loop newp
@@ -92,14 +90,14 @@ push (LQ headPtr tailPtr) val = do
 -- | Attempt to pop an element from the queue if one is available.
 --   tryPop will always return promptly, but will return 'Nothing' if
 --   the queue is empty.
-tryPop ::  LinkedQueue a -> IO (Maybe a)
-tryPop (LQ headPtr tailPtr) = loop
+tryPopR ::  LinkedQueue a -> IO (Maybe a)
+tryPopR (LQ headPtr tailPtr) = loop
  where 
   loop = do 
     head <- readIORef headPtr
     tail <- readIORef tailPtr
     case head of 
-      Null -> error "tryPop: LinkedQueue invariants broken.  Internal error."
+      Null -> error "tryPopR: LinkedQueue invariants broken.  Internal error."
       Cons _ next -> do
         next' <- readIORef next
         -- As with push, double-check our information is up-to-date. (head,tail,next consistent)
@@ -127,8 +125,8 @@ tryPop (LQ headPtr tailPtr) = loop
 		       else loop   
           
 
-newLinkedQueue :: IO (LinkedQueue a)
-newLinkedQueue = do 
+newQ :: IO (LinkedQueue a)
+newQ = do 
   r <- newIORef Null
   let newp = Cons (error "LinkedQueue: Used uninitialized magic value.") r
   hd <- newIORef newp
@@ -137,102 +135,14 @@ newLinkedQueue = do
 
 
 --------------------------------------------------------------------------------
---   Instances of abstract deque interface
+--   Instance(s) of abstract deque interface
 --------------------------------------------------------------------------------
 
 -- instance DequeClass (Deque T T S S Grow Safe) where 
-instance DequeClass LinkedQueue where 
-  newQ    = newLinkedQueue
-  pushL   = push
-  tryPopR = tryPop
-
---------------------------------------------------------------------------------
---   Testing
---------------------------------------------------------------------------------
-
-spinPop q = do
-  x <- tryPop q 
-  case x of 
-    Nothing -> spinPop q
-    Just x  -> return x
-
-casStrict r !o !n = casIORef r o n
-
-testCAS = 
-  do let zer = (0::Int)
-     r <- newIORef zer
-     let loop 0 = return ()
-	 loop n = do
-          (b,v) <- casIORef r zer 100  -- Must use "zer" here.
---          (b,v) <- casStrict r 0 100  -- Otherwise this is nondeterministic based on compiler opts.
-		   -- Sometimes the latter version works on the SECOND evaluation of testCAS.  Interesting.
-          putStrLn$ "After CAS " ++ show (b,v)
-          loop (n-1)
-     loop 10 
-     return ()
-
-testQ1 = 
-  do q <- newLinkedQueue 
-     let n = 1000
-     putStrLn$ "Done creating queue.  Pushing elements:"
-     forM_ [1..n] $ \i -> do 
-       push q i
-       printf " %d" i
-     putStrLn "\nDone filling queue with elements.  Now popping..."
-     sumR <- newIORef 0
-     forM_ [1..n] $ \i -> do
-       x <- spinPop q 
-       printf " %d" x
-       modifyIORef sumR (+x)
-     s <- readIORef sumR
-     let expected = sum [1..n] :: Int
-     printf "\nSum of popped vals: %d should be %d\n" s expected
-     when (s /= expected) (error "Incorrect sum!")
-     return s
-
--- This one splits the numCapabilities threads into producers and consumers
-testQ2 :: Int -> IO ()
-testQ2 total = 
-  do q <- newLinkedQueue
-     mv <- newEmptyMVar     
-     let producers = max 1 (numCapabilities `quot` 2)
-	 consumers = producers
-	 perthread = total `quot` producers
-
-     printf "Forking %d producer threads.\n" producers 
-    
-     forM_ [0..producers-1] $ \ id -> 
- 	forkIO $ 
-          forM_ (take perthread [id * producers .. ]) $ \ i -> do 
-	     push q i
-             printf " [%d] pushed %d \n" id i
-
-     printf "Forking %d consumer threads.\n" consumers
-
-     forM_ [0..consumers-1] $ \ id -> 
- 	forkIO $ do 
-          sum <- newIORef 0
-          forM_ (take perthread [id * producers .. ]) $ \ i -> do
-	     x <- spinPop q 
-             printf " [%d] popped %d \n" id i
-	     modifyIORef sum (+x)
-	  s <- readIORef sum
-	  putMVar mv s
-
-     printf "Reading sums from MVar...\n" 
-     ls <- mapM (\_ -> takeMVar mv) [1..consumers]
-     let finalSum = Prelude.sum ls
-     putStrLn$ "Final sum: "++ show finalSum
-     return ()
-
--- main = testCAS
--- main = testQ2 (1000 * 1000)
-main = testQ2 (10)
-
-
---------------------------------------------------------------------------------
--- TODO: Instances.  Implement the abstract-deque interface.
-
+instance C.DequeClass LinkedQueue where 
+  newQ    = newQ
+  pushL   = pushL
+  tryPopR = tryPopR
 
 --------------------------------------------------------------------------------
 {- 

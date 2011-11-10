@@ -3,17 +3,18 @@
 -- | A strawman implementation of concurrent Dequeus.  This
 --   implementation is so simple that it also makes a good reference
 --   implementation for debugging.
-module Data.Concurrent.Deque.Class.Reference 
+-- 
+--   The queue representation is simply an IORef containing a Data.Sequence.
+module Data.Concurrent.Deque.Reference 
  (SimpleDeque(..),
-  newQ, pushL, pushR, tryPopR, tryPopL, tryPushL, tryPushR)
+  newQ, pushL, pushR, tryPopR, tryPopL, tryPushL, tryPushR
+ )
  where
 
 import Prelude hiding (length)
 import qualified Data.Concurrent.Deque.Class as C
 import Data.Sequence
 import Data.IORef
-
--- data instance Deque lt rt l r bnd safe elt = DQ 
 
 -- | Stores a size bound (if any) as well as a mutable Seq.
 data SimpleDeque elt = DQ {-# UNPACK #-} !Int !(IORef (Seq elt))

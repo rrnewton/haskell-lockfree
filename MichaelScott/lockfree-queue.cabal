@@ -22,7 +22,8 @@ Description:
   ConcurrentLinkedQueue's.
 
 Library
-  exposed-modules:   Data.Concurrent.LinkedQueue
+  exposed-modules:   Data.Concurrent.Queue.MichaelScott,
+                     Data.Concurrent.Queue.MichaelScott.DequeInstance
   build-depends:     base >= 4.4.0.0,
                      ghc-prim,
                      abstract-deque,

@@ -13,10 +13,10 @@ module Data.Concurrent.MegaDeque
 import Data.Concurrent.Deque.Class
 
 -- Michael and Scott Queues:
-import Data.Concurrent.LinkedQueue
+import Data.Concurrent.Queue.MichaelScott
 
 -- Fallback implementation:
-import Data.Concurrent.Deque.Class.Reference
+import Data.Concurrent.Deque.Reference
 
 ------------------------------------------------------------
 -- Single-ended Queues:
