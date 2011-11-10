@@ -5,7 +5,7 @@
 -- 
 -- Ryan Newton
 
-module Data.CAS.Fake ( CASRef, casIORef, ptrEq )
+module Data.CAS.Fake ( CASref, casIORef, ptrEq )
  where 
 
 import Data.IORef
@@ -14,6 +14,8 @@ import GHC.IO (unsafePerformIO)
 
 import GHC.Exts (Int(I#))
 import GHC.Prim (reallyUnsafePtrEquality#)
+
+type CASref a = IORef a
 
 ptrEq :: a -> a -> Bool
 ptrEq x y = I# (reallyUnsafePtrEquality# x y) == 1
