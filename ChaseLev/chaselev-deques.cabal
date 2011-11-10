@@ -12,7 +12,9 @@ Synopsis: Chase & Lev work-stealing lock-free double-ended queues (deques).
 
 
 Library
-  exposed-modules:   Data.Concurrent.Deque.ChaseLev
+  exposed-modules:   Data.Concurrent.Deque.ChaseLev.Instances,
+                     Data.Concurrent.Deque.ChaseLev,
+                     Data.Concurrent.Deque.ReactorDeque
   build-depends:     base >= 4.4.0.0, array, transformers, bits-atomic,
                      abstract-deque
   ghc-options: -O2
