@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleInstances, UndecidableInstances, 
-    MagicHash, TypeFamilies
+    MagicHash, TypeFamilies, MultiParamTypeClasses
  #-}
 
 
@@ -8,7 +8,8 @@
 
 module Data.CAS.Foreign 
  ( 
-   CASable(..), CASref
+   CASRef
+   -- Plus instance...
  )
  where 
 
@@ -28,29 +29,25 @@ import GHC.Exts (Int(I#))
 import GHC.Prim (reallyUnsafePtrEquality#)
 import Unsafe.Coerce
 
+import Data.CAS.Class
+
 ptrEq :: a -> a -> Bool
 ptrEq x y = I# (reallyUnsafePtrEquality# x y) == 1
 
 -- Convenient overlapping instances of CASable are possible at the at
--- the cost of a runtime dispatch on CASref representations.  (Compile
+-- the cost of a runtime dispatch on CASRef representations.  (Compile
 -- time dispatch is not possible due to impossibility of overlapping
 -- instances with associated type families.)
-data CASref a = 
+data CASRef a = 
    Frgn (Ptr a)
  | Hskl (ForeignPtr (StablePtr a))
 
-class CASable a where 
---  data CASref a
-  mkCASable    :: a -> IO (CASref a)
-  readCASable  :: CASref a -> IO a 
-  writeCASable :: CASref a -> a -> IO ()
-  cas          :: CASref a -> a -> a -> IO (Bool,a)
 
 -- instance (Storable a,  AtomicBits a) => CASable a where 
-instance CASable Word32 where 
---  newtype CASref a = Frgn (Ptr a)
---  newtype CASref Word32 = Frgn (Ptr Word32)
-  mkCASable val = do 
+instance CASable CASRef Word32 where 
+--  newtype CASRef a = Frgn (Ptr a)
+--  newtype CASRef Word32 = Frgn (Ptr Word32)
+  newCASable val = do 
     ptr <- malloc 
     poke ptr val
     return (Frgn ptr)
@@ -69,10 +66,10 @@ instance CASable Word32 where
 -- This should not be useful for implementing efficient data
 -- strcuctures because it itself dependends on concurrent access to
 -- the GHC runtimes table of pinned StablePtr values.
-instance CASable a where 
---  newtype CASref a = Hskl (StablePtr a)
+instance CASable CASRef a where 
+--  newtype CASRef a = Hskl (StablePtr a)
 
-  mkCASable val = do 
+  newCASable val = do 
     -- Here we create a storage cell outside the Haskel heap which in
     -- turn contains a pointer back into the Haskell heap.
     p   <- newStablePtr val
@@ -90,7 +87,7 @@ instance CASable a where
     fp <- mallocForeignPtr
     withForeignPtr fp (`poke` p)
     FC.addForeignPtrFinalizer fp $
-         do putStrLn$ "CURRENTLY THIS SHOULD NEVER HAPPEN BECAUSE THE FINALIZER KEEPS IT ALIVE!"
+         do putStrLn$ "EXPECTATION INVALVIDATED: CURRENTLY THIS SHOULD NEVER HAPPEN BECAUSE THE FINALIZER KEEPS IT ALIVE!"
 	    -- Todo... week pointer here.
             curp <- withForeignPtr fp peek 
 	    freeStablePtr curp

@@ -1,5 +1,15 @@
 
 
+import Data.IORef
+import Control.Monad
+import Text.Printf
+import GHC.Conc
+import Control.Concurrent.MVar
+
+import qualified Data.Concurrent.Deque.Class as C
+import Data.Concurrent.Queue.MichaelScott
+
+
 --------------------------------------------------------------------------------
 --   Testing
 --------------------------------------------------------------------------------
@@ -15,7 +25,7 @@ testQ1 =
      let n = 1000
      putStrLn$ "Done creating queue.  Pushing elements:"
      forM_ [1..n] $ \i -> do 
-       push q i
+       pushL q i
        printf " %d" i
      putStrLn "\nDone filling queue with elements.  Now popping..."
      sumR <- newIORef 0
@@ -43,7 +53,7 @@ testQ2 total =
      forM_ [0..producers-1] $ \ id -> 
  	forkIO $ 
           forM_ (take perthread [id * producers .. ]) $ \ i -> do 
-	     push q i
+	     pushL q i
              printf " [%d] pushed %d \n" id i
 
      printf "Forking %d consumer threads.\n" consumers
@@ -65,3 +75,4 @@ testQ2 total =
      return ()
 
 
+main = testQ1 

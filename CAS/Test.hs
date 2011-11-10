@@ -1,34 +1,262 @@
+{-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP #-}
 
+import Control.Monad
+import Control.Concurrent.MVar
+import GHC.Conc
 import Data.IORef
--- import Data.CAS
--- import Data.CAS.Fake
-import Data.CAS.Foreign
+import Data.CAS.Class
 
-testCAS = 
-  do let zer = (0::Int)
---     r <- newIORef zer
-     r <- mkCASable zer
+import qualified Data.CAS         as A
+import qualified Data.CAS.Fake    as B
+import qualified Data.CAS.Foreign as C
+
+import Text.Printf
+
+{-# NOINLINE zer #-}
+zer = 0
+
+-- iters = 100
+-- iters = 10000
+iters = 100000
+-- iters = 1000000
+
+----------------------------------------------------------------------------------------------------
+-- Helpers
+
+printBits = print . map pb
+ where pb True  = '1' 
+       pb False = '0'
+
+forkJoin :: Int -> (IO b) -> IO [b]
+forkJoin numthreads action = 
+  do
+     answers <- sequence (replicate numthreads newEmptyMVar) -- padding?
+     printf "Forking %d threads.\n" numthreads
+    
+     forM_ answers $ \ mv -> 
+ 	forkIO (action >>= putMVar mv)
+
+     -- Reading answers:
+     ls <- mapM readMVar answers
+     printf "All threads %d completed\n" numthreads
+     return ls
+
+-- Describe a structure of forking and joining threads for tests:
+data Forkable a = Fork Int (IO a)
+                | Parallel (Forkable a) (Forkable a) -- Parallel composition
+                | Sequence (Forkable a) (Forkable a) -- Sequential compositon, with barrier
+--                | Barrier Forkable
+ 
+
+----------------------------------------------------------------------------------------------------
+
+{-# INLINE testCAS1 #-}
+testCAS1 :: CASable ref Int => ref Int -> IO [Bool]
+testCAS1 r = 
+  do 
+     bitls <- newIORef []
+--     let zer = (0::Int)
+
+--     r :: CASRef Int <- newCASable zer 
      let loop 0 = return ()
 	 loop n = do
 
           (b,v) <- cas r zer 100  -- Must use "zer" here.
+          atomicModifyIORef bitls (\x -> (b:x, ()))
 
 --          (b,v) <- casIORef r zer 100  -- Must use "zer" here.
 --          (b,v) <- casStrict r 0 100  -- Otherwise this is nondeterministic based on compiler opts.
 		   -- Sometimes the latter version works on the SECOND evaluation of testCAS.  Interesting.
-          putStrLn$ "After CAS " ++ show (b,v)
+          putStrLn$ "  After CAS " ++ show (b,v)
           loop (n-1)
-     loop 10 
+     loop 10
 
      x <- readCASable r
-     putStrLn$ "Finished with loop, read cell: " ++ show x
+     putStrLn$ "  Finished with loop, read cell: " ++ show x
      writeCASable r 111
      y <- readCASable r
-     putStrLn$ "Wrote and read again read: " ++ show y
-     return ()
+     putStrLn$ "  Wrote and read again read: " ++ show y
+
+     ls <- readIORef bitls
+     return (reverse ls)
+
+----------------------------------------------------------------------------------------------------
+
+-- UNFINISHED, TODO:
+-- This version hammers on CASref from all threads, then checks to see
+-- if at least one thread succeeded at each point in time.  That is
+-- for N threads each aiming to complete K operations, there should be
+-- at most N^2*K total operations required.
 
 
-main = testCAS
+
+-- Actually what the below benchmark currently does is just try K times on each thread...
+
+{-# INLINE testCAS2 #-}
+testCAS2 :: CASable ref Int => ref Int -> IO [[Bool]]
+testCAS2 ref = 
+  forkJoin numCapabilities $ 
+    do 
+       let loop 0 expected acc = return (reverse acc)
+	   loop n expected acc = do
+	    (b,v) <- cas ref expected (expected+1)
+	    loop (n-1) v (b:acc)
+
+       init <- readCASable ref
+       loop iters init []
+
+
+----------------------------------------------------------------------------------------------------
+-- Test Oracles
+
+checkOutput1 msg ls =
+  if ls == True : replicate (9) False
+  then return ()
+  else error$ "Test "++ msg ++ " failed to have the right CAS success pattern: " ++ show ls
+
+checkOutput2 msg ls fin = do 
+  let totalAttempts = sum $ map length ls
+  putStrLn$ "Final value "++show fin++", Total successes "++ show (length $ filter id $ concat ls)
+  when (fin < iters) $
+    error$ "ERROR in "++ show msg ++ " expected at least "++show iters++" successful CAS's.." 
+
+----------------------------------------------------------------------------------------------------
+
+main = do 
+
+   putStrLn$ "\nTesting Raw, native CAS:"
+   o1A <- (newCASable zer :: IO (A.CASRef Int)) >>= testCAS1
+
+   putStrLn$ "\nTesting Fake CAS, based on atomicModifyIORef:"
+   o1B <- (newCASable zer :: IO (B.CASRef Int)) >>= testCAS1
+
+   putStrLn$ "\nTesting Foreign CAS, using mutable cells outside of the Haskell heap:"
+   o1C <- (newCASable zer :: IO (C.CASRef Int)) >>= testCAS1
+
+   checkOutput1 "Raw 1"     o1A
+   checkOutput1 "Fake 1"    o1B
+   checkOutput1 "Foreign 1" o1C
+   ------------------------------------------------------------
+
+   putStrLn$ "\nTesting Raw, native CAS:"
+   ref   <- newCASable zer :: IO (A.CASRef Int)
+   o2A   <- testCAS2 ref
+   mapM_ (printBits . take 100) o2A
+   fin2A <- readCASable ref
+
+   putStrLn$ "\nTesting Fake CAS, based on atomicModifyIORef:"
+   ref   <- newCASable zer :: IO (B.CASRef Int)
+   o2B   <- testCAS2 ref
+   mapM_ (printBits . take 100) o2B
+   fin2B <- readCASable ref
+
+   putStrLn$ "\nTesting Foreign CAS, using mutable cells outside of the Haskell heap:"
+   ref   <- newCASable zer :: IO (C.CASRef Int)
+   o2C   <- testCAS2 ref
+   mapM_ (printBits . take 100) o2C
+   fin2C <- readCASable ref
+
+   checkOutput2 "Raw 1"     o2A fin2A
+   checkOutput2 "Foreign 1" o2C fin2C
+   checkOutput2 "Fake 1"    o2B fin2B
+
+   ------------------------------------------------------------
+   putStrLn$ "\nAll test outputs looked good."
+
+
+{-
+  [2011.11.10] 
+
+Well... just got this output from the WRONG test:
+
+"1010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010"
+"1010101010101010101010101010101010101010101010101010101010101010101010010010100100101010101001001001"
+CURRENTLY THIS SHOULD NEVER HAPPEN BECAUSE THE FINALIZER KEEPS IT ALIVE!
+"0101010101010100010101010101010101010101010101010101010101010101010101010101010101010101010101010101"
+"0100010010001001001001001010101010101001010101010101010101010101010101010101010101001010101010101010"
+
+The first problem is that this indicates a bug, the second is that it's coming from the WRONG PLACE.
+
+Let me be more specific.  I'm testing three versions.  On Mac OS I see
+the failure in the Foreign.hs, which is where the error message is
+located and where it's coming from!
+
+     Testing Raw, native CAS:
+     Forking 2 threads.
+     All threads 2 completed
+     "1010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010"
+     "1010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010"
+
+     Testing Fake CAS, based on atomicModifyIORef:
+     Forking 2 threads.
+     All threads 2 completed
+     "1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+     "1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+
+     Testing Foreign CAS, using mutable cells outside of the Haskell heap:
+     Forking 2 threads.
+     All threads 2 completed
+     CURRENTLY THIS SHOULD NEVER HAPPEN BECAUSE THE FINALIZER KEEPS IT ALIVE!
+     "1010101010101010101010101010101010101010101010101010101010101010101010101001001001001001001001001001"
+     "0100100100100100100100100100101010101010101010101010101010101010101010101010101010101010101010101010"
+
+But on Linux I see this error coming from the test for A.CASRef!
+
+    Testing Raw, native CAS:
+    Forking 4 threads.
+    All threads 4 completed
+    "1010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010"
+    "1010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010"
+    CURRENTLY THIS SHOULD NEVER HAPPEN BECAUSE THE FINALIZER KEEPS IT ALIVE!
+    "1010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010"
+    "1010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010"
+
+    Testing Fake CAS, based on atomicModifyIORef:
+    Forking 4 threads.
+    All threads 4 completed
+    "1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    "1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+
+    Testing Foreign CAS, using mutable cells outside of the Haskell heap:
+    Forking 4 threads.
+    All threads 4 completed
+    "0010010100101000101010101000101010100101010010101010010100101010100000100100100010101010100101001010"
+    "1010101010101010100001000101001010010101000100101010000001000010000100010000001000000001000001010001"
+    "0010010010000010000000010000000000010000100001000100101001010001000100100010010010101001001010001001"
+    "0010101010100100101001000100101000001000100001000100100010001001010101010101010101010101010101010101"
+    Final value 200, Total successes 200
+    Final value 2, Total successes 2
+    test.exe: ERROR in "Fake 1" expected at least 100 successful CAS's..
+
+As though the instances are getting mixed up or selected in a nondeterministic way.
+
+A.CASRef B.CASRef and C.CASRef should be unique types which do not unify with one another....
+
+If I pump up the numbers I start seeing segfaults, which appear to be
+coming from the foreign version but I think that's just because they get swapped!...
+
+OR it's possible that I'm being silly and that I have not put
+sufficient barriers between the phases to FORCE all work to complete
+and therefore all print messages to be printed out in order.
+
+    Testing Foreign CAS, using mutable cells outside of the Haskell heap:
+    Forking 4 threads.
+    Segmentation fault
+
+I'm ALSO seeing failures of insufficient successes on my laptop at iters=10K...
+
+------------------------------------------------------------
+
+Ok, going to attempt to tease this out by first testing only one implementation at a time:
+
+  Data.CAS -- insufficient successes occasionally (10K), 
+              insufficient successes always (100K),
+	      stack overflow for this test (1M)
+
+
+ -}
 
 
 

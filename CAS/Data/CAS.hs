@@ -1,14 +1,29 @@
-{-# LANGUAGE MagicHash, UnboxedTuples #-}
+{-# LANGUAGE MagicHash, UnboxedTuples, BangPatterns, MagicHash,
+    TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
 
 -- | Atomic compare and swap for IORefs and CASRefs.
-module Data.CAS where
+module Data.CAS 
+ ( casSTRef, casIORef, CASRef )
+where
 
+import Data.CAS.Class
 import GHC.IO
 import GHC.IORef
 import GHC.Prim
 import GHC.ST
 import GHC.STRef
 
+--------------------------------------------------------------------------------
+
+newtype CASRef a = CR { unCR :: IORef a }
+
+instance CASable CASRef a where 
+  newCASable x = newIORef x >>= (return . CR)
+  readCASable  = readIORef  . unCR
+  writeCASable = writeIORef . unCR
+  cas          = casIORef   . unCR
+
+--------------------------------------------------------------------------------
 
 -- | Performs a machine-level compare and swap operation on an
 -- 'STRef'. Returns a tuple containing a 'Bool' which is 'True' when a

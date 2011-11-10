@@ -25,6 +25,7 @@ import Data.CAS.Fake (ptrEq)
 -- Segfaulting currently:
 import Data.CAS (casIORef)
 #else
+-- Looping indefinitely due to failure to CAS successfully.
 import Data.CAS.Fake (casIORef)
 #endif
 

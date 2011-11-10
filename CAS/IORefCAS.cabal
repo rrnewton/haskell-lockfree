@@ -21,3 +21,12 @@ Library
                      Data.CAS.Fake
   build-depends:     base >= 4.4.0.0,
                      ghc-prim
+
+
+-- Executable 
+Test-Suite test-IORefCAS
+    type:       exitcode-stdio-1.0
+    main-is:    Test.hs
+    ghc-options: -O2 -threaded -rtsopts
+    build-depends: QuickCheck, HUnit, bits-atomic
+                 , test-framework, test-framework-hunit, test-framework-quickcheck2

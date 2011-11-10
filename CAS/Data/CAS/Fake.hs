@@ -1,21 +1,32 @@
-{-# LANGUAGE BangPatterns, MagicHash #-}
+{-# LANGUAGE BangPatterns, MagicHash, TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
 
 -- This is an attempt to imitate a CAS using normal Haskell/GHC operations.
 -- Useful for debugging.
 -- 
 -- Ryan Newton
 
-module Data.CAS.Fake ( CASref, casIORef, ptrEq )
+module Data.CAS.Fake ( CASRef, casIORef, ptrEq )
  where 
 
 import Data.IORef
+import Data.CAS.Class
 import System.Mem.StableName
 import GHC.IO (unsafePerformIO)
 
 import GHC.Exts (Int(I#))
 import GHC.Prim (reallyUnsafePtrEquality#)
 
-type CASref a = IORef a
+--------------------------------------------------------------------------------
+
+newtype CASRef a = CR { unCR :: IORef a }
+
+instance CASable CASRef a where 
+  newCASable x = newIORef x >>= (return . CR)
+  readCASable  = readIORef  . unCR
+  writeCASable = writeIORef . unCR
+  cas          = casIORef   . unCR
+
+--------------------------------------------------------------------------------
 
 ptrEq :: a -> a -> Bool
 ptrEq x y = I# (reallyUnsafePtrEquality# x y) == 1
