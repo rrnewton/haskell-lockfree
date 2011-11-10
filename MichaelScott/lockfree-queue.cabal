@@ -4,7 +4,7 @@ License:             BSD3
 License-file:        LICENSE
 Author:              Ryan R. Newton
 Maintainer:          rrnewton@gmail.com
-Category:            Data
+Category:            Data, Concurrent
 Build-type:          Simple
 Cabal-version:       >=1.2
 
@@ -13,17 +13,13 @@ Synopsis: Michael and Scott lock-free queues.
 Description:
 
   Michael and Scott queues are described in their PODC 1996 paper:
-
-
+ .
     <http://dl.acm.org/citation.cfm?id=248052.248106>
-
-
+ .
   These are single-ended concurrent queues based on a singlly linked
   list and using atomic CAS instructions to swap the tail pointers.
   As a well-known efficient algorithm they became the basis for Java's
   ConcurrentLinkedQueue's.
-
--- [It is greatly annoying that there seems to be no way to break paragraphs in the package description.]
 
 Library
   exposed-modules:   Data.Concurrent.LinkedQueue
@@ -31,5 +27,6 @@ Library
                      ghc-prim,
                      abstract-deque,
                      IORefCAS
+  ghc-options: -O2
 -- Build failure on GHC 7.2:
 --                     queuelike

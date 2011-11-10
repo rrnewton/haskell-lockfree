@@ -27,6 +27,9 @@ module Data.Concurrent.Deque.Class
   -- ** Aliases enabling more concise Deque types:
  , S, D, NT, T
 
+  -- ** Aliases for commonly used Deque configurations:
+ , Queue, ConcQueue, ConcDeque, WSDeque
+
   -- * Classes containing Deque operations
  , DequeClass(..)
 
@@ -97,6 +100,15 @@ type T  = Threadsafe
 type NT = Nonthreadsafe
 type S  = SingleEnd
 type D  = DoubleEnd
+
+
+type Queue a = Deque Nonthreadsafe Nonthreadsafe SingleEnd SingleEnd Grow Safe a
+-- Threadsafe versions:
+type ConcQueue a = Deque Threadsafe Threadsafe SingleEnd SingleEnd Grow Safe a
+type ConcDeque a = Deque Threadsafe Threadsafe DoubleEnd DoubleEnd Grow Safe a
+
+-- Work-stealing deques (1.5 ended):
+type WSDeque a = Deque Nonthreadsafe Threadsafe DoubleEnd SingleEnd Grow Safe a
 
 --------------------------------------------------------------------------------
 

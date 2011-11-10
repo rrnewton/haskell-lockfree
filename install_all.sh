@@ -11,8 +11,7 @@ function doall () {
   (cd CAS;           $CMD)
   (cd AbstractDeque; $CMD)
   (cd MichaelScott;  $CMD)
-  # (cd ChaseLev;  $CMD)
-
+  (cd ChaseLev;      $CMD)
   (cd MegaDeque;     $CMD)
 }
 

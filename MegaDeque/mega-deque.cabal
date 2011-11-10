@@ -25,3 +25,4 @@ Library
   build-depends:     base >= 4.4.0.0,
                      abstract-deque,
                      lockfree-queue
+  ghc-options: -O2

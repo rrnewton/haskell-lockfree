@@ -31,3 +31,4 @@ Library
   exposed-modules:   Data.Concurrent.Deque.Class,
                      Data.Concurrent.Deque.Class.Reference
   build-depends:     base >= 4.4.0.0, containers
+  ghc-options: -O2
