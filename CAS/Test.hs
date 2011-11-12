@@ -1,14 +1,23 @@
-{-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP #-}
+{-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP, BangPatterns #-}
 
 import Control.Monad
 import Control.Concurrent.MVar
 import GHC.Conc
 import Data.IORef
 import Data.CAS.Class
+import System.Environment
+import System.Mem.StableName
+import GHC.IO (unsafePerformIO)
 
+#ifdef T1
 import qualified Data.CAS         as A
+#endif
+#ifdef T2
 import qualified Data.CAS.Fake    as B
+#endif
+#ifdef T3
 import qualified Data.CAS.Foreign as C
+#endif
 
 import Text.Printf
 
@@ -17,7 +26,7 @@ zer = 0
 
 -- iters = 100
 -- iters = 10000
-iters = 100000
+default_iters = 100000
 -- iters = 1000000
 
 ----------------------------------------------------------------------------------------------------
@@ -93,17 +102,29 @@ testCAS1 r =
 -- Actually what the below benchmark currently does is just try K times on each thread...
 
 {-# INLINE testCAS2 #-}
-testCAS2 :: CASable ref Int => ref Int -> IO [[Bool]]
-testCAS2 ref = 
+testCAS2 :: CASable ref Int => Int -> ref Int -> IO [[Bool]]
+testCAS2 iters ref = 
   forkJoin numCapabilities $ 
     do 
-       let loop 0 expected acc = return (reverse acc)
-	   loop n expected acc = do
-	    (b,v) <- cas ref expected (expected+1)
-	    loop (n-1) v (b:acc)
+       let loop 0 expected !acc = return (reverse acc)
+	   loop n expected !acc = do
+            let bumped = expected+1 -- Must do this only once, should be NOINLINE
+	    (b,v) <- cas ref expected bumped
+            when (iters < 30) $ 
+              putStrLn$ "  Attempted to CAS "++show bumped ++" for "++ show expected ++ " (#"++show (unsafeName expected)++"): " 
+			++ show b ++ " found " ++ show v ++ " (#"++show (unsafeName v)++")"
+	    if b 
+             then loop (n-1) bumped (b:acc)
+             else loop (n-1) v      (b:acc)
 
        init <- readCASable ref
        loop iters init []
+
+{-# NOINLINE unsafeName #-}
+unsafeName :: a -> Int
+unsafeName x = unsafePerformIO $ do 
+   sn <- makeStableName x
+   return (hashStableName sn)
 
 
 ----------------------------------------------------------------------------------------------------
@@ -114,7 +135,7 @@ checkOutput1 msg ls =
   then return ()
   else error$ "Test "++ msg ++ " failed to have the right CAS success pattern: " ++ show ls
 
-checkOutput2 msg ls fin = do 
+checkOutput2 msg iters ls fin = do 
   let totalAttempts = sum $ map length ls
   putStrLn$ "Final value "++show fin++", Total successes "++ show (length $ filter id $ concat ls)
   when (fin < iters) $
@@ -123,42 +144,55 @@ checkOutput2 msg ls fin = do
 ----------------------------------------------------------------------------------------------------
 
 main = do 
-
+   args <- getArgs
+   let iters = 
+        case args of 
+	 []  -> default_iters
+	 [a] -> read a
+	 ls  -> error$ "Wrong number of arguments to executable: " ++ show ls
+ 
+#ifdef T1
    putStrLn$ "\nTesting Raw, native CAS:"
    o1A <- (newCASable zer :: IO (A.CASRef Int)) >>= testCAS1
-
+   checkOutput1 "Raw 1"     o1A
+#endif
+#ifdef T2
    putStrLn$ "\nTesting Fake CAS, based on atomicModifyIORef:"
    o1B <- (newCASable zer :: IO (B.CASRef Int)) >>= testCAS1
-
+   checkOutput1 "Fake 1"    o1B
+#endif
+#ifdef T3
    putStrLn$ "\nTesting Foreign CAS, using mutable cells outside of the Haskell heap:"
    o1C <- (newCASable zer :: IO (C.CASRef Int)) >>= testCAS1
-
-   checkOutput1 "Raw 1"     o1A
-   checkOutput1 "Fake 1"    o1B
    checkOutput1 "Foreign 1" o1C
+#endif
+
    ------------------------------------------------------------
 
+#ifdef T1
    putStrLn$ "\nTesting Raw, native CAS:"
    ref   <- newCASable zer :: IO (A.CASRef Int)
-   o2A   <- testCAS2 ref
+   o2A   <- testCAS2 iters ref
    mapM_ (printBits . take 100) o2A
    fin2A <- readCASable ref
-
+   checkOutput2 "Raw 1"     iters o2A fin2A
+#endif
+#ifdef T2
    putStrLn$ "\nTesting Fake CAS, based on atomicModifyIORef:"
    ref   <- newCASable zer :: IO (B.CASRef Int)
-   o2B   <- testCAS2 ref
+   o2B   <- testCAS2 iters ref
    mapM_ (printBits . take 100) o2B
    fin2B <- readCASable ref
-
+   checkOutput2 "Fake 1"    iters o2B fin2B
+#endif
+#ifdef T3
    putStrLn$ "\nTesting Foreign CAS, using mutable cells outside of the Haskell heap:"
    ref   <- newCASable zer :: IO (C.CASRef Int)
-   o2C   <- testCAS2 ref
+   o2C   <- testCAS2 iters ref
    mapM_ (printBits . take 100) o2C
    fin2C <- readCASable ref
-
-   checkOutput2 "Raw 1"     o2A fin2A
-   checkOutput2 "Foreign 1" o2C fin2C
-   checkOutput2 "Fake 1"    o2B fin2B
+   checkOutput2 "Foreign 1" iters o2C fin2C
+#endif
 
    ------------------------------------------------------------
    putStrLn$ "\nAll test outputs looked good."

@@ -27,6 +27,6 @@ Library
 Test-Suite test-IORefCAS
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
-    ghc-options: -O2 -threaded -rtsopts
+    ghc-options: -O2 -threaded -rtsopts -DT1 -DT2 -DT3
     build-depends: QuickCheck, HUnit, bits-atomic
                  , test-framework, test-framework-hunit, test-framework-quickcheck2

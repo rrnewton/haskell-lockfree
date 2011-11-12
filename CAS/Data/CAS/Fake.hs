@@ -15,6 +15,7 @@ import GHC.IO (unsafePerformIO)
 
 import GHC.Exts (Int(I#))
 import GHC.Prim (reallyUnsafePtrEquality#)
+import Debug.Trace
 
 --------------------------------------------------------------------------------
 
@@ -28,9 +29,7 @@ instance CASable CASRef a where
 
 --------------------------------------------------------------------------------
 
-ptrEq :: a -> a -> Bool
-ptrEq x y = I# (reallyUnsafePtrEquality# x y) == 1
-
+{-# NOINLINE casIORef #-}
 -- TEMP -- A non-CAS based version.  Alas, this has UNDEFINED BEHAVIOR
 -- (see ptrEq).
 -- 
@@ -39,9 +38,33 @@ casIORef :: IORef a -> a -> a -> IO (Bool,a)
 -- casIORef r !old !new =   
 casIORef r old new = do   
   atomicModifyIORef r $ \val -> 
-    if (ptrEq val old)
-    then (new, (True,old))
+{-
+    trace ("    DBG: INSIDE ATOMIC MODIFY, ptr eqs found/expected: " ++ 
+	   show [ptrEq val old, ptrEq val old, ptrEq val old] ++ 
+	   " ptr eq self: " ++ 
+	   show [ptrEq val val, ptrEq old old] ++
+	   " names: " ++ show (unsafeName old, unsafeName old, unsafeName val, unsafeName val)
+	  ) $
+-}
+    if   (ptrEq val old)
+    then (new, (True, val))
     else (val, (False,val))
+
+{-# NOINLINE unsafeName #-}
+unsafeName :: a -> Int
+unsafeName x = unsafePerformIO $ do 
+   sn <- makeStableName x
+   return (hashStableName sn)
+
+{-# NOINLINE ptrEq #-}
+ptrEq :: a -> a -> Bool
+ptrEq !x !y = I# (reallyUnsafePtrEquality# x y) == 1
+
+------------------------------------------------------------
+-- IO versions:
+
+-- ptrEq :: a -> a -> IO Bool
+-- ptrEq !x !y = return (I# (reallyUnsafePtrEquality# x y) == 1)
 
 {-# INLINE nameEq #-}
 -- WARNING:  This has completely implementation-defined behavior. 
