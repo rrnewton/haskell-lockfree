@@ -43,10 +43,34 @@ A few notes on performance results
   (8,9M successful) in 6.7 seconds.  10M in 17s.  And STILL not seeing
   the previous segfault with the Raw CAS version...
   
+[2011.11.12] Simple Stack Overflow Fix
+--------------------------------------
+
+  After making sure that all the (+1)'s in the test are strict, the
+  stack overflow goes away and the numbers change (Raw does 5M in 3.3s
+  instead of 6.7s).  BUT there's still quite a lot of time spent in
+  GC.
+    
+    RAW Haskell CAS:  0.7s  (23% prod, 0.8s total Gen 0 GC)
+    'Fake' CAS:       11.8s (91% prod, 0.8s total Gen 0 GC)
+    Foreign CAS:      52s  (6% prod)
   
-  
-  
+  And then adding -A1M makes a neglible change in runtime for Raw, but
+  reduces the # of gen0 collections from 484 to 235.
 
+  Ok, how about testing on a 3.1GHz Westmere.
+  Wow, just ran into this:
 
+    cc1: internal compiler error: Segmentation fault
+    Please submit a full bug report,
+    with preprocessed source if appropriate.
+    See <http://bugzilla.redhat.com/bugzilla> for instructions.
+    make: *** [all] Error 1
 
+  On a different machine it worked (default runtime flags 1Mx4 CAS):
 
+    RAW Haskell CAS:  0.7s  
+    'Fake' CAS:       8.1s
+    Foreign CAS:      46s
+
+  The lack of hyperthreading may also be helping.

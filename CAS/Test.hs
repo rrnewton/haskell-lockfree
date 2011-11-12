@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP, BangPatterns #-}
 
 import Control.Monad
+import Control.Exception
 import Control.Concurrent.MVar
 import GHC.Conc
 import Data.IORef
@@ -108,7 +109,8 @@ testCAS2 iters ref =
     do 
        let loop 0 expected !acc = return (reverse acc)
 	   loop n expected !acc = do
-            let bumped = expected+1 -- Must do this only once, should be NOINLINE
+            -- let bumped = expected+1 -- Must do this only once, should be NOINLINE
+	    bumped <- evaluate$ expected+1 
 	    (b,v) <- cas ref expected bumped
             when (iters < 30) $ 
               putStrLn$ "  Attempted to CAS "++show bumped ++" for "++ show expected ++ " (#"++show (unsafeName expected)++"): " 
