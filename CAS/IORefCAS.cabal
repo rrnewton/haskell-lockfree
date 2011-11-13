@@ -18,9 +18,11 @@ Description:
 
 Library
   exposed-modules:   Data.CAS,
-                     Data.CAS.Fake
+                     Data.CAS.Class,
+                     Data.CAS.Fake,
+                     Data.CAS.Foreign
   build-depends:     base >= 4.4.0.0,
-                     ghc-prim
+                     ghc-prim, bits-atomic
 
 
 -- Executable 

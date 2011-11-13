@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, MagicHash, TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses, BangPatterns #-}
 
 -- This is an attempt to imitate a CAS using normal Haskell/GHC operations.
 -- Useful for debugging.
@@ -10,12 +10,8 @@ module Data.CAS.Fake ( CASRef, casIORef, ptrEq )
 
 import Data.IORef
 import Data.CAS.Class
-import System.Mem.StableName
-import GHC.IO (unsafePerformIO)
-
-import GHC.Exts (Int(I#))
-import GHC.Prim (reallyUnsafePtrEquality#)
 import Debug.Trace
+import System.Mem.StableName
 
 --------------------------------------------------------------------------------
 
@@ -50,18 +46,8 @@ casIORef r old new = do
     then (new, (True, val))
     else (val, (False,val))
 
-{-# NOINLINE unsafeName #-}
-unsafeName :: a -> Int
-unsafeName x = unsafePerformIO $ do 
-   sn <- makeStableName x
-   return (hashStableName sn)
-
-{-# NOINLINE ptrEq #-}
-ptrEq :: a -> a -> Bool
-ptrEq !x !y = I# (reallyUnsafePtrEquality# x y) == 1
-
 ------------------------------------------------------------
--- IO versions:
+-- IO versions of pointer equality:
 
 -- ptrEq :: a -> a -> IO Bool
 -- ptrEq !x !y = return (I# (reallyUnsafePtrEquality# x y) == 1)

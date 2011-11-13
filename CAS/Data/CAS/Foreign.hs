@@ -1,6 +1,7 @@
-{-# LANGUAGE FlexibleInstances, UndecidableInstances, 
-    MagicHash, TypeFamilies, MultiParamTypeClasses
- #-}
+{-# LANGUAGE FlexibleInstances, UndecidableInstances, MagicHash,
+    TypeFamilies, MultiParamTypeClasses, OverlappingInstances, 
+    BangPatterns, CPP #-}
+
 
 
 -- | This is a version of CAS that works outside of Haskell by using
@@ -23,16 +24,10 @@ import Foreign.ForeignPtr
 import Foreign.StablePtr
 import Foreign.Marshal.Alloc (malloc)
 import qualified Foreign.Concurrent as FC
-
 import Text.Printf
-import GHC.Exts (Int(I#))
-import GHC.Prim (reallyUnsafePtrEquality#)
 import Unsafe.Coerce
 
 import Data.CAS.Class
-
-ptrEq :: a -> a -> Bool
-ptrEq x y = I# (reallyUnsafePtrEquality# x y) == 1
 
 -- Convenient overlapping instances of CASable are possible at the at
 -- the cost of a runtime dispatch on CASRef representations.  (Compile
@@ -42,9 +37,16 @@ data CASRef a =
    Frgn (Ptr a)
  | Hskl (ForeignPtr (StablePtr a))
 
-
--- instance (Storable a,  AtomicBits a) => CASable a where 
+--------------------------------------------------------------------------------
+#if 1
+-- | EXAMPLE SPECIALIZATION: a more efficient implementation for simple scalars.
+-- 
+--   Boilerplate TODO: We Should have one of these for all word-sized Scalar types.
+-- 
 instance CASable CASRef Word32 where 
+-- -- We would LIKE to do this for everything in the Storable class:
+-- instance (Storable a,  AtomicBits a) => CASable a where 
+--
 --  newtype CASRef a = Frgn (Ptr a)
 --  newtype CASRef Word32 = Frgn (Ptr Word32)
   newCASable val = do 
@@ -56,14 +58,37 @@ instance CASable CASRef Word32 where
 
   readCASable (Frgn ptr) = peek ptr 
 
+  {-# NOINLINE cas #-}
   cas (Frgn ptr) old new = do 
-    orig <- compareAndSwap ptr old new 
-    return (ptrEq orig old, orig)
+#  if 1
+   -- I'm having problems with this version.  The ptrEq will report False even when the swap succeeds.
+   -- I think the FFI unmarshalling the result ends up creating an extra copy.
+--    orig <- compareAndSwap ptr old new 
+--    printf "Completed swaps orig %d (%d) and old %d (%d)\n" orig (unsafeName orig) old (unsafeName old)
+--    return (ptrEq orig old, orig)
 
+   -- BUT, since it's a Word32 it is ok NOT to use pointer equality here.
+   orig <- compareAndSwap ptr old new 
+   return (orig == old, orig)
 
--- INEFFICENT but safe implementation.
+#  else
+   -- ERROR: Trying this incorrect HACK version for a moment:
+   -- This version will allow a return value of (False,old)
+   snap <- peek ptr
+   b <- compareAndSwapBool ptr old new 
+   if b 
+    then return (True, old)
+    else return (False, snap)
+#  endif
+
+#endif
+
+--------------------------------------------------------------------------------
+#if 0
+-- | INEFFICENT but safe implementation for arbitrary Haskell values.
+--   This version uses StablePtr's to store Haskell values in foreign storage.
 -- 
--- This should not be useful for implementing efficient data
+-- This should NOT be useful for implementing efficient data
 -- strcuctures because it itself dependends on concurrent access to
 -- the GHC runtimes table of pinned StablePtr values.
 instance CASable CASRef a where 
@@ -125,3 +150,8 @@ instance CASable CASRef a where
        when fired $ freeStablePtr orig'
        return (fired, orig'')
        
+#endif
+
+
+----------------------------------------------------------------------------------------------------
+-- Helpers:

@@ -1,10 +1,11 @@
-{-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP, BangPatterns #-}
+{-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP, BangPatterns, OverlappingInstances #-}
 
 import Control.Monad
 import Control.Exception
 import Control.Concurrent.MVar
 import GHC.Conc
 import Data.IORef
+import Data.Word
 import Data.CAS.Class
 import System.Environment
 import System.Mem.StableName
@@ -21,6 +22,12 @@ import qualified Data.CAS.Foreign as C
 #endif
 
 import Text.Printf
+
+----------------------------------------------------------------------------------------------------
+-- TODO:
+--  * Switch the [Bool] implementation to use a BitList.
+--  
+----------------------------------------------------------------------------------------------------
 
 {-# NOINLINE zer #-}
 zer = 0
@@ -60,8 +67,12 @@ data Forkable a = Fork Int (IO a)
 
 ----------------------------------------------------------------------------------------------------
 
+-- The element type for our CAS test.
+-- type ElemTy = Int
+type ElemTy = Word32 -- This will trigger CAS.Foreign's specialization.
+
 {-# INLINE testCAS1 #-}
-testCAS1 :: CASable ref Int => ref Int -> IO [Bool]
+testCAS1 :: CASable ref ElemTy => ref ElemTy -> IO [Bool]
 testCAS1 r = 
   do 
      bitls <- newIORef []
@@ -103,7 +114,7 @@ testCAS1 r =
 -- Actually what the below benchmark currently does is just try K times on each thread...
 
 {-# INLINE testCAS2 #-}
-testCAS2 :: CASable ref Int => Int -> ref Int -> IO [[Bool]]
+testCAS2 :: CASable ref ElemTy => Int -> ref ElemTy -> IO [[Bool]]
 testCAS2 iters ref = 
   forkJoin numCapabilities $ 
     do 
@@ -122,13 +133,6 @@ testCAS2 iters ref =
        init <- readCASable ref
        loop iters init []
 
-{-# NOINLINE unsafeName #-}
-unsafeName :: a -> Int
-unsafeName x = unsafePerformIO $ do 
-   sn <- makeStableName x
-   return (hashStableName sn)
-
-
 ----------------------------------------------------------------------------------------------------
 -- Test Oracles
 
@@ -137,10 +141,11 @@ checkOutput1 msg ls =
   then return ()
   else error$ "Test "++ msg ++ " failed to have the right CAS success pattern: " ++ show ls
 
+checkOutput2 :: String -> Int -> [[Bool]] -> ElemTy -> IO ()
 checkOutput2 msg iters ls fin = do 
   let totalAttempts = sum $ map length ls
   putStrLn$ "Final value "++show fin++", Total successes "++ show (length $ filter id $ concat ls)
-  when (fin < iters) $
+  when (fin < fromIntegral iters) $
     error$ "ERROR in "++ show msg ++ " expected at least "++show iters++" successful CAS's.." 
 
 ----------------------------------------------------------------------------------------------------
@@ -155,17 +160,17 @@ main = do
  
 #ifdef T1
    putStrLn$ "\nTesting Raw, native CAS:"
-   o1A <- (newCASable zer :: IO (A.CASRef Int)) >>= testCAS1
+   o1A <- (newCASable zer :: IO (A.CASRef ElemTy)) >>= testCAS1
    checkOutput1 "Raw 1"     o1A
 #endif
 #ifdef T2
    putStrLn$ "\nTesting Fake CAS, based on atomicModifyIORef:"
-   o1B <- (newCASable zer :: IO (B.CASRef Int)) >>= testCAS1
+   o1B <- (newCASable zer :: IO (B.CASRef ElemTy)) >>= testCAS1
    checkOutput1 "Fake 1"    o1B
 #endif
 #ifdef T3
    putStrLn$ "\nTesting Foreign CAS, using mutable cells outside of the Haskell heap:"
-   o1C <- (newCASable zer :: IO (C.CASRef Int)) >>= testCAS1
+   o1C <- (newCASable zer :: IO (C.CASRef ElemTy)) >>= testCAS1
    checkOutput1 "Foreign 1" o1C
 #endif
 
@@ -173,7 +178,7 @@ main = do
 
 #ifdef T1
    putStrLn$ "\nTesting Raw, native CAS:"
-   ref   <- newCASable zer :: IO (A.CASRef Int)
+   ref   <- newCASable zer :: IO (A.CASRef ElemTy)
    o2A   <- testCAS2 iters ref
    mapM_ (printBits . take 100) o2A
    fin2A <- readCASable ref
@@ -181,7 +186,7 @@ main = do
 #endif
 #ifdef T2
    putStrLn$ "\nTesting Fake CAS, based on atomicModifyIORef:"
-   ref   <- newCASable zer :: IO (B.CASRef Int)
+   ref   <- newCASable zer :: IO (B.CASRef ElemTy)
    o2B   <- testCAS2 iters ref
    mapM_ (printBits . take 100) o2B
    fin2B <- readCASable ref
@@ -189,7 +194,7 @@ main = do
 #endif
 #ifdef T3
    putStrLn$ "\nTesting Foreign CAS, using mutable cells outside of the Haskell heap:"
-   ref   <- newCASable zer :: IO (C.CASRef Int)
+   ref   <- newCASable zer :: IO (C.CASRef ElemTy)
    o2C   <- testCAS2 iters ref
    mapM_ (printBits . take 100) o2C
    fin2C <- readCASable ref

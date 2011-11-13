@@ -49,8 +49,8 @@ A few notes on performance results
   After making sure that all the (+1)'s in the test are strict, the
   stack overflow goes away and the numbers change (Raw does 5M in 3.3s
   instead of 6.7s).  BUT there's still quite a lot of time spent in
-  GC.
-    
+  GC.  Here's 1Mx4 CAS's again:
+      
     RAW Haskell CAS:  0.7s  (23% prod, 0.8s total Gen 0 GC)
     'Fake' CAS:       11.8s (91% prod, 0.8s total Gen 0 GC)
     Foreign CAS:      52s  (6% prod)
@@ -74,3 +74,26 @@ A few notes on performance results
     Foreign CAS:      46s
 
   The lack of hyperthreading may also be helping.
+
+ <TODO>: 
+  The primary source of allocation in this example is the accumulation
+  of the [Bool] lists of success and failure.  I should disable those
+  and test again.
+
+
+[2011.11.13] Testing specialized CAS.Foreign instance
+-----------------------------------------------------
+
+All of the above results were for a cell containing an Int.  That
+would not have triggered the specialized (Storable-based) instance in
+Foreign.hs.  There SHOULD be special cases for all word-sized scalars,
+but currently there's just one for Word32.  Let's test that one.
+
+    Word32 1Mx4 CAS's:
+    RAW Haskell CAS:  0.57s  (13.7% prod)
+    Foreign CAS:      0.64s  (15% prod)
+
+Wow, the foreign one is doing as well as the Haskell one even though
+there's some extra silliness in the Foreign.CASRef type (causing a
+runtime case dispatch to unpack).
+
