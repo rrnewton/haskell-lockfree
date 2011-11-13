@@ -6,7 +6,10 @@
 module Data.Concurrent.Queue.MichaelScott
  (
   LinkedQueue(),
-  newQ, pushL, tryPopR
+  newQ, pushL, tryPopR, 
+
+  -- Temp:
+  cas_version
  )
   where
 
@@ -21,13 +24,16 @@ import Control.Concurrent.MVar
 import qualified Data.Concurrent.Deque.Class as C
 
 import Data.CAS.Fake (ptrEq)
-#if 0
+#if 1
 -- Segfaulting currently:
 import Data.CAS (casIORef)
+cas_version = "Real, Native CAS"
 #else
--- Looping indefinitely due to failure to CAS successfully.
 import Data.CAS.Fake (casIORef)
+cas_version = "Fake CAS, based on atomicModifyIORef"
 #endif
+
+cas_version :: String
 
 -- Considering using the Queue class definition:
 -- import Data.MQueue.Class28
@@ -66,9 +72,9 @@ pushL (LQ headPtr tailPtr) val = do
 	next' <- readIORef next
 	-- The algorithm rereads tailPtr here to make sure it is still good.
 #if 1
- -- Ack, actually the following will result in an infinite loop!
- -- StableName's don't GUARANTEE that equal pointers return TRUE
--- [2011.10.29] Umm... the infinite loop went away... No idea.
+ -- There's a possibility for an infinite loop here with StableName based ptrEq.
+ -- (And at one point I observerd such an infinite loop.)
+ -- But with one based on reallyUnsafePtrEquality# we should be ok.
 	tail' <- readIORef tailPtr
         if not (ptrEq tail tail') then loop newp 
          else case next' of 

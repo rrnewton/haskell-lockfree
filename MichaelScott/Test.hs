@@ -9,27 +9,34 @@ import GHC.IO (unsafePerformIO)
 import GHC.Conc
 import Control.Concurrent.MVar
 
-import Data.CAS (casIORef)
+-- import Data.CAS (casIORef)
+-- import Data.CAS.Fake (casIORef)
 
-import Data.Concurrent.LinkedQueue
+import Data.Concurrent.Queue.MichaelScott
+import System.Environment
 
-spinPop q = do
-  x <- tryPop q 
-  case x of 
-    Nothing -> spinPop q
-    Just x  -> return x
+spinPop q = loop tries
+ where 
+  tries = 1000
+--  tries = -1
+  loop 0 = error$ "Failed to pop "++ show tries ++ " times consecutively.  That shouldn't happen in this benchmark."
+  loop n = do
+     x <- tryPopR q 
+     case x of 
+       Nothing -> loop (n-1)
+       Just x  -> return (x, tries-n)
 
 testQ1 = 
-  do q <- newLinkedQueue 
+  do q <- newQ
      let n = 1000
      putStrLn$ "Done creating queue.  Pushing elements:"
      forM_ [1..n] $ \i -> do 
-       push q i
+       pushL q i
        printf " %d" i
      putStrLn "\nDone filling queue with elements.  Now popping..."
      sumR <- newIORef 0
      forM_ [1..n] $ \i -> do
-       x <- spinPop q 
+       (x,_) <- spinPop q 
        printf " %d" x
        modifyIORef sumR (+x)
      s <- readIORef sumR
@@ -41,7 +48,7 @@ testQ1 =
 -- This one splits the numCapabilities threads into producers and consumers
 testQ2 :: Int -> IO ()
 testQ2 total = 
-  do q <- newLinkedQueue
+  do q <- newQ
      mv <- newEmptyMVar     
      let producers = max 1 (numCapabilities `quot` 2)
 	 consumers = producers
@@ -52,27 +59,34 @@ testQ2 total =
      forM_ [0..producers-1] $ \ id -> 
  	forkIO $ 
           forM_ (take perthread [id * producers .. ]) $ \ i -> do 
-	     push q i
-             printf " [%d] pushed %d \n" id i
+	     pushL q i
+             when (i - id*producers < 10) $ printf " [%d] pushed %d \n" id i
 
      printf "Forking %d consumer threads.\n" consumers
 
      forM_ [0..consumers-1] $ \ id -> 
  	forkIO $ do 
-          sum <- newIORef 0
-          forM_ (take perthread [id * producers .. ]) $ \ i -> do
-	     x <- spinPop q 
-             printf " [%d] popped %d \n" id i
-	     modifyIORef sum (+x)
-	  s <- readIORef sum
-	  putMVar mv s
+
+          let fn (sum,maxiters) i = do
+	       (x,iters) <- spinPop q 
+	       when (i - id*producers < 10) $ printf " [%d] popped %d \n" id i
+	       return (sum+x, max maxiters iters)
+             
+          pr <- foldM fn (0,0) (take perthread [id * producers .. ])
+	  putMVar mv pr
 
      printf "Reading sums from MVar...\n" 
      ls <- mapM (\_ -> takeMVar mv) [1..consumers]
-     let finalSum = Prelude.sum ls
+     let finalSum = Prelude.sum (map fst ls)
+     putStrLn$ "Maximum retries for each consumer thread: "++ show (map snd ls)
      putStrLn$ "Final sum: "++ show finalSum
      return ()
 
 -- main = testCAS
-main = testQ2 (1000 * 1000)
+main = do 
+  putStrLn$ "Running test of Michael-Scott queues using: "++ cas_version
+  args <- getArgs 
+  case args of 
+    []  -> testQ2 (1000 * 1000)
+    [n] -> testQ2 (read n)
 -- main = testQ2 (10)
