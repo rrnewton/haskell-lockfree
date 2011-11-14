@@ -7,6 +7,7 @@ import GHC.Conc
 import Data.IORef
 import Data.Word
 import Data.CAS.Class
+import Data.Time.Clock
 import System.Environment
 import System.Mem.StableName
 import GHC.IO (unsafePerformIO)
@@ -55,7 +56,7 @@ forkJoin numthreads action =
 
      -- Reading answers:
      ls <- mapM readMVar answers
-     printf "All threads %d completed\n" numthreads
+     printf "All %d thread(s) completed\n" numthreads
      return ls
 
 -- Describe a structure of forking and joining threads for tests:
@@ -63,7 +64,14 @@ data Forkable a = Fork Int (IO a)
                 | Parallel (Forkable a) (Forkable a) -- Parallel composition
                 | Sequence (Forkable a) (Forkable a) -- Sequential compositon, with barrier
 --                | Barrier Forkable
- 
+
+
+timeit ioact = do 
+   start <- getCurrentTime
+   res <- ioact
+   end   <- getCurrentTime
+   putStrLn$ "  Time elapsed: " ++ show (diffUTCTime end start)
+   return res
 
 ----------------------------------------------------------------------------------------------------
 
@@ -105,15 +113,18 @@ testCAS1 r =
 
 -- UNFINISHED, TODO:
 -- This version hammers on CASref from all threads, then checks to see
--- if at least one thread succeeded at each point in time.  That is
--- for N threads each aiming to complete K operations, there should be
--- at most N^2*K total operations required.
+-- if enough threads succeeded enough of the time.
 
+-- If each thread tries K attempts, there should be at least K
+-- successes.  To establish this consider the inductive argument.  One
+-- thread should succeed all the time.  Adding a second thread can
+-- only foil the K attempts of the first thread by itself succeeding
+-- (leaving the total at or above K).  Likewise for the third thread
+-- and so on.
 
+-- Conversely, for N threads each aiming to complete K operations,
+-- there should be at most N*N*K total operations required.
 
--- Actually what the below benchmark currently does is just try K times on each thread...
-
-{-# INLINE testCAS2 #-}
 testCAS2 :: CASable ref ElemTy => Int -> ref ElemTy -> IO [[Bool]]
 testCAS2 iters ref = 
   forkJoin numCapabilities $ 
@@ -133,6 +144,33 @@ testCAS2 iters ref =
        init <- readCASable ref
        loop iters init []
 
+
+--------------------------------------------------------------------------------
+
+-- This tests repeated atomicModifyIORefCAS operations.
+
+testCAS3 :: Int -> IORef ElemTy -> IO [()]
+testCAS3 iters ref = 
+  forkJoin numCapabilities (loop iters)
+ where 
+   loop 0  = return ()
+   loop n  = do
+	-- let bumped = expected+1 -- Must do this only once, should be NOINLINE
+--        let bump !x !y = x+y
+#ifdef T1
+	A.atomicModifyIORefCAS_ ref (+1)
+#endif
+#ifdef T2
+--	B.atomicModifyIORefCAS_ ref (+1)
+--	B.atomicModifyIORefCAS_ ref (bump 1)
+	x <- atomicModifyIORef ref (\x -> (x+1,x))
+        evaluate x -- Avoid stack leak.
+#endif
+	loop (n-1)
+
+       
+
+
 ----------------------------------------------------------------------------------------------------
 -- Test Oracles
 
@@ -147,6 +185,12 @@ checkOutput2 msg iters ls fin = do
   putStrLn$ "Final value "++show fin++", Total successes "++ show (length $ filter id $ concat ls)
   when (fin < fromIntegral iters) $
     error$ "ERROR in "++ show msg ++ " expected at least "++show iters++" successful CAS's.." 
+
+checkOutput3 :: String -> Int -> [[Bool]] -> ElemTy -> IO ()
+checkOutput3 msg iters ls fin = do 
+
+  return ()
+
 
 ----------------------------------------------------------------------------------------------------
 
@@ -179,7 +223,7 @@ main = do
 #ifdef T1
    putStrLn$ "\nTesting Raw, native CAS:"
    ref   <- newCASable zer :: IO (A.CASRef ElemTy)
-   o2A   <- testCAS2 iters ref
+   o2A   <- timeit$ testCAS2 iters ref
    mapM_ (printBits . take 100) o2A
    fin2A <- readCASable ref
    checkOutput2 "Raw 1"     iters o2A fin2A
@@ -187,7 +231,7 @@ main = do
 #ifdef T2
    putStrLn$ "\nTesting Fake CAS, based on atomicModifyIORef:"
    ref   <- newCASable zer :: IO (B.CASRef ElemTy)
-   o2B   <- testCAS2 iters ref
+   o2B   <- timeit$ testCAS2 iters ref
    mapM_ (printBits . take 100) o2B
    fin2B <- readCASable ref
    checkOutput2 "Fake 1"    iters o2B fin2B
@@ -195,13 +239,47 @@ main = do
 #ifdef T3
    putStrLn$ "\nTesting Foreign CAS, using mutable cells outside of the Haskell heap:"
    ref   <- newCASable zer :: IO (C.CASRef ElemTy)
-   o2C   <- testCAS2 iters ref
+   o2C   <- timeit$ testCAS2 iters ref
    mapM_ (printBits . take 100) o2C
    fin2C <- readCASable ref
    checkOutput2 "Foreign 1" iters o2C fin2C
 #endif
 
    ------------------------------------------------------------
+
+#ifdef T1
+   putStrLn$ "\nTesting atomicModifyIORefCAS, native CAS:"
+--   ref   <- newCASable zer :: IO (A.CASRef ElemTy)
+   ref   <- newIORef zer :: IO (IORef ElemTy)
+   o3A   <- timeit$ testCAS3 iters ref
+--   mapM_ (printBits . take 100) o3A
+--   fin3A <- readCASable ref
+   fin3A <- readIORef ref
+--   checkOutput3 "Raw 2"     iters o3A fin3A
+   putStrLn$ "  Final sum: "++ show fin3A
+#endif
+#ifdef T2
+   putStrLn$ "\nTesting atomicModifyIORefCAS:"
+--   ref   <- newCASable zer :: IO (B.CASRef ElemTy)
+   ref   <- newIORef zer :: IO (IORef ElemTy)
+   o3B   <- timeit$ testCAS3 iters ref
+--   mapM_ (printBits . take 100) o3B
+--   fin3B <- readCASable ref
+   fin3B <- readIORef ref
+--   checkOutput3 "Fake 2"    iters o3B fin3B
+   putStrLn$ "  Final sum: "++ show fin3B
+#endif
+-- #ifdef T3
+--    putStrLn$ "\nTesting Foreign CAS, using mutable cells outside of the Haskell heap:"
+--    ref   <- newCASable zer :: IO (C.CASRef ElemTy)
+--    o3C   <- testCAS3 iters ref
+--    mapM_ (printBits . take 100) o3C
+--    fin3C <- readCASable ref
+--    checkOutput3 "Foreign 1" iters o3C fin3C
+-- #endif
+
+   ------------------------------------------------------------
+
    putStrLn$ "\nAll test outputs looked good."
 
 

@@ -97,3 +97,31 @@ Wow, the foreign one is doing as well as the Haskell one even though
 there's some extra silliness in the Foreign.CASRef type (causing a
 runtime case dispatch to unpack).
 
+
+[2011.11.13] Testing atomicModify based on CAS
+----------------------------------------------
+
+An atomicModify based on CAS offers a drop-in replacement that could
+improve performance.  I implemented one which will try CAS until it
+fails a certain number of times ("30" for now, but needs to be tuned).
+
+These seem to work well.  They are cheaper than you would think given
+how long it takes to get successful CAS attempts under contention:
+
+ 1Mx4 CAS attempts or atomicModifies:
+    0.19s  -- CAS attempts 1.07M successful.
+    0.02s  -- 1M   atomicModifyIORefCAS on 1 thread
+    0.13s  -- 1Mx2 atomicModifyIORefCAS on 2 threads
+    0.37s  -- 1Mx4 atomicModifyIORefCAS 
+
+And they are cheaper than the real atomicModifyIORef (which also seems
+to have a stack space problem right now because of its laziness).  But
+with a huge stack (1G) it will succeed:
+
+    1.27s  -- 1Mx4 atomicModifyIORef
+
+But inserting extra strictness (an evaluate call) to avoid the
+stack-leak actually makes it slower:
+
+    2.08s  -- 1Mx4 atomicModifyIORef, stricter
+

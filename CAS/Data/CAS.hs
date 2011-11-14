@@ -3,7 +3,8 @@
 
 -- | Atomic compare and swap for IORefs and CASRefs.
 module Data.CAS 
- ( casSTRef, casIORef, CASRef )
+ ( casSTRef, casIORef, CASRef, 
+   atomicModifyIORefCAS_ )
 where
 
 import Data.CAS.Class
@@ -47,5 +48,25 @@ casIORef :: IORef a -- ^ The 'IORef' containing a value 'current'
          -> a -- ^ The 'new' value to replace 'current' if @old == current@
          -> IO (Bool, a) 
 casIORef (IORef var) old new = stToIO (casSTRef var old new)
-      
 
+-- | An atomicModifyIORefCAS that optimistically attempts to compute
+--   the value and CAS it into place without introducing new thunks or
+--   locking anything.  Note that it is STRICTer than its standard
+--   counterpart and will only place evaluated (WHNF) values in the
+--   IORef.
+atomicModifyIORefCAS_ ref fn = do
+-- TODO: Should handle contention in a better way.
+   init <- readIORef ref
+   loop init effort
+  where 
+   effort = 30 :: Int -- TODO: Tune this.
+   loop old 0     = atomicModifyIORef_ ref fn
+   loop old tries = do 
+     new <- evaluate (fn old)
+     (b,val) <- casIORef ref old new
+     if b 
+      then return ()
+      else loop val (tries-1)
+
+
+atomicModifyIORef_ ref fn = atomicModifyIORef ref (\ x -> (fn x, ()))

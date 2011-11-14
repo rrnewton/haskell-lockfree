@@ -2,7 +2,7 @@ Name:                IORefCAS
 Version:             0.1
 License:             BSD3
 License-file:        LICENSE
-Author:              Adam C. Foltzer
+Author:              Adam C. Foltzer, Ryan Newton
 Maintainer:          acfoltzer@gmail.com
 Category:            Data
 Build-type:          Simple
@@ -15,6 +15,16 @@ Description:
   After GHC 7.2 a new `casMutVar#` primop became available, but was
   not yet exposed in Data.IORef.  This package fills that gap until
   such a time as Data.IORef obsoletes it.
+ .
+  Further, in addition to exposing native Haskell CAS operations, this
+  package contains "mockups" that imititate the same functionality
+  using either atomicModifyIORef and unsafe pointer equality (in
+  `Data.CAS.Fake`) or using foreign functions (`Data.CAS.Foreign`).
+  These alternatives are useful for debugging.
+  .
+  Note that the foreign option does not operate on IORefs and so is
+  directly interchangeable with `Data.CAS` and `Data.CAS.Fake` only if
+  the interface in `Data.CAS.Class` is used.
 
 Library
   exposed-modules:   Data.CAS,
@@ -29,6 +39,7 @@ Library
 Test-Suite test-IORefCAS
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
-    ghc-options: -O2 -threaded -rtsopts -DT1 -DT2 -DT3
+    ghc-options: -O2 -threaded -rtsopts 
+    cpp-options: -DT1 -DT2 -DT3
     build-depends: QuickCheck, HUnit, bits-atomic
                  , test-framework, test-framework-hunit, test-framework-quickcheck2

@@ -5,7 +5,7 @@
 -- 
 -- Ryan Newton
 
-module Data.CAS.Fake ( CASRef, casIORef, ptrEq )
+module Data.CAS.Fake ( CASRef, casIORef, ptrEq, atomicModifyIORefCAS_ )
  where 
 
 import Data.IORef
@@ -45,6 +45,10 @@ casIORef r old new = do
     if   (ptrEq val old)
     then (new, (True, val))
     else (val, (False,val))
+
+atomicModifyIORefCAS_ = atomicModifyIORef_
+
+atomicModifyIORef_ ref fn = atomicModifyIORef ref (\ x -> (fn x, ()))
 
 ------------------------------------------------------------
 -- IO versions of pointer equality:
