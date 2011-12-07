@@ -17,9 +17,9 @@ Description:
   such a time as Data.IORef obsoletes it.
  .
   Further, in addition to exposing native Haskell CAS operations, this
-  package contains "mockups" that imititate the same functionality
+  package contains \"mockups\" that imititate the same functionality
   using either atomicModifyIORef and unsafe pointer equality (in
-  `Data.CAS.Fake`) or using foreign functions (`Data.CAS.Foreign`).
+  @Data.CAS.Fake@) or using foreign functions (@Data.CAS.Foreign@).
   These alternatives are useful for debugging.
   .
   Note that the foreign option does not operate on IORefs and so is

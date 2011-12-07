@@ -4,7 +4,7 @@
 -- | Atomic compare and swap for IORefs and CASRefs.
 module Data.CAS 
  ( casSTRef, casIORef, CASRef, 
-   atomicModifyIORefCAS_ )
+   atomicModifyIORefCAS, atomicModifyIORefCAS_ )
 where
 
 import Data.CAS.Class
@@ -49,13 +49,32 @@ casIORef :: IORef a -- ^ The 'IORef' containing a value 'current'
          -> IO (Bool, a) 
 casIORef (IORef var) old new = stToIO (casSTRef var old new)
 
--- | An atomicModifyIORefCAS that optimistically attempts to compute
---   the value and CAS it into place without introducing new thunks or
---   locking anything.  Note that it is STRICTer than its standard
---   counterpart and will only place evaluated (WHNF) values in the
---   IORef.
-atomicModifyIORefCAS_ ref fn = do
+-- | A drop-in replacement for `atomicModifyIORefCAS` that
+--   optimistically attempts to compute the new value and CAS it into
+--   place without introducing new thunks or locking anything.  Note
+--   that this is STRICTer than its standard counterpart and will only
+--   place evaluated (WHNF) values in the IORef.
+atomicModifyIORefCAS :: IORef a -> (a -> (a,b)) -> IO b
+atomicModifyIORefCAS ref fn = do
 -- TODO: Should handle contention in a better way.
+   init <- readIORef ref
+   loop init effort
+  where 
+   effort = 30 :: Int -- TODO: Tune this.
+   loop old 0     = atomicModifyIORef ref fn
+   loop old tries = do 
+     (new,result) <- evaluate (fn old)
+     (b,val) <- casIORef ref old new
+     if b 
+      then return result
+      else loop val (tries-1)
+
+-- | A simpler version that modifies the state but does not return anything.
+atomicModifyIORefCAS_ :: IORef t -> (t -> t) -> IO ()
+-- atomicModifyIORefCAS_ ref fn = atomicModifyIORefCAS ref (\ x -> (fn x, ()))
+-- Can't inline a function with a loop so we duplicate this:
+-- <duplicated code>
+atomicModifyIORefCAS_ ref fn = do
    init <- readIORef ref
    loop init effort
   where 
@@ -67,6 +86,5 @@ atomicModifyIORefCAS_ ref fn = do
      if b 
       then return ()
       else loop val (tries-1)
-
-
-atomicModifyIORef_ ref fn = atomicModifyIORef ref (\ x -> (fn x, ()))
+   atomicModifyIORef_ ref fn = atomicModifyIORef ref (\ x -> (fn x, ()))
+-- </duplicated code>

@@ -1,11 +1,14 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses, BangPatterns #-}
+-- Author: Ryan Newton
 
--- This is an attempt to imitate a CAS using normal Haskell/GHC operations.
+-- | This is an attempt to imitate a CAS using normal Haskell/GHC operations.
 -- Useful for debugging.
 -- 
--- Ryan Newton
 
-module Data.CAS.Fake ( CASRef, casIORef, ptrEq, atomicModifyIORefCAS_ )
+module Data.CAS.Fake 
+ ( CASRef, casIORef, ptrEq, 
+   atomicModifyIORefCAS, atomicModifyIORefCAS_ 
+ )
  where 
 
 import Data.IORef
@@ -15,6 +18,7 @@ import System.Mem.StableName
 
 --------------------------------------------------------------------------------
 
+-- | The type of references supporting CAS.
 newtype CASRef a = CR { unCR :: IORef a }
 
 instance CASable CASRef a where 
@@ -46,24 +50,8 @@ casIORef r old new = do
     then (new, (True, val))
     else (val, (False,val))
 
+atomicModifyIORefCAS  = atomicModifyIORef
 atomicModifyIORefCAS_ = atomicModifyIORef_
 
 atomicModifyIORef_ ref fn = atomicModifyIORef ref (\ x -> (fn x, ()))
-
-------------------------------------------------------------
--- IO versions of pointer equality:
-
--- ptrEq :: a -> a -> IO Bool
--- ptrEq !x !y = return (I# (reallyUnsafePtrEquality# x y) == 1)
-
-{-# INLINE nameEq #-}
--- WARNING:  This has completely implementation-defined behavior. 
---   mkStableName + (==) provides no guarantee against false negatives.
---     http://www.haskell.org/ghc/docs/latest/html/libraries/base/System-Mem-StableName.html
-nameEq :: a -> a -> IO Bool
-nameEq !a !b = do 
-  s1 <- makeStableName a
-  s2 <- makeStableName b
---  printf "    comparing ptrs with stablenames %d %d...\n" (hashStableName s1) (hashStableName s2)
-  return (s1 == s2)
 
