@@ -6,7 +6,7 @@ Author:              Adam C. Foltzer, Ryan Newton
 Maintainer:          acfoltzer@gmail.com
 Category:            Data
 Build-type:          Simple
-Cabal-version:       >=1.2
+Cabal-version:       >=1.8
 
 Synopsis: Atomic compare and swap for IORefs and CASRefs.
 
