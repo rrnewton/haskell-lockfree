@@ -3,7 +3,7 @@
 -- | A type class capturing mutable storage cells that support CAS
 --   operations in the IO monad.
 
-module Data.CAS.Class 
+module Data.CAS.Internal.Class 
   (CASable(..), unsafeName, ptrEq) 
  where
 

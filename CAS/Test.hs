@@ -1,5 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP, BangPatterns, OverlappingInstances #-}
 
+-- | This test has three different modes which can be toggled via 
+
 import Control.Monad
 import Control.Exception
 import Control.Concurrent.MVar
@@ -16,10 +18,10 @@ import GHC.IO (unsafePerformIO)
 import qualified Data.CAS         as A
 #endif
 #ifdef T2
-import qualified Data.CAS.Fake    as B
+import qualified Data.CAS.Internal.Fake    as B
 #endif
 #ifdef T3
-import qualified Data.CAS.Foreign as C
+import qualified Data.CAS.Internal.Foreign as C
 #endif
 
 import Text.Printf
@@ -214,6 +216,7 @@ main = do
 #endif
 #ifdef T3
    putStrLn$ "\nTesting Foreign CAS, using mutable cells outside of the Haskell heap:"
+--   o1C <- (newCASable zer :: IO (C.CASRef ElemTy)) >>= testCAS1
    o1C <- (newCASable zer :: IO (C.CASRef ElemTy)) >>= testCAS1
    checkOutput1 "Foreign 1" o1C
 #endif

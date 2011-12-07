@@ -3,11 +3,14 @@
 
 -- | Atomic compare and swap for IORefs and CASRefs.
 module Data.CAS 
- ( casSTRef, casIORef, CASRef, 
-   atomicModifyIORefCAS, atomicModifyIORefCAS_ )
+ ( casSTRef, casIORef,
+   atomicModifyIORefCAS, atomicModifyIORefCAS_,
+
+   -- * Generic interface: for interoperation with `Fake` and `Foreign` alternative libraries.
+   CASRef)
 where
 
-import Data.CAS.Class
+import Data.CAS.Internal.Class
 import GHC.IO
 import GHC.IORef
 import GHC.Prim

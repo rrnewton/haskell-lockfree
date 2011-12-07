@@ -1,5 +1,5 @@
 Name:                IORefCAS
-Version:             0.1
+Version:             0.0.1
 License:             BSD3
 License-file:        LICENSE
 Author:              Adam C. Foltzer, Ryan Newton
@@ -28,9 +28,9 @@ Description:
 
 Library
   exposed-modules:   Data.CAS,
-                     Data.CAS.Class,
-                     Data.CAS.Fake,
-                     Data.CAS.Foreign
+                     Data.CAS.Internal.Class,
+                     Data.CAS.Internal.Fake,
+                     Data.CAS.Internal.Foreign
   build-depends:     base >= 4.4.0.0,
                      ghc-prim, bits-atomic
 

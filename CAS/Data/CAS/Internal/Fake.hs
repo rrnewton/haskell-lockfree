@@ -5,14 +5,14 @@
 -- Useful for debugging.
 -- 
 
-module Data.CAS.Fake 
+module Data.CAS.Internal.Fake 
  ( CASRef, casIORef, ptrEq, 
    atomicModifyIORefCAS, atomicModifyIORefCAS_ 
  )
  where 
 
 import Data.IORef
-import Data.CAS.Class
+import Data.CAS.Internal.Class
 import Debug.Trace
 import System.Mem.StableName
 

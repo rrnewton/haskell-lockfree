@@ -7,7 +7,7 @@
 -- | This is a version of CAS that works outside of Haskell by using
 --   the FFI (and the GCC intrinsics-based 'Data.Bits.Atomic'.)
 
-module Data.CAS.Foreign 
+module Data.CAS.Internal.Foreign 
  ( 
    CASRef
    -- Plus instance...
@@ -27,7 +27,7 @@ import qualified Foreign.Concurrent as FC
 import Text.Printf
 import Unsafe.Coerce
 
-import Data.CAS.Class
+import Data.CAS.Internal.Class
 
 -- Convenient overlapping instances of CASable are possible at the at
 -- the cost of a runtime dispatch on CASRef representations.  (Compile
