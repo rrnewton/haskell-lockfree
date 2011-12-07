@@ -1,7 +1,7 @@
 {-# LANGUAGE MagicHash, UnboxedTuples, BangPatterns, MagicHash,
     TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
 
--- | Atomic compare and swap for IORefs and CASRefs.
+-- | Atomic compare and swap for IORefs and STRefs.
 module Data.CAS 
  ( casSTRef, casIORef,
    atomicModifyIORefCAS, atomicModifyIORefCAS_,

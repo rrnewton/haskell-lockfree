@@ -3,7 +3,7 @@ Version:             0.0.1
 License:             BSD3
 License-file:        LICENSE
 Author:              Adam C. Foltzer, Ryan Newton
-Maintainer:          acfoltzer@gmail.com
+Maintainer:          acfoltzer@gmail.com, rrnewton@gmail.com
 Category:            Data
 Build-type:          Simple
 Cabal-version:       >=1.8
@@ -34,7 +34,7 @@ Library
                      Data.CAS.Internal.Class,
                      Data.CAS.Internal.Fake,
                      Data.CAS.Internal.Foreign
-  build-depends:     base >= 4.4.0.0,
+  build-depends:     base >= 4.4.0.0 && < 5,
                      ghc-prim, bits-atomic
 
 
