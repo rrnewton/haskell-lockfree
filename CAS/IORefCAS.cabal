@@ -1,5 +1,5 @@
 Name:                IORefCAS
-Version:             0.0.1
+Version:             0.0.1.1
 License:             BSD3
 License-file:        LICENSE
 Author:              Adam C. Foltzer, Ryan Newton
@@ -7,6 +7,10 @@ Maintainer:          acfoltzer@gmail.com, rrnewton@gmail.com
 Category:            Data
 Build-type:          Simple
 Cabal-version:       >=1.8
+
+-- Version History:
+-- 0.0.1   -- initial release
+-- 0.0.1.1 -- minor bump to include README
 
 Synopsis: Atomic compare and swap for IORefs and CASRefs.
 
@@ -27,7 +31,7 @@ Description:
   the interface in `Data.CAS.Class` is used.
 
 Extra-Source-Files:
-                     Makefile, Test.hs
+                     Makefile, Test.hs, README.md
 
 Library
   exposed-modules:   Data.CAS,
