@@ -112,7 +112,7 @@ how long it takes to get successful CAS attempts under contention:
     0.19s  -- CAS attempts 1.07M successful.
     0.02s  -- 1M   atomicModifyIORefCAS on 1 thread
     0.13s  -- 1Mx2 atomicModifyIORefCAS on 2 threads
-    0.37s  -- 1Mx4 atomicModifyIORefCAS 
+    0.37s  -- 1Mx4 atomicModifyIORefCAS on 4 threads
 
 And they are cheaper than the real atomicModifyIORef (which also seems
 to have a stack space problem right now because of its laziness).  But

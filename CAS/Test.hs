@@ -1,4 +1,7 @@
-{-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP, BangPatterns, OverlappingInstances #-}
+{-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP, BangPatterns, OverlappingInstances 
+    , FlexibleInstances, MultiParamTypeClasses, TypeSynonymInstances
+  #-}
+
 
 -- | This test has three different modes which can be toggled via 
 
@@ -8,7 +11,7 @@ import Control.Concurrent.MVar
 import GHC.Conc
 import Data.IORef
 import Data.Word
-import Data.CAS.Class
+import Data.CAS.Internal.Class
 import Data.Time.Clock
 import System.Environment
 import System.Mem.StableName
