@@ -22,6 +22,7 @@ import Prelude hiding (length)
 import qualified Data.Concurrent.Deque.Class as C
 import Data.Sequence
 import Data.IORef
+import Data.CAS (atomicModifyIORefCAS)
 
 -- | Stores a size bound (if any) as well as a mutable Seq.
 data SimpleDeque elt = DQ {-# UNPACK #-} !Int !(IORef (Seq elt))

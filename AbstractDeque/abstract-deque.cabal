@@ -1,22 +1,25 @@
 Name:                abstract-deque
-Version:             0.1.1
+Version:             0.1.2
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan R. Newton
 Maintainer:          rrnewton@gmail.com
-Category:            Data
+Category:            Data 
 Build-type:          Simple
 Cabal-version:       >=1.2
 
 -- Version History:
 -- 0.1: 
 -- 0.1.1: Added nullQ to interface.
+-- 0.1.2: dependency on IORefCAS
 
 Synopsis: Abstract, parameterized interface to mutable Deques.
 
 Description:
 
-  There exists a feature space for queues that extends between:
+  An abstract interface to highly-parameterizable queues/deques.
+  . 
+  Background: There exists a feature space for queues that extends between:
   .
     * simple, single-ended, non-concurrent, bounded queues 
   .
@@ -31,11 +34,13 @@ Description:
   requirements (using type families).
   .
   This package also includes a simple reference implementation based
-  on 'IORef' and 'Data.Sequence'.
+  on 'IORef' and "Data.Sequence".
 
 Library
   exposed-modules:   Data.Concurrent.Deque.Class,
                      Data.Concurrent.Deque.Reference,
                      Data.Concurrent.Deque.Reference.DequeInstance
-  build-depends:     base >= 4.4.0.0, containers
+  build-depends:     base >= 4.4.0.0 && < 5, 
+                     containers, 
+                     IORefCAS
   ghc-options: -O2
