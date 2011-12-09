@@ -61,7 +61,7 @@ casIORef (IORef var) old new = stToIO (casSTRef var old new)
 -- | A drop-in replacement for `atomicModifyIORefCAS` that
 --   optimistically attempts to compute the new value and CAS it into
 --   place without introducing new thunks or locking anything.  Note
---   that this is STRICTer than its standard counterpart and will only
+--   that this is more STRICT than its standard counterpart and will only
 --   place evaluated (WHNF) values in the IORef.
 atomicModifyIORefCAS :: IORef a -> (a -> (a,b)) -> IO b
 atomicModifyIORefCAS ref fn = do
