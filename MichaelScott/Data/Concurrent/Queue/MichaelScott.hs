@@ -23,13 +23,13 @@ import Control.Concurrent.MVar
 
 import qualified Data.Concurrent.Deque.Class as C
 
-import Data.CAS.Fake (ptrEq)
+import Data.CAS.Internal.Fake (ptrEq)
 #if 1
 -- Segfaulting currently:
 import Data.CAS (casIORef)
 cas_version = "Real, Native CAS"
 #else
-import Data.CAS.Fake (casIORef)
+import Data.CAS.Internal.Fake (casIORef)
 cas_version = "Fake CAS, based on atomicModifyIORef"
 #endif
 
