@@ -77,18 +77,31 @@ import Prelude hiding (Bounded)
 -- data family Deque lThreaded rThreaded lDbl rDbl bnd safe elt 
 type family Deque lThreaded rThreaded lDbl rDbl bnd safe elt 
 
+-- | Haskell IO threads ("Control.Concurrent") may concurrently access
+--   this end of the queue.  Note that this attribute is set
+--   separately for the left and right ends.
 data Threadsafe
+-- | Only one thread at a time may access this end of the queue.
 data Nonthreadsafe
 
+-- | This end of the queue provides push-only (left) or pop-only
+--   (right) functionality. Thus a 'SingleEnd' / 'SingleEnd' combination
+--   is what is commonly referred to as a /single ended queue/, whereas
+--   'DoubleEnd' / 'DoubleEnd' is 
+--   a /double ended queue/.  Heterogenous combinations are sometimes
+--   colloquially referred to as \"1.5 ended queues\".
 data SingleEnd
+-- | This end of the queue supports both push and pop.
 data DoubleEnd
 
+-- | The queue has bounded capacity.
 data Bound
+-- | The queue can grow as elements are added.
 data Grow
 
--- | Will not duplicate elements.
+-- | The queue will not duplicate elements.
 data Safe  
--- | Possibly duplicating elements on pop.
+-- | Pop operations may possibly duplicate elements.  Hopefully with low probability!
 data Dup   
 
 -- Possible #5:
@@ -101,13 +114,14 @@ type NT = Nonthreadsafe
 type S  = SingleEnd
 type D  = DoubleEnd
 
-
+-- | A traditional single-threaded, single-ended queue.
 type Queue a = Deque Nonthreadsafe Nonthreadsafe SingleEnd SingleEnd Grow Safe a
--- Threadsafe versions:
+-- | A concurrent queue.
 type ConcQueue a = Deque Threadsafe Threadsafe SingleEnd SingleEnd Grow Safe a
+-- | A concurrent deque.
 type ConcDeque a = Deque Threadsafe Threadsafe DoubleEnd DoubleEnd Grow Safe a
-
--- Work-stealing deques (1.5 ended):
+-- | Work-stealing deques (1.5 ended).  Typically the worker pushes
+--   and pops its own queue (left) whereas thieves only pop (right).
 type WSDeque a = Deque Nonthreadsafe Threadsafe DoubleEnd SingleEnd Grow Safe a
 
 --------------------------------------------------------------------------------
@@ -124,13 +138,17 @@ class DequeClass d where
    default newQ :: BoundedL d => IO (d elt)
    newQ = newBoundedQ 256
 
+   nullQ :: d elt -> IO Bool
+
    -- | Natural push: push onto the left end of the deque.
    pushL :: d elt -> elt -> IO ()
    -- | Natural pop: pop from the right end of the deque.
    tryPopR  :: d elt -> IO (Maybe elt)
 
--- TODO: It would also be possible to include blocking/spinning pops.
--- But maybe those should go in separate type classes...
+   -- TODO: Consider adding a peek operation?
+
+   -- TODO: It would also be possible to include blocking/spinning pops.
+   -- But maybe those should go in separate type classes...
 
 class DequeClass d => PopL d where 
    -- | PopL is not the native operation for the left end, so it requires
