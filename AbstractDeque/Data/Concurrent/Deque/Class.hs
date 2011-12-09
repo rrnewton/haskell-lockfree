@@ -138,6 +138,7 @@ class DequeClass d where
    default newQ :: BoundedL d => IO (d elt)
    newQ = newBoundedQ 256
 
+   -- | Is the queue currently empty?  Beware that this can be a highly transient state.
    nullQ :: d elt -> IO Bool
 
    -- | Natural push: push onto the left end of the deque.
