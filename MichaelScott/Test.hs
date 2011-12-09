@@ -1,6 +1,10 @@
 {-# LANGUAGE BangPatterns #-}
 module Main where
 
+{- Example build:
+  ghc -DNATIVE_CAS --make Test.hs -o Test.exe -rtsopts -fforce-recomp
+-}
+
 import Control.Monad
 import Data.IORef
 import System.Mem.StableName
@@ -15,15 +19,18 @@ import Control.Concurrent.MVar
 import Data.Concurrent.Queue.MichaelScott
 import System.Environment
 
-spinPop q = loop tries
+spinPop q = loop 0
  where 
   tries = 1000
 --  tries = -1
-  loop 0 = error$ "Failed to pop "++ show tries ++ " times consecutively.  That shouldn't happen in this benchmark."
+--  loop n | n == tries = error$ "Failed to pop "++ show tries ++ " times consecutively.  That shouldn't happen in this benchmark."
+  loop n | n == tries = do 
+     putStrLn$ "Warning: Failed to pop "++ show tries ++ " times consecutively.  That shouldn't happen in this benchmark."
+     loop 0
   loop n = do
      x <- tryPopR q 
      case x of 
-       Nothing -> loop (n-1)
+       Nothing -> loop (n+1)
        Just x  -> return (x, tries-n)
 
 testQ1 = 
@@ -67,7 +74,7 @@ testQ2 total =
      forM_ [0..consumers-1] $ \ id -> 
  	forkIO $ do 
 
-          let fn (sum,maxiters) i = do
+          let fn (!sum,!maxiters) i = do
 	       (x,iters) <- spinPop q 
 	       when (i - id*producers < 10) $ printf " [%d] popped %d \n" id i
 	       return (sum+x, max maxiters iters)
@@ -86,7 +93,10 @@ testQ2 total =
 main = do 
   putStrLn$ "Running test of Michael-Scott queues using: "++ cas_version
   args <- getArgs 
-  case args of 
-    []  -> testQ2 (1000 * 1000)
-    [n] -> testQ2 (read n)
+  let size = case args of 
+              []  -> (1000 * 1000)
+              [n] -> (read n)
+  putStrLn$ "Putting "++show size++" elements through a queue...."
+  testQ2 size
+
 -- main = testQ2 (10)

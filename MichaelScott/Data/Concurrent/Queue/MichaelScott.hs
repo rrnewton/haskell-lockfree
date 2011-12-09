@@ -6,7 +6,7 @@
 module Data.Concurrent.Queue.MichaelScott
  (
   LinkedQueue(),
-  newQ, pushL, tryPopR, 
+  newQ, nullQ, pushL, tryPopR, 
 
   -- Temp:
   cas_version
@@ -23,13 +23,13 @@ import Control.Concurrent.MVar
 
 import qualified Data.Concurrent.Deque.Class as C
 
-import Data.CAS.Internal.Fake (ptrEq)
-#if 1
+#ifdef NATIVE_CAS
+#warning "Building MichaelScott.hs with native CAS support.  Currently causing segfaults!"
 -- Segfaulting currently:
-import Data.CAS (casIORef)
+import Data.CAS (casIORef, ptrEq)
 cas_version = "Real, Native CAS"
 #else
-import Data.CAS.Internal.Fake (casIORef)
+import Data.CAS.Internal.Fake (casIORef, ptrEq)
 cas_version = "Fake CAS, based on atomicModifyIORef"
 #endif
 
@@ -140,6 +140,11 @@ newQ = do
   tl <- newIORef newp
   return (LQ hd tl)
 
+nullQ :: LinkedQueue a -> IO Bool
+nullQ (LQ headPtr tailPtr) = do 
+    head <- readIORef headPtr
+    tail <- readIORef tailPtr
+    return (ptrEq head tail)
 
 --------------------------------------------------------------------------------
 --   Instance(s) of abstract deque interface
@@ -148,6 +153,7 @@ newQ = do
 -- instance DequeClass (Deque T T S S Grow Safe) where 
 instance C.DequeClass LinkedQueue where 
   newQ    = newQ
+  nullQ   = nullQ
   pushL   = pushL
   tryPopR = tryPopR
 

@@ -16,8 +16,8 @@ And then:
 	(GHC version 7.2.1 for x86_64_unknown_linux)
 	Please report this as a GHC bug:  http://www.haskell.org/ghc/reportabug
 
-That's using the following definition of pointer equality:
+On Mac OS it generates the same "evacuate" error (or just segfaults).
 
-    ptrEq :: a -> a -> Bool
-    ptrEq !x !y = I# (reallyUnsafePtrEquality# x y) == 1
+Note, as mentioned in the comments this is because of using native CAS
+rather than the Fake version.
 

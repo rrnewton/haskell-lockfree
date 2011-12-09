@@ -6,7 +6,7 @@ Author:              Ryan R. Newton
 Maintainer:          rrnewton@gmail.com
 Category:            Data, Concurrent
 Build-type:          Simple
-Cabal-version:       >=1.2
+Cabal-version:       >=1.8
 
 Synopsis: Michael and Scott lock-free queues.
 
@@ -25,7 +25,20 @@ Library
   exposed-modules:   Data.Concurrent.Queue.MichaelScott,
                      Data.Concurrent.Queue.MichaelScott.DequeInstance
   build-depends:     base >= 4.4.0.0,
-                     ghc-prim, IORefCAS >= 0.0.1, abstract-deque
+                     ghc-prim, IORefCAS >= 0.1.0.1, abstract-deque
   ghc-options: -O2
 -- Build failure on GHC 7.2:
 --                     queuelike
+
+Test-Suite test-lockfree-queue
+    type:       exitcode-stdio-1.0
+    main-is:    Test.hs
+    build-depends:     base >= 4.4.0.0, IORefCAS >= 0.1.0.1, abstract-deque
+    ghc-options: -O2 -threaded -rtsopts 
+
+Test-Suite test-lockfree-queue-native
+    type:       exitcode-stdio-1.0
+    main-is:    Test.hs
+    ghc-options: -O2 -threaded -rtsopts 
+    build-depends:     base >= 4.4.0.0, IORefCAS >= 0.1.0.1, abstract-deque
+    cpp-options: -DNATIVE_CAS
