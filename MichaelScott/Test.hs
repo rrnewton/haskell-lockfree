@@ -19,19 +19,17 @@ import Control.Concurrent.MVar
 import Data.Concurrent.Queue.MichaelScott
 import System.Environment
 
-spinPop q = loop 0
+spinPop q = loop 1
  where 
-  tries = 1000
---  tries = -1
---  loop n | n == tries = error$ "Failed to pop "++ show tries ++ " times consecutively.  That shouldn't happen in this benchmark."
-  loop n | n == tries = do 
-     putStrLn$ "Warning: Failed to pop "++ show tries ++ " times consecutively.  That shouldn't happen in this benchmark."
-     loop 0
+  warnevery = 1000
   loop n = do
+--     when (n `mod` warnevery == 0)
+     when (n == warnevery)
+	  (putStrLn$ "Warning: Failed to pop "++ show warnevery ++ " times consecutively.  That shouldn't happen in this benchmark.")
      x <- tryPopR q 
      case x of 
        Nothing -> loop (n+1)
-       Just x  -> return (x, tries-n)
+       Just x  -> return (x, n)
 
 testQ1 = 
   do q <- newQ
@@ -57,6 +55,9 @@ testQ2 :: Int -> IO ()
 testQ2 total = 
   do q <- newQ
      mv <- newEmptyMVar     
+     
+     x <- nullQ q
+     putStrLn$ "Check that queue is initially null: "++show x
      let producers = max 1 (numCapabilities `quot` 2)
 	 consumers = producers
 	 perthread = total `quot` producers
@@ -87,6 +88,8 @@ testQ2 total =
      let finalSum = Prelude.sum (map fst ls)
      putStrLn$ "Maximum retries for each consumer thread: "++ show (map snd ls)
      putStrLn$ "Final sum: "++ show finalSum
+     putStrLn$ "Checking that queue is finally null..."
+     print =<< nullQ q
      return ()
 
 -- main = testCAS

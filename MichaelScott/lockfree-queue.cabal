@@ -26,9 +26,10 @@ Library
                      Data.Concurrent.Queue.MichaelScott.DequeInstance
   build-depends:     base >= 4.4.0.0,
                      ghc-prim, IORefCAS >= 0.1.0.1, abstract-deque
-  ghc-options: -O2
 -- Build failure on GHC 7.2:
 --                     queuelike
+  ghc-options: -O2
+  cpp-options: -DNATIVE_CAS
 
 Test-Suite test-lockfree-queue
     type:       exitcode-stdio-1.0
