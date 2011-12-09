@@ -1,5 +1,5 @@
 Name:                IORefCAS
-Version:             0.0.1.2
+Version:             0.0.1.3
 License:             BSD3
 License-file:        LICENSE
 Author:              Adam C. Foltzer, Ryan Newton
@@ -12,6 +12,7 @@ Cabal-version:       >=1.8
 -- 0.0.1   -- initial release
 -- 0.0.1.1 -- minor bump to include README
 -- 0.0.1.2 -- Egad, super minor update.
+-- 0.0.1.2 -- Include ptrEq in Data.CAS
 
 Synopsis: Atomic compare and swap for IORefs and STRefs.
 

@@ -3,7 +3,7 @@
 
 -- | Atomic compare and swap for IORefs and STRefs.
 module Data.CAS 
- ( casSTRef, casIORef,
+ ( casSTRef, casIORef, ptrEq,
    atomicModifyIORefCAS, atomicModifyIORefCAS_,
 
    -- * Generic interface: for interoperation with `Fake` and `Foreign` alternative libraries.
@@ -32,6 +32,9 @@ instance CASable CASRef a where
 -- | Performs a machine-level compare and swap operation on an
 -- 'STRef'. Returns a tuple containing a 'Bool' which is 'True' when a
 -- swap is performed, along with the 'current' value from the 'STRef'.
+-- 
+-- Note \"compare\" here means pointer equality in the sense of
+-- 'GHC.Prim.reallyUnsafePtrEquality#'.
 casSTRef :: STRef s a -- ^ The 'STRef' containing a value 'current'
          -> a -- ^ The 'old' value to compare
          -> a -- ^ The 'new' value to replace 'current' if @old == current@
@@ -46,6 +49,9 @@ casSTRef (STRef var#) old new = ST $ \s1# ->
 -- | Performs a machine-level compare and swap operation on an
 -- 'IORef'. Returns a tuple containing a 'Bool' which is 'True' when a
 -- swap is performed, along with the 'current' value from the 'IORef'.
+-- 
+-- Note \"compare\" here means pointer equality in the sense of
+-- 'GHC.Prim.reallyUnsafePtrEquality#'.
 casIORef :: IORef a -- ^ The 'IORef' containing a value 'current'
          -> a -- ^ The 'old' value to compare
          -> a -- ^ The 'new' value to replace 'current' if @old == current@
