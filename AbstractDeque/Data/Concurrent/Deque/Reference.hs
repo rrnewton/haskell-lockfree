@@ -14,7 +14,7 @@
 
 module Data.Concurrent.Deque.Reference 
  (SimpleDeque(..),
-  newQ, newBoundedQ, pushL, pushR, tryPopR, tryPopL, tryPushL, tryPushR
+  newQ, nullQ, newBoundedQ, pushL, pushR, tryPopR, tryPopL, tryPushL, tryPushR
  )
  where
 
