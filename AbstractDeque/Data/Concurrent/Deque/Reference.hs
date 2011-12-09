@@ -29,8 +29,8 @@ data SimpleDeque elt = DQ {-# UNPACK #-} !Int !(IORef (Seq elt))
 
 {-# INLINE modify #-}
 -- Toggle these and compare performance:
-modify = atomicModifyIORef
--- modify = atomicModifyIORefCAS
+-- modify = atomicModifyIORef
+modify = atomicModifyIORefCAS
 
 newQ = do r <- newIORef empty
 	  return (DQ 0 r)
