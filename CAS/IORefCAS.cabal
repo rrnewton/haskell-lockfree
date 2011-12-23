@@ -1,5 +1,5 @@
 Name:                IORefCAS
-Version:             0.1.0.1
+Version:             0.2
 License:             BSD3
 License-file:        LICENSE
 Author:              Adam C. Foltzer, Ryan Newton
@@ -13,6 +13,7 @@ Cabal-version:       >=1.8
 -- 0.0.1.1 -- minor bump to include README
 -- 0.0.1.2 -- Egad, super minor update.
 -- 0.1.0.1 -- Include ptrEq in Data.CAS
+-- 0.2     -- Bumped for #if policy to test for GHC >7.2.  Removed casSTRef from the API for now.
 
 Synopsis: Atomic compare and swap for IORefs and STRefs.
 
@@ -40,6 +41,10 @@ Library
                      Data.CAS.Internal.Class,
                      Data.CAS.Internal.Fake,
                      Data.CAS.Internal.Foreign
+  -- I have observed problems on both Mac and Linux with 7.0.x.  [2011.12.23]
+  -- Thus for now we require GHC 7.2 or greater (base 4.4 or greater).
+  -- Namely Test.hs observes CAS failing half the time even with only ONE thread.
+  -- This is probably a tricky pointer-equality related problem.
   build-depends:     base >= 4.4.0.0 && < 5,
                      ghc-prim, bits-atomic
 
