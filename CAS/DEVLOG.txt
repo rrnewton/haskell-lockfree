@@ -1,0 +1,17 @@
+
+
+[2011.12.23] Just did some 7.2 vs 7.4 tests
+===========================================
+
+The test suite runs very slowly on a multicore system with load.  I
+just ran on an older 16 core system and it took:
+
+    7.2.1    -N16 : 3.5 minutes
+    7.3....  -N16 : 1.25 minutes
+
+Versus on my macbook air laptop with four threads (including
+hyperthreading):
+
+    7.2.1    -N4 : 14.3 seconds
+    7.4.0RC1 -N4 : 2.8s
+
