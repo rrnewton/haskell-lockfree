@@ -40,6 +40,7 @@ Library
   exposed-modules:   Data.CAS,
                      Data.CAS.Internal.Class,
                      Data.CAS.Internal.Fake,
+                     Data.CAS.Internal.Native,
                      Data.CAS.Internal.Foreign
   -- I have observed problems on both Mac and Linux with 7.0.x.  [2011.12.23]
   -- Thus for now we require GHC 7.2 or greater (base 4.4 or greater).
