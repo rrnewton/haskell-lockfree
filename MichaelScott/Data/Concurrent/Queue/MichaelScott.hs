@@ -6,7 +6,7 @@
 -- This is a straightforward implementation of classic Michael & Scott Queues.
 -- Pseudocode for this algorithm can be found here:
 -- 
---   http://www.cs.rochester.edu/research/synchronization/pseudocode/queues.html
+--   <http://www.cs.rochester.edu/research/synchronization/pseudocode/queues.html>
 
 module Data.Concurrent.Queue.MichaelScott
  (

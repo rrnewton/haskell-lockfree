@@ -19,7 +19,7 @@ Description:
   These are single-ended concurrent queues based on a singlly linked
   list and using atomic CAS instructions to swap the tail pointers.
   As a well-known efficient algorithm they became the basis for Java's
-  ConcurrentLinkedQueue's.
+  @ConcurrentLinkedQueue@.
 
 Library
   exposed-modules:   Data.Concurrent.Queue.MichaelScott,
