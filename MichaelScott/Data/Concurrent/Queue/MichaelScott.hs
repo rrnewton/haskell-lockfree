@@ -1,15 +1,18 @@
 {-# LANGUAGE BangPatterns, CPP  #-}
 -- TypeFamilies, FlexibleInstances
 
--- | Michael and Scott lock-free, wait-free, single-ended queues.
--- module Main
+-- | Michael and Scott lock-free, single-ended queues.
+-- 
+-- This is a straightforward implementation of classic Michael & Scott Queues.
+-- Pseudocode for this algorithm can be found here:
+-- 
+--   http://www.cs.rochester.edu/research/synchronization/pseudocode/queues.html
+
 module Data.Concurrent.Queue.MichaelScott
  (
-  LinkedQueue(),
-  newQ, nullQ, pushL, tryPopR, 
-
-  -- Temp:
-  cas_version
+   -- The convention here is to directly provide the concrete
+   -- operations as well as providing the class instances.
+   LinkedQueue(), newQ, nullQ, pushL, tryPopR, 
  )
   where
 
@@ -23,26 +26,10 @@ import Control.Concurrent.MVar
 
 import qualified Data.Concurrent.Deque.Class as C
 
-#ifdef NATIVE_CAS
-#warning "Building MichaelScott.hs with native CAS support.  Currently causing segfaults!"
--- Segfaulting currently:
 import Data.CAS (casIORef, ptrEq)
-cas_version = "Real, Native CAS"
-#else
-import Data.CAS.Internal.Fake (casIORef, ptrEq)
-cas_version = "Fake CAS, based on atomicModifyIORef"
-#endif
-
-cas_version :: String
 
 -- Considering using the Queue class definition:
 -- import Data.MQueue.Class28
-
-
--- | A straightforward implementation of classic Michael & Scott Queues.
--- 
--- Pseudocode for this algorithm can be found here:
---   http://www.cs.rochester.edu/research/synchronization/pseudocode/queues.html
 
 data LinkedQueue a = LQ 
     { head :: IORef (Pair a)
@@ -50,6 +37,7 @@ data LinkedQueue a = LQ
     }
 
 data Pair a = Null | Cons a (IORef (Pair a))
+
 
 -- | Push a new element onto the queue.  Because the queue can grow,
 --   this alway succeeds.
@@ -127,7 +115,7 @@ tryPopR (LQ headPtr tailPtr) = loop
 		  if b then return (Just value) -- Dequeue done; exit loop.
 		       else loop   
           
-
+-- | Create a new queue.
 newQ :: IO (LinkedQueue a)
 newQ = do 
   r <- newIORef Null
@@ -136,6 +124,7 @@ newQ = do
   tl <- newIORef newp
   return (LQ hd tl)
 
+-- | Is the queue currently empty?  Beware that this can be a highly transient state.
 nullQ :: LinkedQueue a -> IO Bool
 nullQ (LQ headPtr tailPtr) = do 
     head <- readIORef headPtr
@@ -156,8 +145,9 @@ instance C.DequeClass LinkedQueue where
   tryPopR = tryPopR
 
 --------------------------------------------------------------------------------
+--   Notes
+--------------------------------------------------------------------------------
 {- 
-
 [2011.10.29] {Debugging}
 
 Currently segfaulting.  GDB says:

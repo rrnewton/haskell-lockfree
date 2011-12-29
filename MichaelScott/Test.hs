@@ -2,7 +2,7 @@
 module Main where
 
 {- Example build:
-  ghc -DNATIVE_CAS --make Test.hs -o Test.exe -rtsopts -fforce-recomp
+  ghc --make Test.hs -o Test.exe -rtsopts -fforce-recomp
 -}
 
 import Control.Monad
@@ -12,9 +12,6 @@ import Text.Printf
 import GHC.IO (unsafePerformIO)
 import GHC.Conc
 import Control.Concurrent.MVar
-
--- import Data.CAS (casIORef)
--- import Data.CAS.Fake (casIORef)
 
 import Data.Concurrent.Queue.MichaelScott
 import System.Environment
@@ -94,7 +91,7 @@ testQ2 total =
 
 -- main = testCAS
 main = do 
-  putStrLn$ "Running test of Michael-Scott queues using: "++ cas_version
+  putStrLn$ "Running test of Michael-Scott queues... "
   args <- getArgs 
   let size = case args of 
               []  -> (1000 * 1000)

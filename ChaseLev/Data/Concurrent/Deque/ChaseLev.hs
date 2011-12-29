@@ -7,8 +7,7 @@ module Data.Concurrent.Deque.ChaseLev
   (
     -- The convention here is to directly provide the concrete
     -- operations as well as providing the class instances.
-    ChaseLevDeque(),
-    newQ, nullQ, pushL, tryPopL, tryPopR
+    ChaseLevDeque(), newQ, nullQ, pushL, tryPopL, tryPopR
   )
  where
 
