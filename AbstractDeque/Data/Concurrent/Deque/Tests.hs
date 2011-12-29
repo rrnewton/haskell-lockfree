@@ -16,6 +16,7 @@ import Text.Printf
 import GHC.IO (unsafePerformIO)
 import GHC.Conc
 import Control.Concurrent.MVar
+import Control.Concurrent (yield, forkOS)
 
 import System.Environment
 import Test.HUnit
@@ -49,6 +50,9 @@ test_fifo_filldrain q =
 --     return s
      return ()
 
+-- myfork = forkIO
+myfork = forkOS
+
 -- | This one splits the 'numCapabilities' threads into producers and
 -- consumers.  Each thread performs its designated operation as fast
 -- as possible.  The 'Int' argument 'total' designates how many total
@@ -56,7 +60,7 @@ test_fifo_filldrain q =
 test_fifo_HalfToHalf :: DequeClass d => Int -> d Int -> IO ()
 test_fifo_HalfToHalf total q = 
   do -- q <- newQ
-     putStrLn "\nTest FIFO queue: producer/consumer Half-To-Half"
+     putStrLn$ "\nTest FIFO queue: producer/consumer Half-To-Half"
      putStrLn "==============================================="
      mv <- newEmptyMVar          
      x <- nullQ q
@@ -65,10 +69,10 @@ test_fifo_HalfToHalf total q =
 	 consumers = producers
 	 perthread = total `quot` producers
 
-     printf "Forking %d producer threads.\n" producers 
+     printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
     
      forM_ [0..producers-1] $ \ id -> 
- 	forkIO $ 
+ 	myfork $ 
           forM_ (take perthread [id * producers .. ]) $ \ i -> do 
 	     pushL q i
              when (i - id*producers < 10) $ printf " [%d] pushed %d \n" id i
@@ -76,7 +80,7 @@ test_fifo_HalfToHalf total q =
      printf "Forking %d consumer threads.\n" consumers
 
      forM_ [0..consumers-1] $ \ id -> 
- 	forkIO $ do 
+ 	myfork $ do 
 
           let fn (!sum,!maxiters) i = do
 	       (x,iters) <- spinPop q 
@@ -89,7 +93,7 @@ test_fifo_HalfToHalf total q =
      printf "Reading sums from MVar...\n" 
      ls <- mapM (\_ -> takeMVar mv) [1..consumers]
      let finalSum = Prelude.sum (map fst ls)
-     putStrLn$ "Maximum retries for each consumer thread: "++ show (map snd ls)
+     putStrLn$ "Consumers DONE.  Maximum retries for each consumer thread: "++ show (map snd ls)
      putStrLn$ "Final sum: "++ show finalSum
      putStrLn$ "Checking that queue is finally null..."
      b <- nullQ q
@@ -150,14 +154,18 @@ test_all newq =
 
 spinPop q = loop 1
  where 
-  warnevery = 5000
+  warnevery  = 5000
+  errorafter = 1 * 1000 * 1000
   loop n = do
---     when (n `mod` warnevery == 0)
      when (n == warnevery)
-	  (putStrLn$ "Warning: Failed to pop "++ show warnevery ++ " times consecutively.  That shouldn't happen in this benchmark.")
+	  (putStrLn$ "Warning: Failed to pop "++ show warnevery ++ 
+	             " times consecutively.  That shouldn't happen in this benchmark.")
+--     when (n == errorafter) (error "This can't be right.  A queue consumer spun 1M times.")
      x <- tryPopR q 
      case x of 
-       Nothing -> loop (n+1)
+       Nothing -> do putStr "."
+                     yield
+		     loop (n+1)
        Just x  -> return (x, n)
 
 ----------------------------------------------------------------------------------------------------

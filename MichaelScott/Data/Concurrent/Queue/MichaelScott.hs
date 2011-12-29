@@ -27,6 +27,11 @@ import Control.Concurrent.MVar
 import qualified Data.Concurrent.Deque.Class as C
 
 import Data.CAS (casIORef, ptrEq)
+-- import Data.CAS.Internal.Fake (casIORef, ptrEq)
+-- #warning "Using fake CAS"
+-- import Data.CAS.Internal.Native (casIORef, ptrEq)
+-- #warning "Using NATIVE CAS"
+
 
 -- Considering using the Queue class definition:
 -- import Data.MQueue.Class28

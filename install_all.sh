@@ -17,4 +17,4 @@ function doall () {
 
 # doall "cabal haddock --with-haddock=$HADDOCK"
 # doall "cabal install --haddock"
-doall "cabal install"
+doall "cabal install $*"

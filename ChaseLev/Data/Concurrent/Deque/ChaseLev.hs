@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, NamedFieldPuns #-}
+{-# LANGUAGE FlexibleInstances, NamedFieldPuns, CPP #-}
 
 -- | Chase-Lev work stealing Deques
 -- 
@@ -41,6 +41,22 @@ data ChaseLevDeque a = CLD {
   }
 
 --------------------------------------------------------------------------------
+-- Debugging mode.
+
+{-# INLINE rd #-}
+{-# INLINE wr #-}
+{-# INLINE gro #-}
+#if 0
+gro = unsafeGrow
+wr  = unsafeWrite
+rd  = V.unsafeRead
+#else
+gro = V.grow
+wr  = V.write
+rd  = V.read
+#endif
+
+--------------------------------------------------------------------------------
 -- Queue Operations
 
 -- logInitialSize
@@ -69,11 +85,11 @@ pushL CLD{top,bottom,activeArr} obj =   do
   let len = V.length arr 
       size = b - t
   arr' <- if (size >= len - 1) then do 
-            arr' <- unsafeGrow arr (len + len)
+            arr' <- gro arr (len + len)
 	    writeIORef activeArr arr'
             return arr'
           else return arr
-  unsafeWrite arr' b obj
+  wr arr' b obj
   writeIORef bottom (b+1)
   return ()
 
@@ -88,7 +104,7 @@ tryPopR CLD{top,bottom,activeArr} = do
   if size <= 0 then 
     return Nothing
   else do 
-    obj <- V.unsafeRead arr t 
+    obj <- rd arr t 
     (b,_) <- casIORef top t (t+1) 
     if b then 
       return (Just obj)
@@ -107,7 +123,7 @@ tryPopL CLD{top,bottom,activeArr} = do
     writeIORef bottom t 
     return Nothing
    else do
-    obj <- V.unsafeRead arr b
+    obj <- rd arr b
     if size > 0 then 
       return (Just obj)
      else do
