@@ -1,21 +1,11 @@
 {-# LANGUAGE BangPatterns, NamedFieldPuns #-}
-module Main where
-
 {- Example build:
   ghc --make Test.hs -o Test.exe -rtsopts -fforce-recomp
 -}
+module Main where
+import Test.Framework                     (defaultMain)
+import Test.Framework.Providers.HUnit     (hUnitTestToTests)
+import Data.Concurrent.Deque.Tests        (test_fifo)
+import Data.Concurrent.Queue.MichaelScott (newQ)
 
-import System.Exit
-import Test.HUnit
-import Control.Monad
-import qualified Data.Concurrent.Deque.Tests as T
-import qualified Data.Concurrent.Deque.Reference as R
-
-main = 
- do putStrLn "Testing reference deque implementation."
-    Counts{errors, failures} <- runTestTT $ T.test_fifo R.newQ 
-
-    when (errors + failures > 0) $ do 
-       putStrLn$ "Test.hs: Some tests failed! ("++show (errors+failures)++
-		 ") Reporting non zero exit code..."
-       exitFailure
+main = defaultMain$ hUnitTestToTests$ test_fifo newQ 

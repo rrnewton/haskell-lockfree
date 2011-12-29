@@ -121,18 +121,3 @@ tryPopL CLD{top,bottom,activeArr} = do
 -- 	      else Nothing)
 
 ------------------------------------------------------------
-
-t0 = do
-  q <- newQ
-  pushL q "one" 
-  pushL q "two" 
-  pushL q "three" 
-  pushL q "four" 
-  sequence [tryPopR q, tryPopR q, 
-	    tryPopL q, tryPopL q,
-	    tryPopL q, tryPopR q ]
-
-t1 = do
-  q <- newQ
-  pushL q "hi" 
-  tryPopL q 

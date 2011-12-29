@@ -1,14 +1,13 @@
 {-# LANGUAGE BangPatterns, RankNTypes #-}
 module Data.Concurrent.Deque.Tests 
- (
-   test_fifo
+ ( test_fifo
  , test_wsqueue
--- , runit
+ , test_all
  )
  where 
 
 import Data.Concurrent.Deque.Class as C
--- import qualified Data.Concurrent.Deque.Reference as R
+import qualified Data.Concurrent.Deque.Reference as R
 
 import Control.Monad
 import Data.IORef
@@ -110,16 +109,41 @@ test_fifo newq = TestList
 
 ----------------------------------------------------------------------------------------------------
 -- Test a Work-stealing queue:
-test_wsqueue :: DequeClass d => (forall elt. IO (d elt)) -> Test
+
+test_ws_triv1 q = do
+  pushL q "hi" 
+  Just x <- tryPopL q 
+  assertEqual "test_ws_triv1" x "hi"
+
+test_ws_triv2 q = do
+  pushL q "one" 
+  pushL q "two" 
+  pushL q "three" 
+  pushL q "four" 
+  ls <- sequence [tryPopR q, tryPopR q, 
+		  tryPopL q, tryPopL q,
+		  tryPopL q, tryPopR q ]
+  assertEqual "test_ws_triv2" ls 
+    [Just "one",Just "two",Just "four",Just "three",Nothing,Nothing]
+
+
+-- | Aggregate tests for work stealing queues.
+test_wsqueue :: (PopL d) => (forall elt. IO (d elt)) -> Test
 test_wsqueue newq = TestList
  [
- ] 
-
+   TestLabel "test_ws_triv1"  (TestCase$ assert $ newq >>= test_ws_triv1)
+ , TestLabel "test_ws_triv2"  (TestCase$ assert $ newq >>= test_ws_triv2)
+ ]
 
 ----------------------------------------------------------------------------------------------------
--- Combine all tests:
+-- Combine all tests -- for a queue/deque supporting all capabilities.
 
--- test_all :: (DequeClass d) => (forall elt. IO (d elt)) -> Test
+test_all :: (PopL d) => (forall elt. IO (d elt)) -> Test
+test_all newq = 
+  TestList 
+   [ test_fifo    newq
+   , test_wsqueue newq
+   ]
 
 ----------------------------------------------------------------------------------------------------
 -- Helpers

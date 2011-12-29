@@ -32,8 +32,9 @@ main =
     Counts{errors, failures} <- runTestTT $ 
       TestList $ 
         [ 
-          T.test_fifo R.newQ 
-        , test_1, test_2
+          T.test_all R.newQ 
+        , test_1
+	, test_2
         ]
 
     when (errors + failures > 0) $ do 
