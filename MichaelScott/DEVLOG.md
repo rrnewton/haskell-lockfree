@@ -49,3 +49,10 @@ It happens even with a small number of items (1000).
 
 It also happens with -N2 instead of -N4.  And it happens on -O0.
 
+
+[2011.12.29] Stack overflows during testing
+-------------------------------------------
+
+This was the same problem that I observed when testing the reference
+implementation.
+

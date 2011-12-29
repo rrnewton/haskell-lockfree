@@ -24,7 +24,7 @@ Description:
 Library
   exposed-modules:   Data.Concurrent.Queue.MichaelScott,
                      Data.Concurrent.Queue.MichaelScott.DequeInstance
-  build-depends:     base >= 4.4.0.0,
+  build-depends:     base >= 4.4.0.0 && < 5,
                      ghc-prim, IORefCAS >= 0.2, abstract-deque
   -- Build failure on GHC 7.2:
   --                     queuelike
@@ -34,5 +34,5 @@ Library
 Test-Suite test-lockfree-queue
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
-    build-depends:     base >= 4.4.0.0, IORefCAS >= 0.2, abstract-deque
+    build-depends:     base >= 4.4.0.0 && < 5, IORefCAS >= 0.2, abstract-deque, HUnit
     ghc-options: -O2 -threaded -rtsopts 

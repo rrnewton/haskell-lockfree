@@ -6,7 +6,7 @@ Author:              Ryan R. Newton
 Maintainer:          rrnewton@gmail.com
 Category:            Data 
 Build-type:          Simple
-Cabal-version:       >=1.2
+Cabal-version:       >= 1.8
 
 -- Version History:
 -- 0.1: 
@@ -39,9 +39,18 @@ Description:
 
 Library
   exposed-modules:   Data.Concurrent.Deque.Class,
+                     Data.Concurrent.Deque.Tests,
                      Data.Concurrent.Deque.Reference,
                      Data.Concurrent.Deque.Reference.DequeInstance
   build-depends:     base >= 4.4.0.0 && < 5, 
-                     containers, 
-                     IORefCAS
+                     containers, HUnit, 
+                     IORefCAS >= 0.2 
   ghc-options: -O2
+
+
+
+Test-Suite test-abstract-deque
+    type:       exitcode-stdio-1.0
+    main-is:    Test.hs
+    build-depends:     base >= 4.4.0.0 && < 5, IORefCAS >= 0.2, containers, HUnit
+    ghc-options: -O2 -threaded -rtsopts 

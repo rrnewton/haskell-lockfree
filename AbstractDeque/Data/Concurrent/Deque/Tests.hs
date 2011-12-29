@@ -1,12 +1,14 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns, RankNTypes #-}
 module Data.Concurrent.Deque.Tests 
  (
-   test_wsqueue
- , runit
+   test_fifo
+ , test_wsqueue
+-- , runit
  )
  where 
 
 import Data.Concurrent.Deque.Class as C
+-- import qualified Data.Concurrent.Deque.Reference as R
 
 import Control.Monad
 import Data.IORef
@@ -16,9 +18,8 @@ import GHC.IO (unsafePerformIO)
 import GHC.Conc
 import Control.Concurrent.MVar
 
-import qualified Data.Concurrent.Queue.MichaelScott as MS
 import System.Environment
-
+import Test.HUnit
 
 
 ----------------------------------------------------------------------------------------------------
@@ -26,25 +27,28 @@ import System.Environment
 ----------------------------------------------------------------------------------------------------
 
 -- | This test serially fills up a queue and then drains it.
-test_fifo_filldrain :: DequeClass d => d Int -> IO Int
+test_fifo_filldrain :: DequeClass d => d Int -> IO ()
 test_fifo_filldrain q = 
   do -- q <- newQ
+     putStrLn "\nTest FIFO queue: sequential fill and then drain"
+     putStrLn "==============================================="
      let n = 1000
      putStrLn$ "Done creating queue.  Pushing elements:"
      forM_ [1..n] $ \i -> do 
        pushL q i
-       printf " %d" i
+       when (i < 200) $ printf " %d" i
      putStrLn "\nDone filling queue with elements.  Now popping..."
      sumR <- newIORef 0
      forM_ [1..n] $ \i -> do
        (x,_) <- spinPop q 
-       printf " %d" x
+       when (i < 200) $ printf " %d" x
        modifyIORef sumR (+x)
      s <- readIORef sumR
      let expected = sum [1..n] :: Int
      printf "\nSum of popped vals: %d should be %d\n" s expected
-     when (s /= expected) (error "Incorrect sum!")
-     return s
+     when (s /= expected) (assertFailure "Incorrect sum!")
+--     return s
+     return ()
 
 -- | This one splits the 'numCapabilities' threads into producers and
 -- consumers.  Each thread performs its designated operation as fast
@@ -53,8 +57,9 @@ test_fifo_filldrain q =
 test_fifo_HalfToHalf :: DequeClass d => Int -> d Int -> IO ()
 test_fifo_HalfToHalf total q = 
   do -- q <- newQ
-     mv <- newEmptyMVar     
-     
+     putStrLn "\nTest FIFO queue: producer/consumer Half-To-Half"
+     putStrLn "==============================================="
+     mv <- newEmptyMVar          
      x <- nullQ q
      putStrLn$ "Check that queue is initially null: "++show x
      let producers = max 1 (numCapabilities `quot` 2)
@@ -89,27 +94,32 @@ test_fifo_HalfToHalf total q =
      putStrLn$ "Final sum: "++ show finalSum
      putStrLn$ "Checking that queue is finally null..."
      b <- nullQ q
-     if b then return ()
-          else error "Queue was not empty!!"
-
--- main = testCAS
--- runit = do 
---   putStrLn$ "Running test of Michael-Scott queues... "
---   args <- getArgs 
---   let size = case args of 
---               []  -> (1000 * 1000)
---               [n] -> (read n)
---   putStrLn$ "Putting "++show size++" elements through a queue...."
--- --  test_fifo2 size
+     if b then putStrLn$ "Sum matched expected, test passed."
+          else assertFailure "Queue was not empty!!"
 
 -- | This creates an HUnit test list to perform all the tests above.
-test_fifo
+test_fifo :: DequeClass d => (forall elt. IO (d elt)) -> Test
+test_fifo newq = TestList 
+  [
+    TestLabel "test_fifo_filldrain"  (TestCase$ assert $ newq >>= test_fifo_filldrain)
+    -- Do half a million elements by default:
+  , TestLabel "test_fifo_HalfToHalf" (TestCase$ assert $ newq >>= test_fifo_HalfToHalf (500 * 1000))
+--  , TestLabel "test the tests" (TestCase$ assert $ assertFailure "This SHOULD fail.")
+  ]
 
 
 ----------------------------------------------------------------------------------------------------
 -- Test a Work-stealing queue:
-test_wsqueue = undefined
+test_wsqueue :: DequeClass d => (forall elt. IO (d elt)) -> Test
+test_wsqueue newq = TestList
+ [
+ ] 
 
+
+----------------------------------------------------------------------------------------------------
+-- Combine all tests:
+
+-- test_all :: (DequeClass d) => (forall elt. IO (d elt)) -> Test
 
 ----------------------------------------------------------------------------------------------------
 -- Helpers
