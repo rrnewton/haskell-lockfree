@@ -65,8 +65,7 @@ pushL (LQ headPtr tailPtr) val = do
  where 
   loop newp = do 
    tail <- readIORef tailPtr -- Reread the tailptr from the queue structure.
-   case tail of -- Next let's examine that tail ptr and see if it's really the end.
-     -- We skip that simply because comparing pointers would require StableNames.
+   case tail of 
      Null -> error "push: LinkedQueue invariants broken.  Internal error."
      Cons _ next -> do
 	next' <- readIORef next
@@ -83,9 +82,6 @@ pushL (LQ headPtr tailPtr) val = do
 #endif
           -- We skip that simply because comparing pointers would require StableNames.
           Null -> do (b,newtail) <- casIORef next next' newp
--- TODO: an alternative here is rather than reading "tailPtr" again at the top of the loop
--- we could use the "newtail" value to chase the chain one at a time.
--- The question is... if someone beats us here how likely is it that two or more will have beaten us?
 		     if b then return tail
                           else loop newp
           Cons _ _ -> do 
@@ -145,6 +141,8 @@ nullQ (LQ headPtr tailPtr) = do
     head <- readIORef headPtr
     tail <- readIORef tailPtr
     return (ptrEq head tail)
+
+
 
 --------------------------------------------------------------------------------
 --   Instance(s) of abstract deque interface

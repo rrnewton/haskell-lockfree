@@ -15,3 +15,17 @@ hyperthreading):
     7.2.1    -N4 : 14.3 seconds
     7.4.0RC1 -N4 : 2.8s
 
+(The older machine is also just worse in general, it takes 3.8s for
+the -N4 case.  Hyperthreading may *help* in this case though.
+Although the laptop is still 4X faster (0.25s vs 1.0s) for the -N2
+case as well.)
+
+For another datapoint let's use a recent 3.1 ghz Westmere:
+
+    7.3....  -N2  : 0.18s
+    7.3....  -N4  : 0.6s
+    7.3....  -N8  : 10.4s  (oversubscription)
+
+Oversubscription may be quite bad in the atomicModify (blackholing)
+case.  But otherwise this machine does well.
+
