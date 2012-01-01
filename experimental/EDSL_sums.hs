@@ -27,30 +27,46 @@ $[hdats|
  ]
 
 #else
--- The above generates... (for the plain haskell version):
+-- The above generates... :
+------------------------------------------------------------
+-- First, generic operations for the above datatype:
+
+class DatM e m => PairOps e m where 
+  mkNull :: e (Pair a)
+  mkCons :: e a -> e (IORef (Pair a)) -> e (Pair a)
+
+  -- "case", like "if", cannot be overloaded.  Hence reified case
+  -- expressions:
+  casePair :: PairOps e m
+	   => e (Pair a) 
+	   -> r                                 -- Null case RHS
+	   -> (e a -> e (IORef (Pair a)) -> r)  -- Cons case RHS
+	   -> r
+
+instance PairOps FakeExp IO where 
+  -- mkNull :: FakeExp (Pair a)
+  mkNull = FakeExp Null
+  -- mkCons :: FakeExp a -> FakeExp (IORef (Pair a)) -> FakeExp (Pair a)
+  mkCons (FakeExp hd) (FakeExp ref) = FakeExp (Cons hd ref)
+-- For uniformity we should probably access LinkedQueue via this:
+-- caseLinkedQueue (FakeExp q) f = f (head q) (tail q)
+
+  casePair (FakeExp x) f g = 
+    case x of 
+      Null -> f 
+      Cons a b -> g (FakeExp a) (FakeExp b)
+
+-- For uniformity we should probably access LinkedQueue via this:
+-- caseLinkedQueue (FakeExp q) f = f (head q) (tail q)
+
+------------------------------------------------------------
+-- Second, a Haskell-specific instantiation:
+
 data LinkedQueue a = LQ 
     { head :: FakeExp (IORef (Pair a))
     , tail :: FakeExp (IORef (Pair a))
     }
 data Pair a = Null | Cons a (IORef (Pair a))
-mkNull :: FakeExp (Pair a)
-mkNull = FakeExp Null
-mkCons :: FakeExp a -> FakeExp (IORef (Pair a)) -> FakeExp (Pair a)
-mkCons (FakeExp hd) (FakeExp ref) = FakeExp (Cons hd ref)
-
--- "case", like "if", cannot be overloaded.  Hence reified case
--- expressions:
-casePair :: FakeExp (Pair a) 
-         -> r 
-         -> (FakeExp a -> FakeExp (IORef (Pair a)) -> r)
-         -> r
-casePair (FakeExp x) f g = 
-  case x of 
-    Null -> f 
-    Cons a b -> g (FakeExp a) (FakeExp b)
-
--- For uniformity we should probably access LinkedQueue via this:
--- caseLinkedQueue (FakeExp q) f = f (head q) (tail q)
 
 newtype FakeExp a = FakeExp a 
   deriving Show 
@@ -89,7 +105,7 @@ instance Num a => Num (FakeExp a) where
 
 -- class DatM e m | e -> m where 
 -- class DatM e m | m -> e where 
-class DatM e m | m -> e, e -> m where  -- Bi-directional functional dependency.
+class Monad m => DatM e m | m -> e, e -> m where  -- Bi-directional functional dependency.
 --  type Bl -- Booleans
   newRef   :: e a -> m (e (IORef a))
   readRef  :: e (IORef a) -> m (e a)
@@ -110,6 +126,7 @@ class DatM e m | m -> e, e -> m where  -- Bi-directional functional dependency.
   -- We can get rid of this simply with "OverloadedStrings":
   str      :: String -> e String
 
+-- untuple :: DatM e m => LinkedQueue a -> ()
 untuple = undefined
 
 
@@ -130,12 +147,9 @@ class Callable a where
 
 -- | Push a new element onto the queue.  Because the queue can grow,
 --   this alway succeeds.
-pushL :: FakeExp (LinkedQueue a) -> FakeExp a -> IO ()
-pushL (FakeExp (LQ headPtr tailPtr)) val = do
 
---pushL :: DatM e m => e (LinkedQueue a) -> e a -> m ()
--- pushL (FakeExp lq) val = do
--- pushL lq val = do
+pushL :: PairOps e m => e (LinkedQueue a) -> e a -> m ()
+pushL lq val = do
 
 --   let (LQ headPtr tailPtr) = untuple lq
    r <- newRef mkNull
@@ -143,21 +157,15 @@ pushL (FakeExp (LQ headPtr tailPtr)) val = do
    tail <- call loop newp 
    -- After the loop, enqueue is done.  Try to swing the tail.
    -- If we fail, that is ok.  Whoever came in after us deserves it.
---   casRef (FakeExp tailPtr) tail newp 
-   casRef tailPtr tail newp 
-   return () :: IO ()
+   casRef tailPtr tail newp
+   return ()
  where
---  (headPtr,tailPtr) = untuple lq  -- Magic
+  (headPtr,tailPtr) = untuple lq  -- Magic
 --  LQ headPtr tailPtr = untuple lq  -- Magic
 
   loop newp = do 
-
-   putStrLn "Real IO"
-
    tail <- readRef tailPtr -- Reread the tailptr from the queue structure.
    casePair tail 
---     (error_ (FakeExp "push: LinkedQueue invariants broken.  Internal error."))
-     -- Insufficient type info here to figure out the Expression type:
      (error_ (str "push: LinkedQueue invariants broken.  Internal error."))
      (\ _ next -> do
 	next' <- readRef next
