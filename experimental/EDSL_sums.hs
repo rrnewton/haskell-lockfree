@@ -74,7 +74,7 @@ instance LinkedQueueOps FakeExp IO where
   caseLinkedQueue = undefined -- ...
 
 ------------------------------------------------------------
--- Second, a Haskell-specific instantiation:
+-- Second, a Haskell-specific concrete datatype:
 
 data LinkedQueue a = LQ 
 --    { head :: FakeExp (IORef (Pair a))
@@ -83,6 +83,40 @@ data LinkedQueue a = LQ
    , tail :: IORef (Pair a)
     }
 data Pair a = Null | Cons a (IORef (Pair a))
+
+
+#endif
+-- End Generated Code.
+-- ================================================================================
+
+-- | 'DatM': The class that defines our embedded language.
+
+-- class DatM e m | e -> m where 
+-- class DatM e m | m -> e where 
+class Monad m => DatM e m | m -> e, e -> m where  -- Bi-directional functional dependency.
+--  type Bl -- Booleans
+  newRef   :: e a -> m (e (IORef a))
+  readRef  :: e (IORef a) -> m (e a)
+  writeRef :: e (IORef a) -> e a -> m ()
+--  casRef   :: e a -> a -> a -> IO (Bool,a)
+  casRef   :: e (IORef a) -> e a -> e a -> m (e Bool, e a)
+  -- The trick here would be to pack untupling into the calling convention...
+--  call     :: Callable a => (a -> m b) -> m b
+  call     :: (e a -> m b) -> e a -> m b
+  errorM   :: e String -> m a
+  errorE   :: e String -> e a
+
+  ptrEq    :: e a -> e a -> e Bool
+  not_     :: e Bool -> e Bool
+  if_      :: e Bool -> a -> a -> a
+  true     :: e Bool
+  false    :: e Bool
+
+  -- We can get rid of this simply with "OverloadedStrings":
+  str      :: String -> e String
+
+-- ================================================================================
+-- Next, wrappers for the host language to execute DatM code.
 
 newtype FakeExp a = FakeExp a 
   deriving Show 
@@ -115,40 +149,10 @@ instance Num a => Num (FakeExp a) where
   signum        (FakeExp a) = FakeExp (signum a)
   fromInteger   i           = FakeExp (fromInteger i)
 
---instance Tuple (LinkedQueue a) where
---  tuple (LQ hd tl) = undefined
-  
-#endif
--- End Generated Code.
--- ================================================================================
-
--- | 'DatM': The class that defines our embedded language.
-
--- class DatM e m | e -> m where 
--- class DatM e m | m -> e where 
-class Monad m => DatM e m | m -> e, e -> m where  -- Bi-directional functional dependency.
---  type Bl -- Booleans
-  newRef   :: e a -> m (e (IORef a))
-  readRef  :: e (IORef a) -> m (e a)
-  writeRef :: e (IORef a) -> e a -> m ()
---  casRef   :: e a -> a -> a -> IO (Bool,a)
-  casRef   :: e (IORef a) -> e a -> e a -> m (e Bool, e a)
-  -- The trick here would be to pack untupling into the calling convention...
---  call     :: Callable a => (a -> m b) -> m b
-  call     :: (e a -> m b) -> e a -> m b
-  errorM   :: e String -> m a
-  errorE   :: e String -> e a
-
-  ptrEq    :: e a -> e a -> e Bool
-  not_     :: e Bool -> e Bool
-  if_      :: e Bool -> a -> a -> a
-  true     :: e Bool
-  false    :: e Bool
-
-  -- We can get rid of this simply with "OverloadedStrings":
-  str      :: String -> e String
 
 -- ================================================================================
+
+-- Scratch:
 
 class Tuple tup where
   type TupleT tup
@@ -157,8 +161,6 @@ class Tuple tup where
 
 -- untuple :: DatM e m => LinkedQueue a -> ()
 -- untuple = undefined  -- Magic
-
-
 
 class Callable a where 
 -- ...
@@ -173,8 +175,10 @@ class Callable a where
 -- bar = call foo (v::Pair)
 -- baz = call foo (v::Exp Pair) -- This one needs to "untuple".
 
+
+
 -- ==================================================================================================
--- Here is a generic data structure operation.
+-- Example: Here is a generic data structure operation defined using the above.
 -- ==================================================================================================
 
 -- | Push a new element onto the queue.  Because the queue can grow,
