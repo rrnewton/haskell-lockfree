@@ -42,6 +42,18 @@ class DatM e m => PairOps e m where
 	   -> r                                 -- Null case RHS
 	   -> (e a -> e (IORef (Pair a)) -> r)  -- Cons case RHS
 	   -> r
+  -- unNull
+  -- unCons
+
+class DatM e m => LinkedQueueOps e m where 
+  mkLQ :: e (IORef (Pair a)) -> e (IORef (Pair a)) -> e (LinkedQueue a)
+  caseLinkedQueue :: LinkedQueueOps e m 
+                  => (e (IORef (Pair a))  -> e (IORef (Pair a)) -> r)
+                  -> r
+
+  -- Deconstructor (unary pattern match)
+  unLQ :: e (LinkedQueue a) -> (e (IORef (Pair a)), e (IORef (Pair a)))
+
 
 instance PairOps FakeExp IO where 
   -- mkNull :: FakeExp (Pair a)
@@ -56,15 +68,19 @@ instance PairOps FakeExp IO where
       Null -> f 
       Cons a b -> g (FakeExp a) (FakeExp b)
 
--- For uniformity we should probably access LinkedQueue via this:
--- caseLinkedQueue (FakeExp q) f = f (head q) (tail q)
+instance LinkedQueueOps FakeExp IO where 
+  mkLQ (FakeExp hd) (FakeExp tl) = FakeExp$ LQ hd tl
+  unLQ (FakeExp (LQ hd tl)) = (FakeExp hd, FakeExp tl)
+  caseLinkedQueue = undefined
 
 ------------------------------------------------------------
 -- Second, a Haskell-specific instantiation:
 
 data LinkedQueue a = LQ 
-    { head :: FakeExp (IORef (Pair a))
-    , tail :: FakeExp (IORef (Pair a))
+--    { head :: FakeExp (IORef (Pair a))
+--    , tail :: FakeExp (IORef (Pair a))
+   { head :: IORef (Pair a)
+   , tail :: IORef (Pair a)
     }
 data Pair a = Null | Cons a (IORef (Pair a))
 
@@ -80,16 +96,14 @@ instance DatM FakeExp IO where
   casRef (FakeExp r) (FakeExp o) (FakeExp n) =
     do (b,v) <- CAS.casIORef r o n
        return (FakeExp b, FakeExp v)
+  call fn x = fn x
+  str = FakeExp
 
   ptrEq (FakeExp a) (FakeExp b) = FakeExp (CAS.ptrEq a b)
   not_  (FakeExp x) = FakeExp (not x)
   if_   (FakeExp x) th el = (if x then th else el)
   true     = FakeExp True
   false    = FakeExp False
-
-  call fn x = fn x
-
-  str = FakeExp
 
 
 instance Num a => Num (FakeExp a) where
@@ -99,9 +113,15 @@ instance Num a => Num (FakeExp a) where
   abs           (FakeExp a) = FakeExp (abs a)
   signum        (FakeExp a) = FakeExp (signum a)
   fromInteger   i           = FakeExp (fromInteger i)
+
+--instance Tuple (LinkedQueue a) where
+--  tuple (LQ hd tl) = undefined
+  
 #endif
 -- End Generated Code.
 -- ================================================================================
+
+-- | 'DatM': The class that defines our embedded language.
 
 -- class DatM e m | e -> m where 
 -- class DatM e m | m -> e where 
@@ -126,8 +146,16 @@ class Monad m => DatM e m | m -> e, e -> m where  -- Bi-directional functional d
   -- We can get rid of this simply with "OverloadedStrings":
   str      :: String -> e String
 
+-- ================================================================================
+
+class Tuple tup where
+  type TupleT tup
+  tuple   :: tup -> TupleT tup
+  untuple :: TupleT tup -> tup
+
 -- untuple :: DatM e m => LinkedQueue a -> ()
-untuple = undefined
+-- untuple = undefined  -- Magic
+
 
 
 class Callable a where 
@@ -148,7 +176,8 @@ class Callable a where
 -- | Push a new element onto the queue.  Because the queue can grow,
 --   this alway succeeds.
 
-pushL :: PairOps e m => e (LinkedQueue a) -> e a -> m ()
+pushL :: (LinkedQueueOps e m, PairOps e m )
+      => e (LinkedQueue a) -> e a -> m ()
 pushL lq val = do
 
 --   let (LQ headPtr tailPtr) = untuple lq
@@ -160,7 +189,8 @@ pushL lq val = do
    casRef tailPtr tail newp
    return ()
  where
-  (headPtr,tailPtr) = untuple lq  -- Magic
+  (headPtr,tailPtr) = unLQ lq  -- Magic
+--  (headPtr,tailPtr) = untuple lq  -- Magic
 --  LQ headPtr tailPtr = untuple lq  -- Magic
 
   loop newp = do 
