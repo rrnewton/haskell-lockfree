@@ -54,9 +54,6 @@ casePair (FakeExp x) f g =
 
 newtype FakeExp a = FakeExp a 
   deriving Show 
--- We can get rid of this simply with "OverloadedStrings"
-str :: String -> FakeExp String
-str = FakeExp
 
 --instance DatM IORef IO where 
 instance DatM FakeExp IO where 
@@ -76,6 +73,9 @@ instance DatM FakeExp IO where
 
   call fn x = fn x
 
+  str = FakeExp
+
+
 instance Num a => Num (FakeExp a) where
   (FakeExp a) + (FakeExp b) = FakeExp (a+b)
   (FakeExp a) - (FakeExp b) = FakeExp (a-b)
@@ -87,13 +87,9 @@ instance Num a => Num (FakeExp a) where
 -- End Generated Code.
 -- ================================================================================
 
--- class Boolean f r | f -> r where
---    if_   :: f -> r -> r -> r
---    false :: f
---    true  :: f
---    not_  :: f -> f 
-
-class DatM e m | e -> m where 
+-- class DatM e m | e -> m where 
+-- class DatM e m | m -> e where 
+class DatM e m | m -> e, e -> m where  -- Bi-directional functional dependency.
 --  type Bl -- Booleans
   newRef   :: e a -> m (e (IORef a))
   readRef  :: e (IORef a) -> m (e a)
@@ -110,6 +106,9 @@ class DatM e m | e -> m where
   if_      :: e Bool -> a -> a -> a
   true     :: e Bool
   false    :: e Bool
+
+  -- We can get rid of this simply with "OverloadedStrings":
+  str      :: String -> e String
 
 untuple = undefined
 
@@ -131,10 +130,12 @@ class Callable a where
 
 -- | Push a new element onto the queue.  Because the queue can grow,
 --   this alway succeeds.
--- pushL :: DatM IORef m => LinkedQueue a -> Exp a -> m ()
 pushL :: FakeExp (LinkedQueue a) -> FakeExp a -> IO ()
 pushL (FakeExp (LQ headPtr tailPtr)) val = do
+
+--pushL :: DatM e m => e (LinkedQueue a) -> e a -> m ()
 -- pushL (FakeExp lq) val = do
+-- pushL lq val = do
 
 --   let (LQ headPtr tailPtr) = untuple lq
    r <- newRef mkNull
@@ -148,16 +149,16 @@ pushL (FakeExp (LQ headPtr tailPtr)) val = do
  where
 --  (headPtr,tailPtr) = untuple lq  -- Magic
 --  LQ headPtr tailPtr = untuple lq  -- Magic
---  loop = undefined
 
---  loop :: Pair a -> IO (Pair a)
   loop newp = do 
+
+   putStrLn "Real IO"
 
    tail <- readRef tailPtr -- Reread the tailptr from the queue structure.
    casePair tail 
-     (error_ (FakeExp "push: LinkedQueue invariants broken.  Internal error."))
---     (\ _ _ -> return undefined)
-
+--     (error_ (FakeExp "push: LinkedQueue invariants broken.  Internal error."))
+     -- Insufficient type info here to figure out the Expression type:
+     (error_ (str "push: LinkedQueue invariants broken.  Internal error."))
      (\ _ next -> do
 	next' <- readRef next
 	-- The algorithm rereads tailPtr here to make sure it is still good.
@@ -166,8 +167,7 @@ pushL (FakeExp (LQ headPtr tailPtr)) val = do
 	-- (And at one point I observerd such an infinite loop.)
 	-- But with one based on reallyUnsafePtrEquality# we should be ok.
 	tail' <- readRef tailPtr
---        if not (ptrEq tail tail') then loop newp 
---        b <- refEq tailPtr 
+--        b <- refEq tailPtr  -- Could only allow ptr comparison for references...
         if_ (not_ (ptrEq tail tail')) 
           (call loop newp)
 	  (casePair next' 
