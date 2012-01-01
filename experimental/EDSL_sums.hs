@@ -42,8 +42,8 @@ class DatM e m => PairOps e m where
 	   -> r                                 -- Null case RHS
 	   -> (e a -> e (IORef (Pair a)) -> r)  -- Cons case RHS
 	   -> r
-  -- unNull
-  -- unCons
+  -- unNull :: ...
+  -- unCons :: ...
 
 class DatM e m => LinkedQueueOps e m where 
   mkLQ :: e (IORef (Pair a)) -> e (IORef (Pair a)) -> e (LinkedQueue a)
@@ -71,7 +71,7 @@ instance PairOps FakeExp IO where
 instance LinkedQueueOps FakeExp IO where 
   mkLQ (FakeExp hd) (FakeExp tl) = FakeExp$ LQ hd tl
   unLQ (FakeExp (LQ hd tl)) = (FakeExp hd, FakeExp tl)
-  caseLinkedQueue = undefined
+  caseLinkedQueue = undefined -- ...
 
 ------------------------------------------------------------
 -- Second, a Haskell-specific instantiation:
@@ -92,7 +92,8 @@ instance DatM FakeExp IO where
   newRef   (FakeExp x) = newIORef  x     >>= (return . FakeExp)
   readRef  (FakeExp x) = readIORef x     >>= (return . FakeExp)
   writeRef (FakeExp x) (FakeExp v) = writeIORef x v
-  error_ (FakeExp s) = error s
+  errorE (FakeExp s) = error s
+  errorM (FakeExp s) = error s
   casRef (FakeExp r) (FakeExp o) (FakeExp n) =
     do (b,v) <- CAS.casIORef r o n
        return (FakeExp b, FakeExp v)
@@ -135,7 +136,8 @@ class Monad m => DatM e m | m -> e, e -> m where  -- Bi-directional functional d
   -- The trick here would be to pack untupling into the calling convention...
 --  call     :: Callable a => (a -> m b) -> m b
   call     :: (e a -> m b) -> e a -> m b
-  error_   :: e String -> m a
+  errorM   :: e String -> m a
+  errorE   :: e String -> e a
 
   ptrEq    :: e a -> e a -> e Bool
   not_     :: e Bool -> e Bool
@@ -159,13 +161,15 @@ class Tuple tup where
 
 
 class Callable a where 
--- Can we do the analog of "untupling" for sum types here?
+-- ...
+-- Can we do the analog of "untupling" for algebraic datatypes?
 -- And can we do it implicitly at the call sites??
 --
+-- Example:
 -- foo :: Pair -> EmitC (Exp Int)
--- foo Null = return 0
+-- foo Null       = return 0
 -- foo (Cons _ _) = return 1 
-
+--
 -- bar = call foo (v::Pair)
 -- baz = call foo (v::Exp Pair) -- This one needs to "untuple".
 
@@ -196,7 +200,7 @@ pushL lq val = do
   loop newp = do 
    tail <- readRef tailPtr -- Reread the tailptr from the queue structure.
    casePair tail 
-     (error_ (str "push: LinkedQueue invariants broken.  Internal error."))
+     (errorM (str "push: LinkedQueue invariants broken.  Internal error."))
      (\ _ next -> do
 	next' <- readRef next
 	-- The algorithm rereads tailPtr here to make sure it is still good.
@@ -219,8 +223,18 @@ pushL lq val = do
 	      return tail))
      )
 
-{-
+-- | Create a new queue.
+newQ :: (LinkedQueueOps e m, PairOps e m) => m (e (LinkedQueue a))
+-- newQ :: IO (LinkedQueue a)
+newQ = do 
+  r <- newRef mkNull
+  -- Here's a touchy part... the following ASSUMES lazy evaluation:
+  let newp = mkCons (errorE $ str "LinkedQueue: Used uninitialized magic value.") r
+  hd <- newRef newp
+  tl <- newRef newp
+  return (mkLQ hd tl)
 
+{-
 
 -- | Attempt to pop an element from the queue if one is available.
 --   tryPop will always return promptly, but will return 'Nothing' if
@@ -259,14 +273,6 @@ tryPopR (LQ headPtr tailPtr) = loop
 		  if b then return (Just value) -- Dequeue done; exit loop.
 		       else loop   
           
--- | Create a new queue.
-newQ :: IO (LinkedQueue a)
-newQ = do 
-  r <- newIORef Null
-  let newp = Cons (error "LinkedQueue: Used uninitialized magic value.") r
-  hd <- newIORef newp
-  tl <- newIORef newp
-  return (LQ hd tl)
 
 -- | Is the queue currently empty?  Beware that this can be a highly transient state.
 nullQ :: LinkedQueue a -> IO Bool
@@ -291,9 +297,10 @@ nullQ (LQ headPtr tailPtr) = do
 --   Notes
 --------------------------------------------------------------------------------
 
-
-t0 q = do
---  LQ 
+t0 :: IO ()
+t0 = do
+  q <- newQ
   pushL q (str "hi")
+  putStrLn "Successfully pushed to queue..."
 --  Just x <- tryPopL q 
 --  assertEqual "test_ws_triv1" x "hi"
