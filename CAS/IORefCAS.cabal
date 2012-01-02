@@ -56,7 +56,8 @@ Test-Suite test-IORefCAS
     main-is:    Test.hs
     ghc-options: -O2 -threaded -rtsopts 
     cpp-options: -DT1 -DT2 -DT3
-    build-depends: QuickCheck, HUnit, bits-atomic
+    build-depends: base >= 4.4 && < 5, time, ghc-prim,
+                   QuickCheck, HUnit, bits-atomic
 -- TODO: Refactor to use test-framework:
 --                 , test-framework, test-framework-hunit
 -- test-framework-quickcheck2

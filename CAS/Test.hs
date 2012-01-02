@@ -18,7 +18,7 @@ import System.Mem.StableName
 import GHC.IO (unsafePerformIO)
 
 #ifdef T1
-import qualified Data.CAS         as A
+import qualified Data.CAS.Internal.Native  as A
 #endif
 #ifdef T2
 import qualified Data.CAS.Internal.Fake    as B
@@ -85,6 +85,7 @@ timeit ioact = do
 type ElemTy = Word32 -- This will trigger CAS.Foreign's specialization.
 
 {-# INLINE testCAS1 #-}
+-- First test: Run a simple CAS a small number of times.
 testCAS1 :: CASable ref ElemTy => ref ElemTy -> IO [Bool]
 testCAS1 r = 
   do 
@@ -116,7 +117,6 @@ testCAS1 r =
 
 ----------------------------------------------------------------------------------------------------
 
--- UNFINISHED, TODO:
 -- This version hammers on CASref from all threads, then checks to see
 -- if enough threads succeeded enough of the time.
 
@@ -152,6 +152,7 @@ testCAS2 iters ref =
 
 --------------------------------------------------------------------------------
 
+-- UNFINISHED
 -- This tests repeated atomicModifyIORefCAS operations.
 
 testCAS3 :: Int -> IORef ElemTy -> IO [()]
@@ -173,7 +174,39 @@ testCAS3 iters ref =
 #endif
 	loop (n-1)
 
-       
+----------------------------------------------------------------------------------------------------       
+-- This version uses a non-scalar type for CAS.  It instead
+-- manipulates the tail pointers of a simple linked-list.
+
+#if 0
+data List k = Null | Cons Int (k (List k))
+
+type ListA = List A.CASRef
+type ListB = List B.CASRef
+type ListC = List C.CASRef
+
+-- testCAS4 :: CASable ref Int => List ref -> IO [Bool]
+testCAS4 :: CASable ref Int => Int -> ref (List ref) -> IO ()
+testCAS4 iters ref = do 
+  forkJoin numCapabilities $ do
+     -- From each thread, attempt to extend the list 'iters' times:
+     ref' <- readCASable ref
+     nl   <- newIORef Null
+     loop iters (Cons (-1) nl) ref'
+     return ()
+
+  return ()
+ where 
+  loop 0 _ _ = return ()
+  loop n new (Cons _ tl) = do
+    tl' <- readCASable tl
+    case tl' of 
+      Null -> do (b,v) <- cas tl tl' new
+		 if b then loop (n-1) v
+		      else loop v
+      cons -> loop cons tl'
+  loop n _ Null = error "too short"
+#endif
 
 
 ----------------------------------------------------------------------------------------------------
