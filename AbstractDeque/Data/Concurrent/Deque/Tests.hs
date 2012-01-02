@@ -1,8 +1,14 @@
 {-# LANGUAGE BangPatterns, RankNTypes #-}
 module Data.Concurrent.Deque.Tests 
- ( test_fifo
- , test_wsqueue
- , test_all
+ ( 
+   -- * Tests for simple FIFOs.
+   test_fifo_filldrain, test_fifo_HalfToHalf, test_fifo,
+
+   -- * Tests for Work-stealing queues.
+   test_ws_triv1, test_ws_triv2, test_wsqueue,
+
+   -- * All deque tests, aggregated.
+   test_all
  )
  where 
 
@@ -113,12 +119,17 @@ test_fifo newq = TestList
 
 ----------------------------------------------------------------------------------------------------
 -- Test a Work-stealing queue:
+----------------------------------------------------------------------------------------------------
 
+-- | Trivial test: push then pop.
+test_ws_triv1 :: PopL d => d [Char] -> IO ()
 test_ws_triv1 q = do
   pushL q "hi" 
   Just x <- tryPopL q 
   assertEqual "test_ws_triv1" x "hi"
 
+-- | Trivial test: push left, pop left and right.
+test_ws_triv2 :: PopL d => d [Char] -> IO ()
 test_ws_triv2 q = do
   pushL q "one" 
   pushL q "two" 
@@ -140,7 +151,8 @@ test_wsqueue newq = TestList
  ]
 
 ----------------------------------------------------------------------------------------------------
--- Combine all tests -- for a queue/deque supporting all capabilities.
+-- Combine all tests -- for a deques supporting all capabilities.
+----------------------------------------------------------------------------------------------------
 
 test_all :: (PopL d) => (forall elt. IO (d elt)) -> Test
 test_all newq = 
