@@ -1,5 +1,6 @@
 {-# LANGUAGE TypeFamilies, CPP, TypeSynonymInstances, MultiParamTypeClasses,
-    FlexibleInstances, EmptyDataDecls, DefaultSignatures #-}
+    FlexibleInstances, EmptyDataDecls  #-}
+-- DefaultSignatures
 
 {- |
    An abstract, parameterizable interface for queues.  
@@ -135,8 +136,10 @@ class DequeClass d where
    --   If bounded, the size is unspecified.
    newQ  :: IO (d elt)
 
+#ifdef DEFAULT_SIGNATURES
    default newQ :: BoundedL d => IO (d elt)
    newQ = newBoundedQ 256
+#endif
 
    -- | Is the queue currently empty?  Beware that this can be a highly transient state.
    nullQ :: d elt -> IO Bool

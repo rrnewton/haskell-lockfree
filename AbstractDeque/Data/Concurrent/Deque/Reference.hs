@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies, CPP #-}
 
 {-| 
   A strawman implementation of concurrent Dequeus.  This
@@ -22,15 +22,18 @@ import Prelude hiding (length)
 import qualified Data.Concurrent.Deque.Class as C
 import Data.Sequence
 import Data.IORef
+#ifdef USE_CAS
 import Data.CAS (atomicModifyIORefCAS)
+-- Toggle these and compare performance:
+modify = atomicModifyIORefCAS
+#else
+modify = atomicModifyIORef
+#endif
+{-# INLINE modify #-}
 
 -- | Stores a size bound (if any) as well as a mutable Seq.
 data SimpleDeque elt = DQ {-# UNPACK #-} !Int !(IORef (Seq elt))
 
-{-# INLINE modify #-}
--- Toggle these and compare performance:
--- modify = atomicModifyIORef
-modify = atomicModifyIORefCAS
 
 newQ = do r <- newIORef empty
 	  return (DQ 0 r)

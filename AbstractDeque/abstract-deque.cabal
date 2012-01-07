@@ -43,9 +43,15 @@ Library
                      Data.Concurrent.Deque.Tests,
                      Data.Concurrent.Deque.Reference,
                      Data.Concurrent.Deque.Reference.DequeInstance
-  build-depends:     base >= 4.4.0.0 && < 5, 
-                     containers, HUnit, 
-                     IORefCAS >= 0.2 
+  build-depends:     base >= 4 && < 5, 
+                     containers, HUnit
+
+  if impl( ghc >= 7.2) {
+    build-depends:   IORefCAS >= 0.2 
+    cpp-options:  -DUSE_CAS -DDEFAULT_SIGNATURES
+    GHC-Options: -XDefaultSignatures
+  }
+
   ghc-options: -O2
 
 
@@ -53,5 +59,5 @@ Library
 Test-Suite test-abstract-deque
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
-    build-depends:     base >= 4.4.0.0 && < 5, IORefCAS >= 0.2, containers, HUnit
+    build-depends:     base >= 4 && < 5, IORefCAS >= 0.2, containers, HUnit
     ghc-options: -O2 -threaded -rtsopts 
