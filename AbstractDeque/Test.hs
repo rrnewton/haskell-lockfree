@@ -21,7 +21,7 @@ test_1 = TestCase $ assert $
 test_2 = TestCase $ assert $ 
   do 
      -- Here's an example of type-based restriction of the queue implementation:
-     q :: Deque NT T D S Bound Safe Int <- newQ
+     q <- newQ :: IO (Deque NT T D S Bound Safe Int)
      pushL q 33
 --     pushR q 33  -- This would cause a type error because the Right end is not Double-capable.
      Just x <- tryPopR q
