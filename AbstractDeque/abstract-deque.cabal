@@ -1,5 +1,5 @@
 Name:                abstract-deque
-Version:             0.1.4
+Version:             0.1.5
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan R. Newton
@@ -50,9 +50,11 @@ Library
   if impl( ghc >= 7.2) {
     build-depends:   IORefCAS >= 0.2 
     cpp-options:  -DUSE_CAS -DDEFAULT_SIGNATURES
-    GHC-Options: -XDefaultSignatures
+--    extensions: DefaultSignatures
+--    GHC-Options: -XDefaultSignatures
   }
 
+  extensions: CPP
   ghc-options: -O2
 
 

@@ -1,6 +1,9 @@
 {-# LANGUAGE TypeFamilies, CPP, TypeSynonymInstances, MultiParamTypeClasses,
     FlexibleInstances, EmptyDataDecls  #-}
--- DefaultSignatures
+
+#ifdef DEFAULT_SIGNATURES
+{-# LANGUAGE DefaultSignatures #-}
+#endif
 
 {- |
    An abstract, parameterizable interface for queues.  
@@ -137,6 +140,7 @@ class DequeClass d where
    newQ  :: IO (d elt)
 
 #ifdef DEFAULT_SIGNATURES
+#warning "Providing default binding and signature for newQ..."
    default newQ :: BoundedL d => IO (d elt)
    newQ = newBoundedQ 256
 #endif

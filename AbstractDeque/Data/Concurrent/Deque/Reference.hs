@@ -23,6 +23,7 @@ import qualified Data.Concurrent.Deque.Class as C
 import Data.Sequence
 import Data.IORef
 #ifdef USE_CAS
+#warning "abstract-deque: reference implementation using CAS..."
 import Data.CAS (atomicModifyIORefCAS)
 -- Toggle these and compare performance:
 modify = atomicModifyIORefCAS
