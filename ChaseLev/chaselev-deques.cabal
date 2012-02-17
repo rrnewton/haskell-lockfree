@@ -8,6 +8,8 @@ Category:            Data, Concurrent
 Build-type:          Simple
 Cabal-version:       >=1.2
 
+Homepage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
+
 Synopsis: Chase & Lev work-stealing lock-free double-ended queues (deques).
 
 
@@ -16,5 +18,10 @@ Library
                      Data.Concurrent.Deque.ChaseLev,
                      Data.Concurrent.Deque.ReactorDeque
   build-depends:     base >= 4.4.0.0, array, transformers, bits-atomic,
-                     abstract-deque
+                     abstract-deque, vector 
   ghc-options: -O2
+
+
+Source-Repository head
+    Type:         git
+    Location:     git://github.com/rrnewton/haskell-lockfree-queue.git

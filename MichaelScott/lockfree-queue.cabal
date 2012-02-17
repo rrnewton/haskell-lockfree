@@ -8,6 +8,8 @@ Category:            Data, Concurrent
 Build-type:          Simple
 Cabal-version:       >=1.8
 
+Homepage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
+
 Synopsis: Michael and Scott lock-free queues.
 
 Description:
@@ -30,6 +32,10 @@ Library
   --                     queuelike
   ghc-options: -O2
 
+Source-Repository head
+    Type:         git
+    Location:     git://github.com/rrnewton/haskell-lockfree-queue.git
+
 
 Test-Suite test-lockfree-queue
     type:       exitcode-stdio-1.0
@@ -37,3 +43,4 @@ Test-Suite test-lockfree-queue
     build-depends: base >= 4.4.0.0 && < 5, IORefCAS >= 0.2, abstract-deque, 
                    HUnit, test-framework, test-framework-HUnit
     ghc-options: -O2 -threaded -rtsopts 
+

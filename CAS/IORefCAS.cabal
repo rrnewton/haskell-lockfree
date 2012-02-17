@@ -7,6 +7,7 @@ Maintainer:          acfoltzer@gmail.com, rrnewton@gmail.com
 Category:            Data
 Build-type:          Simple
 Cabal-version:       >=1.8
+HomePage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
 
 -- Version History:
 -- 0.0.1   -- initial release
@@ -61,3 +62,7 @@ Test-Suite test-IORefCAS
 -- TODO: Refactor to use test-framework:
 --                 , test-framework, test-framework-hunit
 -- test-framework-quickcheck2
+
+Source-Repository head
+    Type:         git
+    Location:     git://github.com/rrnewton/haskell-lockfree-queue.git

@@ -8,6 +8,8 @@ Category:            Data
 Build-type:          Simple
 Cabal-version:       >= 1.8
 
+Homepage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
+
 -- Version History:
 -- 0.1: 
 -- 0.1.1: Added nullQ to interface. [First release]
@@ -57,10 +59,13 @@ Library
   extensions: CPP
   ghc-options: -O2
 
-
+Source-Repository head
+    Type:         git
+    Location:     git://github.com/rrnewton/haskell-lockfree-queue.git
 
 Test-Suite test-abstract-deque
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
     build-depends:     base >= 4 && < 5, IORefCAS >= 0.2, containers, HUnit
     ghc-options: -O2 -threaded -rtsopts 
+

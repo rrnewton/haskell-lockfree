@@ -8,8 +8,9 @@ Category:            Data
 Build-type:          Simple
 Cabal-version:       >=1.2
 
-Synopsis: Collects together queue packages and selects the right one based on a type family.
+Homepage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
 
+Synopsis: Collects together queue packages and selects the right one based on a type family.
 
 Description:
 
@@ -26,3 +27,7 @@ Library
                      abstract-deque,
                      lockfree-queue
   ghc-options: -O2
+
+Source-Repository head
+    Type:         git
+    Location:     git://github.com/rrnewton/haskell-lockfree-queue.git
