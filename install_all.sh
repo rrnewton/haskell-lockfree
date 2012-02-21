@@ -6,6 +6,11 @@ if [ "$HADDOCK" == "" ];
 then HADDOCK=`which haddock`
 fi
 
+if [ "$CABAL" == "" ];
+then CABAL=`which cabal`
+fi
+
+
 function doall () {
   CMD=$1
   (cd CAS;           $CMD)
@@ -17,4 +22,4 @@ function doall () {
 
 # doall "cabal haddock --with-haddock=$HADDOCK"
 # doall "cabal install --haddock"
-doall "cabal install $*"
+doall "$CABAL install $*"

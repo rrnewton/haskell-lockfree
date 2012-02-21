@@ -18,10 +18,19 @@ Library
                      Data.Concurrent.Deque.ChaseLev,
                      Data.Concurrent.Deque.ReactorDeque
   build-depends:     base >= 4.4.0.0, array, transformers, bits-atomic,
-                     abstract-deque, vector 
+                     abstract-deque, vector,
+                     IORefCAS >= 0.2
   ghc-options: -O2
 
 
 Source-Repository head
     Type:         git
     Location:     git://github.com/rrnewton/haskell-lockfree-queue.git
+
+
+Test-Suite test-chaselev-deque
+    type:       exitcode-stdio-1.0
+    main-is:    Test.hs
+    build-depends: base >= 4.4.0.0 && < 5, IORefCAS >= 0.2, abstract-deque, 
+                   HUnit, test-framework, test-framework-HUnit
+    ghc-options: -O2 -threaded -rtsopts 

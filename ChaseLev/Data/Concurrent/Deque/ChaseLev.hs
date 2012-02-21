@@ -103,7 +103,7 @@ tryPopR CLD{top,bottom,activeArr} = do
   let size = b - t
   if size <= 0 then 
     return Nothing
-  else do 
+   else do 
     obj <- rd arr t 
     (b,_) <- casIORef top t (t+1) 
     if b then 
