@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -o errexit
+set -x
 
 if [ "$HADDOCK" == "" ];
 then HADDOCK=`which haddock`
@@ -8,6 +9,10 @@ fi
 
 if [ "$CABAL" == "" ];
 then CABAL=`which cabal`
+fi
+
+if [ "$GHC" == "" ];
+then GHC=`which ghc`
 fi
 
 
@@ -22,4 +27,4 @@ function doall () {
 
 # doall "cabal haddock --with-haddock=$HADDOCK"
 # doall "cabal install --haddock"
-doall "$CABAL install $*"
+doall "$CABAL install --with-ghc=$GHC $*"

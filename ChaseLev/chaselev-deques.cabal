@@ -32,5 +32,5 @@ Test-Suite test-chaselev-deque
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
     build-depends: base >= 4.4.0.0 && < 5, IORefCAS >= 0.2, abstract-deque, 
-                   HUnit, test-framework, test-framework-HUnit
+                   HUnit, test-framework, test-framework-hunit
     ghc-options: -O2 -threaded -rtsopts 
