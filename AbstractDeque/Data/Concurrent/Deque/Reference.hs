@@ -1,13 +1,13 @@
 {-# LANGUAGE TypeFamilies, CPP #-}
 
 {-| 
-  A strawman implementation of concurrent Dequeus.  This
+  A strawman implementation of concurrent Dequeues.  This
   implementation is so simple that it also makes a good reference
   implementation for debugging.
 
   The queue representation is simply an IORef containing a Data.Sequence.
 
-  Note, alse see "Data.Concurrent.Deque.Reference.DequeInstance". 
+  Also see "Data.Concurrent.Deque.Reference.DequeInstance".
   By convention a module of this name is also provided.
 
 -}

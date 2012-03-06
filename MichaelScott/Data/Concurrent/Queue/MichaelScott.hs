@@ -45,7 +45,7 @@ data Pair a = Null | Cons a (IORef (Pair a))
 
 
 -- | Push a new element onto the queue.  Because the queue can grow,
---   this alway succeeds.
+--   this always succeeds.
 pushL :: LinkedQueue a -> a  -> IO ()
 pushL (LQ headPtr tailPtr) val = do
    r <- newIORef Null
@@ -65,7 +65,7 @@ pushL (LQ headPtr tailPtr) val = do
 	-- The algorithm rereads tailPtr here to make sure it is still good.
 #if 1
  -- There's a possibility for an infinite loop here with StableName based ptrEq.
- -- (And at one point I observerd such an infinite loop.)
+ -- (And at one point I observed such an infinite loop.)
  -- But with one based on reallyUnsafePtrEquality# we should be ok.
 	tail' <- readIORef tailPtr
         if not (ptrEq tail tail') then loop newp 
