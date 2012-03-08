@@ -1,0 +1,93 @@
+
+A log of development activities for this package.
+
+
+[2011.12.29] Observing stack overflow when testing Reference.hs
+===============================================================
+
+Something is wrong with my HUnit testing framework because I found the
+following in the .log file after running "cabal test".
+
+     Test suite test-abstract-deque: RUNNING...
+     Cases: 2  Tried: 1  Errors: 0  Failures: 0Testing reference deque implementation.
+     Done creating queue.  Pushing elements:
+      1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 ....
+     Done filling queue with elements.  Now popping...
+      1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 ....
+     Sum of popped vals: 500500 should be 500500
+     Check that queue is initially null: True
+     Forking 1 producer threads.
+      [0] pushed 0 
+      [0] pushed 1 
+      [0] pushed 2 
+      [0] pushed 3 
+      [0] Stack space overflow: current size 8388608 bytes.
+     Use `+RTS -Ksize -RTS' to increase it.
+     ### Error in:   1:test_fifo_HalfToHalf    
+     thread blocked indefinitely in an MVar operation
+     Cases: 2  Tried: 2  Errors: 1  Failures: 0
+     pushed 4 
+      [0] pushed 5 
+      [0] pushed 6 
+      [0] pushed 7 
+      [0] pushed 8 
+      [0] pushed 9 
+     Forking 1 consumer threads.
+     Reading sums from MVar...
+     Test suite test-abstract-deque: PASS
+     Test suite logged to: dist/test/abstract-deque-0.1.3-test-abstract-deque.log
+
+How is that "PASS" if it got a stack overflow!!!
+
+This looks like a problem with exception handling across threads?
+
+But wait a second, sometimes it appears to error in the *beginning*:
+
+    Test suite test-abstract-deque: RUNNING...
+    Cases: 2  Tried: 1  Errors: 0  Failures: 0Stack space overflow: current size 8388608 bytes.
+    Use `+RTS -Ksize -RTS' to increase it.
+    ### Error in:   1:test_fifo_HalfToHalf    
+    thread blocked indefinitely in an MVar operation
+    Cases: 2  Tried: 2  Errors: 1  Failures: 0
+    Testing reference deque implementation.
+
+    Test FIFO queue: sequential fill and then drain
+    ===============================================
+    Done creating queue.  Pushing elements:
+     1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 ...
+    Done filling queue with elements.  Now popping...
+     1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 ....
+    Sum of popped vals: 500500 should be 500500
+
+    Test FIFO queue: producer/consumer Half-To-Half
+    ===============================================
+    Check that queue is initially null: True
+    Forking 1 producer threads.
+     [0] pushed 0 
+     [0] pushed 1 
+     [0] pushed 2 
+     [0] pushed 3 
+     [0] pushed 4 
+     [0] pushed 5 
+     [0] pushed 6 
+     [0] pushed 7 
+     [0] pushed 8 
+     [0] pushed 9 
+    Forking 1 consumer threads.
+    Reading sums from MVar...
+    Test suite test-abstract-deque: PASS
+    Test suite logged to: dist/test/abstract-deque-0.1.3-test-abstract-deque.log
+
+That almost looks like the test driver (cabal?) is retrying with a larger stack size automatically!??
+
+But then if I compile Test.hs manually and run it directly I never see the stack overflow to begin with.
+
+Oh wait, I think this overflow is actually coming from cabal itself!
+I'm using the parallel (patched) version of cabal.  NOPE, using the
+regular cabal still results in the stack overflow.
+
+[ Update: the reason it was passing above was simply that I didn't
+  exit with an error code: runTestTT won't do it.  Once fixed the
+  stack overflows DO result in test failures.  ]
+
+Right now it's failing nondeterministically.
