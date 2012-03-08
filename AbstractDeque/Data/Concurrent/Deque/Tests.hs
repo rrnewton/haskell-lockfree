@@ -23,7 +23,8 @@ import GHC.IO (unsafePerformIO)
 import GHC.Conc
 import Control.Concurrent.MVar
 import Control.Concurrent (yield, forkOS)
-
+import Control.Exception (catch, SomeException, fromException, AsyncException(ThreadKilled))
+import System.IO (hPutStrLn, stderr)
 import System.Environment
 import Test.HUnit
 
@@ -57,7 +58,22 @@ test_fifo_filldrain q =
      return ()
 
 -- myfork = forkIO
-myfork = forkOS
+myfork msg = forkWithExceptions forkOS msg
+
+-- Exceptions that walk up the fork tree of threads:
+forkWithExceptions :: (IO () -> IO ThreadId) -> String -> IO () -> IO ThreadId
+forkWithExceptions forkit descr action = do 
+   parent <- myThreadId
+   forkit $ 
+      Control.Exception.catch action
+	 (\ e -> 
+          case fromException e of
+            -- Let threadKilled exceptions through.
+	    Just ThreadKilled -> return ()
+            Nothing -> do
+	      hPutStrLn stderr $ "Exception inside child thread "++show descr++": "++show e
+	      throwTo parent (e::SomeException)
+	 )
 
 -- | This one splits the 'numCapabilities' threads into producers and
 -- consumers.  Each thread performs its designated operation as fast
@@ -78,7 +94,7 @@ test_fifo_HalfToHalf total q =
      printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
     
      forM_ [0..producers-1] $ \ id -> 
- 	myfork $ 
+ 	myfork "producer thread" $ 
           forM_ (take perthread [id * producers .. ]) $ \ i -> do 
 	     pushL q i
              when (i - id*producers < 10) $ printf " [%d] pushed %d \n" id i
@@ -86,7 +102,7 @@ test_fifo_HalfToHalf total q =
      printf "Forking %d consumer threads.\n" consumers
 
      forM_ [0..consumers-1] $ \ id -> 
- 	myfork $ do 
+ 	myfork "consumer thread" $ do 
 
           let fn (!sum,!maxiters) i = do
 	       (x,iters) <- spinPop q 
