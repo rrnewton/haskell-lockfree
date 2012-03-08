@@ -173,7 +173,6 @@ nullQ CLD{top,bottom} = do
 -- | For a work-stealing queue `pushL` is the ``local'' push.  Thus
 --   only a single thread should perform this operation.
 pushL :: ChaseLevDeque a -> a  -> IO ()
--- pushL :: Show a => ChaseLevDeque a -> a  -> IO ()
 pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
   b   <- readIORef bottom
   t   <- readIORef top
@@ -181,28 +180,15 @@ pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
   let len = MV.length arr 
       size = b - t
 
---  when (size < 0) $ error$ "pushL: INVARIANT BREAKAGE - bottom, top: "++ show (b,t)
+--  when (dbg && size < 0) $ error$ "pushL: INVARIANT BREAKAGE - bottom, top: "++ show (b,t)
 
   arr' <- if (size >= len - 1) then do 
---            arr' <- gro arr (len + len) -- Double in size.
             arr' <- growCirc t b arr -- Double in size, don't change b/t.
-
---            putStrLn$ "GREW IT: " ++ show arr'
-
-            unless (MV.length arr  == len && 
-		    MV.length arr' == (2*len))
-              (error (printf "Contract violation! Grow didn't really grow the array!  Expected size %d, got %d\n" (2*len) (MV.length arr')))
-
-            -- Only a single thread will do this:
+            -- Only a single thread will do this!:
 	    writeIORef activeArr arr'
             return arr'
           else return arr
 
-  -- when (b >= MV.length arr')$ 
-  --   printf "HUH, bottom is off the end... out of date?, bottom = %d, old size %d (len=%d), new size %d\n" 
-  -- 	   b (MV.length arr) len (MV.length arr')
-  let newlen = MV.length arr'
---  wr arr' (b `mod` newlen)  obj
   putCirc arr' b obj
   writeIORef bottom (b+1)
   return ()
@@ -215,13 +201,12 @@ tryPopR CLD{top,bottom,activeArr} =  tryit "tryPopR" $ do
   b   <- readIORef bottom
   arr <- readIORef activeArr
 
---  when (b < t) $ error$ "tryPopR: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
+ -- when (dbg && b < t) $ error$ "tryPopR: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
 
   let size = b - t
   if size <= 0 then 
     return Nothing
    else do 
---    obj   <- rd arr (t `mod` MV.length arr)
     obj   <- getCirc  arr t
     (b,_) <- casIORef top t (t+1) 
     if b then 
@@ -237,14 +222,13 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
   writeIORef bottom b
   t   <- readIORef top    
 
---  when (b < t) $ error$ "tryPopL: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
+--  when (dbg && b < t) $ error$ "tryPopL: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
 
   let size = b - t  
   if size < 0 then do
     writeIORef bottom t 
     return Nothing
    else do
---    obj <- rd arr (b `mod` MV.length arr)
     obj <- getCirc arr b
     if size > 0 then 
       return (Just obj)
@@ -253,9 +237,5 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
       writeIORef bottom (t+1)
       if b then return$ Just obj
            else return$ Nothing 
-
---       return (if b 
--- 	      then Just obj 
--- 	      else Nothing)
 
 ------------------------------------------------------------
