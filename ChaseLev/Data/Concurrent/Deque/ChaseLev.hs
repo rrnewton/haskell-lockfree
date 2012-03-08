@@ -19,11 +19,15 @@ import qualified Data.Concurrent.Deque.Class as PC
 
 import Data.CAS (casIORef)
 import qualified Data.Vector.Mutable as MV
+import qualified Data.Vector as V
 -- import Data.Vector.Unboxed.Mutable as V
 -- import Data.Vector
 import Text.Printf (printf)
 import Control.Exception(catch, SomeException, throw)
 import Control.Monad (when, unless)
+-- import Control.Monad.ST
+
+import qualified Data.ByteString.Char8 as BS
 
 --------------------------------------------------------------------------------
 -- Instances
@@ -47,26 +51,18 @@ data ChaseLevDeque a = CLD {
   , activeArr :: {-# UNPACK #-} !(IORef (MV.IOVector a))
   }
 
-
---------------------------------------------------------------------------------
--- Circular array routines:
-
-
--- TODO: make a "grow" that uses memcpy.
-
-
 --------------------------------------------------------------------------------
 -- Debugging mode.
+#define DEBUG
 
 {-# INLINE rd #-}
 {-# INLINE wr #-}
-{-# INLINE gro #-}
-#if 0
-gro = unsafeGrow
+#ifndef DEBUG
+nu  = MV.unsafeNew
 rd  = MV.unsafeRead
-wr  = unsafeWrite
+wr  = MV.unsafeWrite
 #else
-gro = MV.grow
+nu  = MV.new 
 rd  = MV.read
 -- wr  = MV.write
 
@@ -78,7 +74,9 @@ wr v i x =
   else MV.write v i x 
 #endif
 
-#if 1 
+
+
+#ifdef DEBUG
 tryit msg action = Control.Exception.catch action 
 	                        (\e -> do putStrLn$ "ERROR inside "++msg++" "++ show e 
                                           throw (e::SomeException))
@@ -86,6 +84,51 @@ tryit msg action = Control.Exception.catch action
 {-# INLINE tryit #-}
 tryit msg action = action
 #endif
+
+
+
+--------------------------------------------------------------------------------
+-- Circular array routines:
+
+
+-- TODO: make a "grow" that uses memcpy.
+growCirc strt end oldarr = do  
+  let len = MV.length oldarr
+      strtmod = strt`mod` len 
+      endmod  = end `mod` len
+  newarr <- nu (len + len)
+  if endmod < strtmod then do
+    let elems1 = len - strtmod
+        elems2 = endmod
+    BS.putStrLn$ BS.pack$ printf "Copying segmented ... %d and %d" elems1 elems2
+
+    -- Copy the upper then lower segments:
+    copyOffset oldarr newarr   strtmod  0       elems1
+    copyOffset oldarr newarr   0        elems1  elems2
+   else do
+    BS.putStrLn$ BS.pack$ printf "Copying one seg into vec of size %d... size %d, strt %d, end %d, strtmod %d endmod %d" (MV.length newarr) (end - strt) strt end strtmod endmod
+    -- Copy a single segment:
+    copyOffset oldarr newarr strtmod 0 (end - strt)
+  return newarr
+
+{-# INLINE growCirc #-}
+
+-- t1 = 
+
+
+-- copyOffset :: MV.MVector s t -> MV.MVector s t -> Int -> Int -> Int -> ST s ()
+copyOffset :: MV.IOVector t -> MV.IOVector t -> Int -> Int -> Int -> IO ()
+#ifdef DEBUG
+copyOffset from to iFrom iTo len =
+  MV.copy (MV.slice iTo len to)
+	  (MV.slice iFrom len from)
+#else 
+copyOffset from to iFrom iTo len =
+  MV.unsafeCopy (MV.unsafeSlice iTo len to)
+	        (MV.unsafeSlice iFrom len from)
+#endif
+{-# INLINE copyOffset #-}
+
 
 --------------------------------------------------------------------------------
 -- Queue Operations
@@ -104,13 +147,14 @@ nullQ :: ChaseLevDeque elt -> IO Bool
 nullQ CLD{top,bottom} = do
   b   <- readIORef bottom
   t   <- readIORef top  
-  return (b == t)
---  let size = b - t  
---  return (size <= 0)
+--  return (b == t)
+  let size = b - t  
+  return (size <= 0)
 
 -- | For a work-stealing queue `pushL` is the ``local'' push.  Thus
 --   only a single thread should perform this operation.
 pushL :: ChaseLevDeque a -> a  -> IO ()
+-- pushL :: Show a => ChaseLevDeque a -> a  -> IO ()
 pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
   b   <- readIORef bottom
   t   <- readIORef top
@@ -118,10 +162,15 @@ pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
   let len = MV.length arr 
       size = b - t
 
+  when (size < 0) $ error$ "pushL: INVARIANT BREAKAGE - bottom, top: "++ show (b,t)
+
   -- when (len >= 209000)$ putStrLn$ "Big vector, pushL, size = "++show size
 
   arr' <- if (size >= len - 1) then do 
-            arr' <- gro arr (len + len) -- Double in size.
+--            arr' <- gro arr (len + len) -- Double in size.
+            arr' <- growCirc t b arr -- Double in size.
+
+--            putStrLn$ "GREW IT: " ++ show arr'
 
             unless (MV.length arr  == len && 
 		    MV.length arr' == (2*len))
@@ -132,10 +181,11 @@ pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
             return arr'
           else return arr
 
-
-  when (b >= MV.length arr')$ printf "HUH, bottom is off the end... out of date?, bottom = %d, old size %d (len=%d), new size %d\n" b (MV.length arr) len (MV.length arr')
-
-  wr arr' b obj
+  -- when (b >= MV.length arr')$ 
+  --   printf "HUH, bottom is off the end... out of date?, bottom = %d, old size %d (len=%d), new size %d\n" 
+  -- 	   b (MV.length arr) len (MV.length arr')
+  let newlen = MV.length arr'
+  wr arr' (b `mod` newlen)  obj
   writeIORef bottom (b+1)
   return ()
 
@@ -146,11 +196,14 @@ tryPopR CLD{top,bottom,activeArr} =  tryit "tryPopR" $ do
   t   <- readIORef top  
   b   <- readIORef bottom
   arr <- readIORef activeArr
+
+  when (b < t) $ error$ "tryPopR: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
+
   let size = b - t
   if size <= 0 then 
     return Nothing
    else do 
-    obj <- rd arr t 
+    obj   <- rd arr (t `mod` MV.length arr)
     (b,_) <- casIORef top t (t+1) 
     if b then 
       return (Just obj)
@@ -164,12 +217,15 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
   b   <- return (b - 1) -- shadowing
   writeIORef bottom b
   t   <- readIORef top    
+
+  when (b < t) $ error$ "tryPopL: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
+
   let size = b - t  
   if size < 0 then do
     writeIORef bottom t 
     return Nothing
    else do
-    obj <- rd arr b
+    obj <- rd arr (b `mod` MV.length arr)
     if size > 0 then 
       return (Just obj)
      else do
