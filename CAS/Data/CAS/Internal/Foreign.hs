@@ -85,11 +85,11 @@ instance CASable CASRef Word32 where
 
 --------------------------------------------------------------------------------
 #if 0
--- | INEFFICENT but safe implementation for arbitrary Haskell values.
+-- | INEFFICIENT but safe implementation for arbitrary Haskell values.
 --   This version uses StablePtr's to store Haskell values in foreign storage.
 -- 
 -- This should NOT be useful for implementing efficient data
--- strcuctures because it itself dependends on concurrent access to
+-- structures because it itself depends on concurrent access to
 -- the GHC runtimes table of pinned StablePtr values.
 instance CASable CASRef a where 
 --  newtype CASRef a = Hskl (StablePtr a)
@@ -105,15 +105,15 @@ instance CASable CASRef a where
     -- Here we assume that when we let go of the reference that we
     -- free whatever StablePtr is contained in it at the time.
     -- fp <- FC.newForeignPtr mem $ 
-          -- There should be no races for this finalizer becuase all
+          -- There should be no races for this finalizer because all
           -- Haskell threads have let go of the foreign pointer:
 --          do curp <- withForeignPtr fp peek 
 --	     freeStablePtr curp
     fp <- mallocForeignPtr
     withForeignPtr fp (`poke` p)
     FC.addForeignPtrFinalizer fp $
-         do putStrLn$ "EXPECTATION INVALVIDATED: CURRENTLY THIS SHOULD NEVER HAPPEN BECAUSE THE FINALIZER KEEPS IT ALIVE!"
-	    -- Todo... week pointer here.
+         do putStrLn$ "EXPECTATION INVALIDATED: CURRENTLY THIS SHOULD NEVER HAPPEN BECAUSE THE FINALIZER KEEPS IT ALIVE!"
+	    -- Todo... weak pointer here.
             curp <- withForeignPtr fp peek 
 	    freeStablePtr curp
 

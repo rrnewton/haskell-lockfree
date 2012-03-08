@@ -9,7 +9,7 @@
    An abstract, parameterizable interface for queues.  
 
    This interface includes a non-associated type family for Deques
-   plus separate type classes encapusulating the Deque operations.
+   plus separate type classes encapsulating the Deque operations.
    This design strives to hide the extra phantom-type parameters from
    the Class constraints and therefore from the type signatures of
    client code.
@@ -20,9 +20,9 @@ module Data.Concurrent.Deque.Class
   -- * Highly parameterized Deque type(s)
    Deque
   -- ** The choices that select a queue-variant.
-  -- *** Choice #1 -- thread saftety.
+  -- *** Choice #1 -- thread safety.
  , Threadsafe, Nonthreadsafe
-  -- *** Choice #2 -- double or or single functionality on an end.
+  -- *** Choice #2 -- double or single functionality on an end.
  , SingleEnd, DoubleEnd
   -- *** Choice #3 -- bounded or growing queues:
  , Bound, Grow
@@ -62,7 +62,7 @@ import Prelude hiding (Bounded)
  several choices.
 
  For example, a work stealing deque is threadsafe only on one end and
- supports push/pop on one end (and popo-only) on the other:
+ supports push/pop on one end (and pop-only) on the other:
 
   >> (Deque NT T  D S Grow elt)
 
@@ -92,7 +92,7 @@ data Nonthreadsafe
 --   (right) functionality. Thus a 'SingleEnd' / 'SingleEnd' combination
 --   is what is commonly referred to as a /single ended queue/, whereas
 --   'DoubleEnd' / 'DoubleEnd' is 
---   a /double ended queue/.  Heterogenous combinations are sometimes
+--   a /double ended queue/.  Heterogeneous combinations are sometimes
 --   colloquially referred to as \"1.5 ended queues\".
 data SingleEnd
 -- | This end of the queue supports both push and pop.
