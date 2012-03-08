@@ -23,7 +23,7 @@ import qualified Data.Vector as V
 -- import Data.Vector.Unboxed.Mutable as V
 -- import Data.Vector
 import Text.Printf (printf)
-import Control.Exception(catch, SomeException, throw)
+import Control.Exception(catch, SomeException, throw, evaluate)
 import Control.Monad (when, unless, forM_)
 -- import Control.Monad.ST
 
@@ -57,23 +57,29 @@ data ChaseLevDeque a = CLD {
 
 {-# INLINE rd #-}
 {-# INLINE wr #-}
+{-# INLINE nu #-}
+{-# INLINE cpy #-}
+{-# INLINE slc #-}
 #ifndef DEBUG
+dbg = False
 nu  = MV.unsafeNew
 rd  = MV.unsafeRead
 wr  = MV.unsafeWrite
+slc = MV.unsafeSlice
+cpy = MV.unsafeCopy
 #else
+dbg = True
 nu  = MV.new 
 rd  = MV.read
--- wr  = MV.write
-
--- Our own bounds checking:
-wr v i x = 
-  -- [2012.03.08] We are indeed seeing a off-by-one error:
-  if i >= MV.length v
-  then error (printf "ERROR: Out of bounds of top of vector index %d, vec length %d\n" i (MV.length v))
-  else MV.write v i x 
+slc = MV.slice
+cpy = MV.copy
+wr  = MV.write
+-- Temp, debugging: Our own bounds checking, better error:
+-- wr v i x = 
+--   if i >= MV.length v
+--   then error (printf "ERROR: Out of bounds of top of vector index %d, vec length %d\n" i (MV.length v))
+--   else MV.write v i x 
 #endif
-
 
 
 #ifdef DEBUG
@@ -110,41 +116,36 @@ growCirc strt end oldarr = do
   --   -- Copy a single segment:
   --   copyOffset oldarr newarr strtmod 0 (end - strt)
   -- return newarr
-
-
+  ----------------------------------------
   -- Easier version first:
   let len   = MV.length oldarr
       elems = end - strt
-  newarr <- nu (len + len)
-  forM_ [1..elems] $ \ind -> do 
+
+  BS.putStrLn$BS.pack$ "Grow to size "++show (len+len)++", copying over "++show elems
+
+  newarr <- if dbg then
+               nu (len + len)
+            else  -- Better errors:
+                V.thaw $ V.generate (len+len) (\i -> error (" uninitialized element at position " ++ show i
+							    ++" had only initialized "++show elems++" elems: "
+							    ++show(strt`mod`(len+len),end`mod`(len+len))))
+  -- Strictly matches what's in the paper:
+  forM_ [strt..end - 1] $ \ind -> do 
     x <- getCirc oldarr ind 
+    evaluate x
     putCirc newarr ind x
   return newarr
-
-
 {-# INLINE growCirc #-}
 
 getCirc arr ind   = rd arr (ind `mod` MV.length arr)
 putCirc arr ind x = wr arr (ind `mod` MV.length arr) x
-
 {-# INLINE getCirc #-}
 {-# INLINE putCirc #-}
 
-
--- t1 = 
-
-
--- copyOffset :: MV.MVector s t -> MV.MVector s t -> Int -> Int -> Int -> ST s ()
 copyOffset :: MV.IOVector t -> MV.IOVector t -> Int -> Int -> Int -> IO ()
-#ifdef DEBUG
 copyOffset from to iFrom iTo len =
-  MV.copy (MV.slice iTo len to)
-	  (MV.slice iFrom len from)
-#else 
-copyOffset from to iFrom iTo len =
-  MV.unsafeCopy (MV.unsafeSlice iTo len to)
-	        (MV.unsafeSlice iFrom len from)
-#endif
+  cpy (slc iTo len to)
+      (slc iFrom len from)
 {-# INLINE copyOffset #-}
 
 
@@ -184,7 +185,7 @@ pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
 
   arr' <- if (size >= len - 1) then do 
 --            arr' <- gro arr (len + len) -- Double in size.
-            arr' <- growCirc t b arr -- Double in size.
+            arr' <- growCirc t b arr -- Double in size, don't change b/t.
 
 --            putStrLn$ "GREW IT: " ++ show arr'
 
