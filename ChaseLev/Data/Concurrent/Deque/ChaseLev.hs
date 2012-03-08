@@ -24,7 +24,7 @@ import qualified Data.Vector as V
 -- import Data.Vector
 import Text.Printf (printf)
 import Control.Exception(catch, SomeException, throw)
-import Control.Monad (when, unless)
+import Control.Monad (when, unless, forM_)
 -- import Control.Monad.ST
 
 import qualified Data.ByteString.Char8 as BS
@@ -93,25 +93,43 @@ tryit msg action = action
 
 -- TODO: make a "grow" that uses memcpy.
 growCirc strt end oldarr = do  
-  let len = MV.length oldarr
-      strtmod = strt`mod` len 
-      endmod  = end `mod` len
-  newarr <- nu (len + len)
-  if endmod < strtmod then do
-    let elems1 = len - strtmod
-        elems2 = endmod
-    BS.putStrLn$ BS.pack$ printf "Copying segmented ... %d and %d" elems1 elems2
+  -- let len = MV.length oldarr
+  --     strtmod = strt`mod` len 
+  --     endmod  = end `mod` len
+  -- newarr <- nu (len + len)
+  -- if endmod < strtmod then do
+  --   let elems1 = len - strtmod
+  --       elems2 = endmod
+  --   BS.putStrLn$ BS.pack$ printf "Copying segmented ... %d and %d" elems1 elems2
 
-    -- Copy the upper then lower segments:
-    copyOffset oldarr newarr   strtmod  0       elems1
-    copyOffset oldarr newarr   0        elems1  elems2
-   else do
-    BS.putStrLn$ BS.pack$ printf "Copying one seg into vec of size %d... size %d, strt %d, end %d, strtmod %d endmod %d" (MV.length newarr) (end - strt) strt end strtmod endmod
-    -- Copy a single segment:
-    copyOffset oldarr newarr strtmod 0 (end - strt)
+  --   -- Copy the upper then lower segments:
+  --   copyOffset oldarr newarr   strtmod  0       elems1
+  --   copyOffset oldarr newarr   0        elems1  elems2
+  --  else do
+  --   BS.putStrLn$ BS.pack$ printf "Copying one seg into vec of size %d... size %d, strt %d, end %d, strtmod %d endmod %d" (MV.length newarr) (end - strt) strt end strtmod endmod
+  --   -- Copy a single segment:
+  --   copyOffset oldarr newarr strtmod 0 (end - strt)
+  -- return newarr
+
+
+  -- Easier version first:
+  let len   = MV.length oldarr
+      elems = end - strt
+  newarr <- nu (len + len)
+  forM_ [1..elems] $ \ind -> do 
+    x <- getCirc oldarr ind 
+    putCirc newarr ind x
   return newarr
 
+
 {-# INLINE growCirc #-}
+
+getCirc arr ind   = rd arr (ind `mod` MV.length arr)
+putCirc arr ind x = wr arr (ind `mod` MV.length arr) x
+
+{-# INLINE getCirc #-}
+{-# INLINE putCirc #-}
+
 
 -- t1 = 
 
@@ -162,9 +180,7 @@ pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
   let len = MV.length arr 
       size = b - t
 
-  when (size < 0) $ error$ "pushL: INVARIANT BREAKAGE - bottom, top: "++ show (b,t)
-
-  -- when (len >= 209000)$ putStrLn$ "Big vector, pushL, size = "++show size
+--  when (size < 0) $ error$ "pushL: INVARIANT BREAKAGE - bottom, top: "++ show (b,t)
 
   arr' <- if (size >= len - 1) then do 
 --            arr' <- gro arr (len + len) -- Double in size.
@@ -185,7 +201,8 @@ pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
   --   printf "HUH, bottom is off the end... out of date?, bottom = %d, old size %d (len=%d), new size %d\n" 
   -- 	   b (MV.length arr) len (MV.length arr')
   let newlen = MV.length arr'
-  wr arr' (b `mod` newlen)  obj
+--  wr arr' (b `mod` newlen)  obj
+  putCirc arr' b obj
   writeIORef bottom (b+1)
   return ()
 
@@ -197,13 +214,14 @@ tryPopR CLD{top,bottom,activeArr} =  tryit "tryPopR" $ do
   b   <- readIORef bottom
   arr <- readIORef activeArr
 
-  when (b < t) $ error$ "tryPopR: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
+--  when (b < t) $ error$ "tryPopR: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
 
   let size = b - t
   if size <= 0 then 
     return Nothing
    else do 
-    obj   <- rd arr (t `mod` MV.length arr)
+--    obj   <- rd arr (t `mod` MV.length arr)
+    obj   <- getCirc  arr t
     (b,_) <- casIORef top t (t+1) 
     if b then 
       return (Just obj)
@@ -218,14 +236,15 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
   writeIORef bottom b
   t   <- readIORef top    
 
-  when (b < t) $ error$ "tryPopL: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
+--  when (b < t) $ error$ "tryPopL: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
 
   let size = b - t  
   if size < 0 then do
     writeIORef bottom t 
     return Nothing
    else do
-    obj <- rd arr (b `mod` MV.length arr)
+--    obj <- rd arr (b `mod` MV.length arr)
+    obj <- getCirc arr b
     if size > 0 then 
       return (Just obj)
      else do
