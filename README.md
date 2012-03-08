@@ -63,6 +63,28 @@ can build them manually with GHC using a command like the following:
     cd MichaelScott/
     ghc-7.4.1 -O2 -threaded -rtsopts Test.hs -o Test.exe
 
+Building with Profiling for debugging:
+----------------------------------------
+
+
+    ghc-7.4.1 -prof -osuf=o_p -O2 -threaded -rtsopts Test.hs -o Test.exe
+
+You might have to reinstall some of the dependencies with profiling
+enabled:
+
+    cabal install -p hostname xml regex-base regex-posix ansi-terminal ansi-wl-pprint test-framework test-framework-hunit --reinstall           
+
+Reinstalling with profiling can be REALLY annoying once the libraries
+are already installed.  For example, if you forget a dependency above
+it will complete most of the compile, giving you the "profiling
+version not available" error only later on, resulting in a quadratic
+compilation process as you reinstall, add one more dep, reinstall,
+repeat.
+
+
+
+
+
 KNOWN PROBLEMS
 ================================================================================
 

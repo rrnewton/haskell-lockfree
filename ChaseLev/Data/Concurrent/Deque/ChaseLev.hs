@@ -2,7 +2,10 @@
 
 -- | Chase-Lev work stealing Deques
 -- 
--- This implementation derives directly from the pseudocode in the 2005 SPAA paper.
+-- This implementation derives directly from the pseudocode in the 2005 SPAA paper:
+--
+--   http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.170.1097&rep=rep1&type=pdf
+--
 module Data.Concurrent.Deque.ChaseLev 
   (
     -- The convention here is to directly provide the concrete
@@ -15,7 +18,7 @@ import Data.IORef
 import qualified Data.Concurrent.Deque.Class as PC
 
 import Data.CAS (casIORef)
-import Data.Vector.Mutable as V
+import qualified Data.Vector.Mutable as MV
 -- import Data.Vector.Unboxed.Mutable as V
 -- import Data.Vector
 
@@ -37,7 +40,7 @@ instance PC.PopL ChaseLevDeque where
 data ChaseLevDeque a = CLD {
     top       :: {-# UNPACK #-} !(IORef Int)
   , bottom    :: {-# UNPACK #-} !(IORef Int)
-  , activeArr :: {-# UNPACK #-} !(IORef (IOVector a))
+  , activeArr :: {-# UNPACK #-} !(IORef (MV.IOVector a))
   }
 
 --------------------------------------------------------------------------------
@@ -49,11 +52,11 @@ data ChaseLevDeque a = CLD {
 #if 0
 gro = unsafeGrow
 wr  = unsafeWrite
-rd  = V.unsafeRead
+rd  = MV.unsafeRead
 #else
-gro = V.grow
-wr  = V.write
-rd  = V.read
+gro = MV.grow
+wr  = MV.write
+rd  = MV.read
 #endif
 
 --------------------------------------------------------------------------------
@@ -62,7 +65,7 @@ rd  = V.read
 -- logInitialSize
 newQ :: IO (ChaseLevDeque elt)
 newQ = do
-  v <- V.new 32 
+  v <- MV.new 32 
   r1 <- newIORef 0
   r2 <- newIORef 0
   r3 <- newIORef v
@@ -82,7 +85,7 @@ pushL CLD{top,bottom,activeArr} obj =   do
   b   <- readIORef bottom
   t   <- readIORef top
   arr <- readIORef activeArr
-  let len = V.length arr 
+  let len = MV.length arr 
       size = b - t
   arr' <- if (size >= len - 1) then do 
             arr' <- gro arr (len + len)
