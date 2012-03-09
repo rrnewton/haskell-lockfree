@@ -182,17 +182,25 @@ test_all newq =
 
 spinPop q = loop 1
  where 
-  warnevery  = 5000
+  hardspinfor = 10
+  sleepevery = 1000
+  warnafter  = 5000
   errorafter = 1 * 1000 * 1000
   loop n = do
-     when (n == warnevery)
-	  (putStrLn$ "Warning: Failed to pop "++ show warnevery ++ 
+     when (n == warnafter)
+	  (putStrLn$ "Warning: Failed to pop "++ show warnafter ++ 
 	             " times consecutively.  That shouldn't happen in this benchmark.")
 --     when (n == errorafter) (error "This can't be right.  A queue consumer spun 1M times.")
      x <- tryPopR q 
      case x of 
+       -- This yields EVERY time.  And yet we get these real bursts / runs of failure.
        Nothing -> do putStr "."
-                     yield
+                     -- Every `sleepevery` times do a significant delay:
+		     if n `mod` sleepevery == 0 
+		      then threadDelay n -- 1ms after 1K fails, 2 after 2K...
+		      else when (n > hardspinfor)
+			     yield -- At LEAST yield... you'd think this is pretty strong backoff.
+		     		     
 		     loop (n+1)
        Just x  -> return (x, n)
 

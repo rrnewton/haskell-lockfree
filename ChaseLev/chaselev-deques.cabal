@@ -1,5 +1,5 @@
 Name:                chaselev-deque
-Version:             0.1
+Version:             0.1.1
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan R. Newton, Edward Kmett 
@@ -8,6 +8,9 @@ Category:            Data, Concurrent
 Build-type:          Simple
 Cabal-version:       >=1.2
 
+-- Version history:
+-- 0.1.1 -- bump for fixing bugs!  First release candidate.
+
 Homepage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
 
 Synopsis: Chase & Lev work-stealing lock-free double-ended queues (deques).
@@ -15,8 +18,9 @@ Synopsis: Chase & Lev work-stealing lock-free double-ended queues (deques).
 
 Library
   exposed-modules:   Data.Concurrent.Deque.ChaseLev.DequeInstance,
-                     Data.Concurrent.Deque.ChaseLev,
-                     Data.Concurrent.Deque.ReactorDeque
+                     Data.Concurrent.Deque.ChaseLev
+-- Disabling this [2012.03.08].  It got terrible performance anyway:
+--                     Data.Concurrent.Deque.ReactorDeque
   build-depends:     base >= 4.4.0.0, array, transformers, bits-atomic,
                      abstract-deque, vector,
                      IORefCAS >= 0.2

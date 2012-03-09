@@ -53,7 +53,7 @@ data ChaseLevDeque a = CLD {
 
 --------------------------------------------------------------------------------
 -- Debugging mode.
--- define DEBUG
+#define DEBUG
 
 {-# INLINE rd #-}
 {-# INLINE wr #-}
@@ -121,7 +121,7 @@ growCirc strt end oldarr = do
   let len   = MV.length oldarr
       elems = end - strt
 
---  BS.putStrLn$BS.pack$ "Grow to size "++show (len+len)++", copying over "++show elems
+  putStrLn$ "Grow to size "++show (len+len)++", copying over "++show elems
 
   newarr <- if dbg then
                nu (len + len)
