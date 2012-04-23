@@ -115,6 +115,7 @@ testCAS1 r =
      ls <- readIORef bitls
      return (reverse ls)
 
+
 ----------------------------------------------------------------------------------------------------
 
 -- This version hammers on CASref from all threads, then checks to see
