@@ -54,12 +54,12 @@ Library
 
 -- Executable 
 Test-Suite test-IORefCAS
-    if os(mingw32)
-      buildable: False
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
     ghc-options: -O2 -threaded -rtsopts 
-    cpp-options: -DT1 -DT2 -DT3
+    cpp-options: -DT1 -DT2
+    if !os(mingw32)
+      cpp-options: -DT3
     build-depends: base >= 4.4 && < 5, time, ghc-prim,
                    QuickCheck, HUnit, bits-atomic
 -- TODO: Refactor to use test-framework:
