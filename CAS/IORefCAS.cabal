@@ -41,8 +41,9 @@ Library
   exposed-modules:   Data.CAS,
                      Data.CAS.Internal.Class,
                      Data.CAS.Internal.Fake,
-                     Data.CAS.Internal.Native,
-                     Data.CAS.Internal.Foreign
+                     Data.CAS.Internal.Native
+  if (!os(mingw32))
+    exposed-modules: Data.CAS.Internal.Foreign
   -- I have observed problems on both Mac and Linux with 7.0.x.  [2011.12.23]
   -- Thus for now we require GHC 7.2 or greater (base 4.4 or greater).
   -- Namely Test.hs observes CAS failing half the time even with only ONE thread.
@@ -53,6 +54,8 @@ Library
 
 -- Executable 
 Test-Suite test-IORefCAS
+    if os(mingw32)
+      buildable: False
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
     ghc-options: -O2 -threaded -rtsopts 
