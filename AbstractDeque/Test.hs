@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, NamedFieldPuns #-}
+{-# OPTIONS_GHC -with-rtsopts=-K32M #-}
 import Data.Concurrent.Deque.Class
 -- import Data.Concurrent.Deque.Class.Reference (newQueue)
 -- import Data.Concurrent.MegaDeque 
