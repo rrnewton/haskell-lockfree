@@ -1,4 +1,6 @@
 {-# LANGUAGE BangPatterns, RankNTypes #-}
+
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Data.Concurrent.Deque.Tests 
  ( 
    -- * Tests for simple FIFOs.
@@ -70,7 +72,7 @@ forkWithExceptions forkit descr action = do
           case fromException e of
             -- Let threadKilled exceptions through.
 	    Just ThreadKilled -> return ()
-            Nothing -> do
+            _ -> do
 	      hPutStrLn stderr $ "Exception inside child thread "++show descr++": "++show e
 	      throwTo parent (e::SomeException)
 	 )
