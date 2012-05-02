@@ -67,11 +67,14 @@ Test-Suite test-abstract-deque
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
     build-depends:     base >= 4 && < 5, containers, HUnit
-    ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-K32M
+    ghc-options: -O2 -threaded -rtsopts
     if impl( ghc >= 7.2 ) && !os(mingw32) {
+      ghc-options:  -with-rtsopts=-K32M
       build-depends:   IORefCAS >= 0.2 
       cpp-options:  -DUSE_CAS -DDEFAULT_SIGNATURES
   --    extensions: DefaultSignatures
   --    GHC-Options: -XDefaultSignatures
     }
+    if impl( ghc < 7 )
+      buildable: False
 
