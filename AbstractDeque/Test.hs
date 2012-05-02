@@ -30,6 +30,7 @@ test_2 = TestCase $ assert $
      Just x <- tryPopR q
      assertEqual "test_2 result" x 33
 
+#if __GLASGOW_HASKELL__ >= 700
 main = 
  do putStrLn "Testing reference deque implementation."
     Counts{errors, failures} <- runTestTT $ 
@@ -44,3 +45,6 @@ main =
        putStrLn$ "Test.hs: Some tests failed! ("++show (errors+failures)++
 		 ") Reporting non zero exit code..."
        exitFailure
+#else
+main = putStrLn "WARNING: Tests disabled for GHC < 7"
+#endif
