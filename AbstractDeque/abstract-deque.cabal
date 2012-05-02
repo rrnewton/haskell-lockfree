@@ -66,6 +66,12 @@ Source-Repository head
 Test-Suite test-abstract-deque
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
-    build-depends:     base >= 4 && < 5, IORefCAS >= 0.2, containers, HUnit
+    build-depends:     base >= 4 && < 5, containers, HUnit
     ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-K32M
+    if impl( ghc >= 7.2 ) && !os(mingw32) {
+      build-depends:   IORefCAS >= 0.2 
+      cpp-options:  -DUSE_CAS -DDEFAULT_SIGNATURES
+  --    extensions: DefaultSignatures
+  --    GHC-Options: -XDefaultSignatures
+    }
 
