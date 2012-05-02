@@ -1,5 +1,7 @@
-{-# LANGUAGE ScopedTypeVariables, NamedFieldPuns #-}
+{-# LANGUAGE CPP, ScopedTypeVariables, NamedFieldPuns #-}
+#if __GLASGOW_HASKELL >= 700
 {-# OPTIONS_GHC -with-rtsopts=-K32M #-}
+#endif
 import Data.Concurrent.Deque.Class
 -- import Data.Concurrent.Deque.Class.Reference (newQueue)
 -- import Data.Concurrent.MegaDeque 
