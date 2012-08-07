@@ -11,7 +11,7 @@
 module Data.Concurrent.Queue.MichaelScott
  (
    -- The convention here is to directly provide the concrete
-   -- operations as well as providing the class instances.
+   -- operations as well as providing the typeclass instances.
    LinkedQueue(), newQ, nullQ, pushL, tryPopR, 
  )
   where
@@ -67,7 +67,7 @@ pushL (LQ headPtr tailPtr) val = do
  -- There's a possibility for an infinite loop here with StableName based ptrEq.
  -- (And at one point I observed such an infinite loop.)
  -- But with one based on reallyUnsafePtrEquality# we should be ok.
-	tail' <- readIORef tailPtr
+	tail' <- readIORef tailPtr   -- ANDREAS: used atomicModifyIORef here
         if not (ptrEq tail tail') then loop newp 
          else case next' of 
 #else
@@ -79,9 +79,15 @@ pushL (LQ headPtr tailPtr) val = do
                           else loop newp
           Cons _ _ -> do 
 	     -- We try to bump the tail in this case, but if we don't someone else will.
-	     casIORef next next' newp
+	     casIORef next next' newp -- ANDREAS: FOUND ERROR HERE  -- casIORef tailPtr tail next'
+                                      -- ANDREAS: loop needs to be reentered here; incorrect exit
 	     return tail
 
+
+-- Andreas's checked this invariant in several places
+checkInvariant = do 
+  -- Check for: head /= tail, and head->next == NULL
+  return ()
 
 -- | Attempt to pop an element from the queue if one is available.
 --   tryPop will always return promptly, but will return 'Nothing' if
@@ -97,7 +103,7 @@ tryPopR (LQ headPtr tailPtr) = loop
       Cons _ next -> do
         next' <- readIORef next
         -- As with push, double-check our information is up-to-date. (head,tail,next consistent)
-        head' <- readIORef headPtr
+        head' <- readIORef headPtr -- ANDREAS: used atomicModifyIORef headPtr (\x -> (x,x))
         if not (ptrEq head head') then loop else do 
 	  -- Is queue empty or tail falling behind?:
           if ptrEq head tail then do 
@@ -116,9 +122,9 @@ tryPopR (LQ headPtr tailPtr) = loop
 	        Null -> loop 
 		Cons value _ -> do 
                   -- Try to swing Head to the next node
-		  (b,_) <- casIORef headPtr head next'
+		  (b,_) <- casIORef headPtr head next' -- ANDREAS: FOUND CONDITION VIOLATED AFTER HERE
 		  if b then return (Just value) -- Dequeue done; exit loop.
-		       else loop   
+		       else loop   -- ANDREAS: observed this loop being taken >1M times
           
 -- | Create a new queue.
 newQ :: IO (LinkedQueue a)
