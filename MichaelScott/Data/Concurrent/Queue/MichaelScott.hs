@@ -27,6 +27,7 @@ import Control.Concurrent.MVar
 import qualified Data.Concurrent.Deque.Class as C
 
 import Data.CAS (casIORef, ptrEq)
+-- NOTE: you can switch which CAS implementation is used here:
 -- import Data.CAS.Internal.Fake (casIORef, ptrEq)
 -- #warning "Using fake CAS"
 -- import Data.CAS.Internal.Native (casIORef, ptrEq)
@@ -58,31 +59,33 @@ pushL (LQ headPtr tailPtr) val = do
  where 
   loop newp = do 
    tail <- readIORef tailPtr -- [Re]read the tailptr from the queue structure.
-   case tail of 
+   case tail of
+     -- The head and tail pointers should never themselves be NULL:
      Null -> error "push: LinkedQueue invariants broken.  Internal error."
-     Cons _ next -> do
-	next' <- readIORef next
-	-- The algorithm rereads tailPtr here to make sure it is still good.
-#if 1
+     Cons _ nextPtr -> do
+	next <- readIORef nextPtr
+
+#if 0
+    	-- The algorithm rereads tailPtr here to make sure it is still good:
+ --    
  -- There's a possibility for an infinite loop here with StableName based ptrEq.
  -- (And at one point I observed such an infinite loop.)
  -- But with one based on reallyUnsafePtrEquality# we should be ok.
 	tail' <- readIORef tailPtr   -- ANDREAS: used atomicModifyIORef here
         if not (ptrEq tail tail') then loop newp 
-         else case next' of 
+         else case next of 
 #else
-	case next' of 
+	case next of 
 #endif
-          -- We skip that simply because comparing pointers would require StableNames.
-          Null -> do (b,newtail) <- casIORef next next' newp
+          -- Here tail points (or pointed!) to the last node.  Try to link our new node.
+          Null -> do (b,newtail) <- casIORef nextPtr next newp
 		     if b then return tail
                           else loop newp
           Cons _ _ -> do 
-	     -- We try to bump the tail in this case, but if we don't someone else will.
-	     casIORef next next' newp -- ANDREAS: FOUND ERROR HERE  -- casIORef tailPtr tail next'
-                                      -- ANDREAS: loop needs to be reentered here; incorrect exit
-	     return tail
-
+             -- Someone has beat us by extending the tail.  Here we
+             -- might have to do some community service by updating the tail ptr.
+             casIORef tailPtr tail next 
+             loop newp
 
 -- Andreas's checked this invariant in several places
 checkInvariant :: IO ()

@@ -100,13 +100,11 @@ Note that under -N2 it DOES hit the 1M cap on spinPop EVEN with the
 recently added "yield" in spinPop.
 
 
+[2012.08.08] Back to debugging with help from Andreas.
 
+I just confirmed that on hive with -N32 I definitely see a deadlock.
 
-
-
-
-
-
-
-
+Go Andreas!  There was flagrantly incorrect code at the end of pushL
+which he caught.  That one fix corrects the deadlock for me when
+running -N32.
 
