@@ -65,9 +65,8 @@ pushL (LQ headPtr tailPtr) val = do
      Cons _ nextPtr -> do
 	next <- readIORef nextPtr
 
+-- Optimization: The algorithm can reread tailPtr here to make sure it is still good:
 #if 0
-    	-- The algorithm rereads tailPtr here to make sure it is still good:
- --    
  -- There's a possibility for an infinite loop here with StableName based ptrEq.
  -- (And at one point I observed such an infinite loop.)
  -- But with one based on reallyUnsafePtrEquality# we should be ok.
@@ -97,6 +96,8 @@ checkInvariant = do
 --   tryPop will always return promptly, but will return 'Nothing' if
 --   the queue is empty.
 tryPopR ::  LinkedQueue a -> IO (Maybe a)
+-- TODO -- add some kind of backoff.  This should probably at least
+-- yield after a certain number of failures.
 tryPopR (LQ headPtr tailPtr) = loop
  where 
   loop = do 
@@ -160,39 +161,3 @@ instance C.DequeClass LinkedQueue where
   tryPopR = tryPopR
 
 --------------------------------------------------------------------------------
---   Notes
---------------------------------------------------------------------------------
-{- 
-[2011.10.29] {Debugging}
-
-Currently segfaulting.  GDB says:
-
-  #0  0x00000001000492e8 in base_GHCziReal_zdfIntegralIntzuzdctoInteger_info ()
-  #1  0x0000000000000000 in ?? ()
-
-Valgrind on the other hand says: 
-
-    ==16469== Invalid read of size 8
-    ==16469==    at 0x52E349: base_GHCziSTRef_readSTRef1_info (in /nfs/nfs3/home/rrnewton/working_copies/haskell-lockfree/test.exe)
-    ==16469==  Address 0x0 is not stack'd, malloc'd or (recently) free'd
-    ==16469== 
-    ==16469== 
-    ==16469== Process terminating with default action of signal 11 (SIGSEGV)
-    ==16469==  Access not within mapped region at address 0x0
-    ==16469==    at 0x52E349: base_GHCziSTRef_readSTRef1_info (in /nfs/nfs3/home/rrnewton/working_copies/haskell-lockfree/test.exe)
-    ==16469==  If you believe this happened as a result of a stack
-    ==16469==  overflow in your program's main thread (unlikely but
-    ==16469==  possible), you can try to increase the size of the
-    ==16469==  main thread stack using the --main-stacksize= flag.
-    ==16469==  The main thread stack size used in this run was 10485760.
-    ==16469== 
-
-Looks like a null pointer dereference.
-In GHCI sometimes it segfaults and sometimes I get this error:
-
-    Done filling queue with elements.  Now popping...
-    <interactive>: internal error: ARR_WORDS object entered!
-	(GHC version 7.2.1 for x86_64_unknown_linux)
-	Please report this as a GHC bug:  http://www.haskell.org/ghc/reportabug
-
- -}
