@@ -57,7 +57,7 @@ pushL (LQ headPtr tailPtr) val = do
    return ()
  where 
   loop newp = do 
-   tail <- readIORef tailPtr -- Reread the tailptr from the queue structure.
+   tail <- readIORef tailPtr -- [Re]read the tailptr from the queue structure.
    case tail of 
      Null -> error "push: LinkedQueue invariants broken.  Internal error."
      Cons _ next -> do
@@ -85,6 +85,7 @@ pushL (LQ headPtr tailPtr) val = do
 
 
 -- Andreas's checked this invariant in several places
+checkInvariant :: IO ()
 checkInvariant = do 
   -- Check for: head /= tail, and head->next == NULL
   return ()
