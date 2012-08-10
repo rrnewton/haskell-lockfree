@@ -23,21 +23,20 @@ import qualified Data.Concurrent.Deque.Reference as R
 
 import Control.Monad
 import Data.IORef
-import System.Mem.StableName
+-- import System.Mem.StableName
 import Text.Printf
-import GHC.IO (unsafePerformIO)
-import GHC.Conc
+import GHC.Conc (numCapabilities, throwTo, threadDelay, myThreadId)
 import Control.Concurrent.MVar
-import Control.Concurrent (yield, forkOS, forkIO)
+import Control.Concurrent (yield, forkOS, forkIO, ThreadId)
 import Control.Exception (catch, SomeException, fromException, AsyncException(ThreadKilled))
+import System.Environment (getEnvironment)
 import System.IO (hPutStrLn, stderr)
-import System.Environment
+import System.IO.Unsafe (unsafePerformIO)
 import Test.HUnit
 
-import System.Environment (getEnvironment)
-import System.IO.Unsafe (unsafePerformIO)
 import Debug.Trace (trace)
 
+theEnv :: [(String, String)]
 theEnv = unsafePerformIO getEnvironment
 
 ----------------------------------------------------------------------------------------------------
@@ -80,6 +79,7 @@ producerRatio = case lookup "PRODUCERRATIO" theEnv of
                  Just str -> warnUsing ("PRODUCERRATIO = "++str) $ 
                              read str
 
+warnUsing :: String -> a -> a
 warnUsing str a = trace ("  [Warning]: Using environment variable "++str) a
 
 
@@ -87,7 +87,7 @@ warnUsing str a = trace ("  [Warning]: Using environment variable "++str) a
 -- Misc Helpers
 ----------------------------------------------------------------------------------------------------
 
--- myfork = forkIO
+myfork :: String -> IO () -> IO ThreadId
 myfork msg = forkWithExceptions forkThread msg
 
 -- Exceptions that walk up the fork tree of threads:
@@ -144,8 +144,8 @@ test_fifo_filldrain q =
 test_fifo_OneBottleneck :: DequeClass d => Int -> d Int -> IO ()
 test_fifo_OneBottleneck total q = 
   do -- q <- newQ
-     putStrLn$ "\nTest FIFO queue: producer/consumer Half-To-Half"
-     putStrLn "==============================================="
+     putStrLn$ "\nTest FIFO queue: producers & consumers thru 1 queue"
+     putStrLn "======================================================"
      mv <- newEmptyMVar          
      x <- nullQ q
      putStrLn$ "Check that queue is initially null: "++show x

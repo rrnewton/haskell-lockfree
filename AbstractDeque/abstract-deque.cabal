@@ -41,6 +41,11 @@ Description:
   This package also includes a simple reference implementation based
   on 'IORef' and "Data.Sequence".
 
+
+Flag useCAS
+  Description: Enable the reference implementation to use hardware compare-and-swap.
+  Default:     True
+
 Library
   exposed-modules:   Data.Concurrent.Deque.Class,
                      Data.Concurrent.Deque.Tests,
@@ -49,7 +54,7 @@ Library
   build-depends:     base >= 4 && < 5, 
                      containers, HUnit
 
-  if impl( ghc >= 7.2 ) && !os(mingw32) {
+  if flag(useCAS) && impl( ghc >= 7.4 ) && !os(mingw32) {
     build-depends:   IORefCAS >= 0.2 
     cpp-options:  -DUSE_CAS -DDEFAULT_SIGNATURES
 --    extensions: DefaultSignatures
@@ -68,7 +73,7 @@ Test-Suite test-abstract-deque
     main-is:    Test.hs
     build-depends:     base >= 4 && < 5, containers, HUnit
     ghc-options: -O2 -threaded -rtsopts
-    if impl( ghc >= 7.2 ) && !os(mingw32) {
+    if flag(useCAS) && impl( ghc >= 7.4 ) && !os(mingw32) {
       ghc-options:  -with-rtsopts=-K32M
       build-depends:   IORefCAS >= 0.2 
       cpp-options:  -DUSE_CAS -DDEFAULT_SIGNATURES

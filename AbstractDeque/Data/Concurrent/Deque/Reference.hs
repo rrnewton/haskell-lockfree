@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, CPP #-}
+{-# LANGUAGE TypeFamilies, CPP, BangPatterns #-}
 
 {-| 
   A strawman implementation of concurrent Dequeues.  This
@@ -35,22 +35,34 @@ modify = atomicModifyIORef
 _is_using_CAS = False
 #endif
 {-# INLINE modify #-}
+modify :: IORef a -> (a -> (a, b)) -> IO b
+_is_using_CAS :: Bool
+
 
 -- | Stores a size bound (if any) as well as a mutable Seq.
 data SimpleDeque elt = DQ {-# UNPACK #-} !Int !(IORef (Seq elt))
 
 
+newQ :: IO (SimpleDeque elt)
 newQ = do r <- newIORef empty
-	  return (DQ 0 r)
+	  return $! DQ 0 r
 
+newBoundedQ :: Int -> IO (SimpleDeque elt)
 newBoundedQ lim = 
   do r <- newIORef empty
-     return (DQ lim r)
+     return $! DQ lim r
 
-pushL (DQ 0 qr) x = modify qr (\s -> (x <| s, ()))
+pushL :: SimpleDeque t -> t -> IO ()
+pushL (DQ 0 qr) !x = modify qr addleft
+ where 
+   -- Here we are very strict to avoid stack leaks.
+   addleft !s = extended `seq` pair
+    where extended = x <| s 
+          pair = (extended, ())
 pushL (DQ n _) _ = error$ "should not call pushL on Deque with size bound "++ show n
 
-tryPopR (DQ _ qr) = modify qr $ \s -> 
+tryPopR :: SimpleDeque a -> IO (Maybe a)
+tryPopR (DQ _ qr) = modify qr $ \ s -> 
    case viewr s of
      EmptyR  -> (empty, Nothing)
      s' :> x -> (s', Just x)
