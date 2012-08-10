@@ -107,3 +107,74 @@ I just confirmed that on hive with -N32 I definitely see a deadlock.
 Go Andreas!  There was flagrantly incorrect code at the end of pushL
 which he caught.  That one fix corrects the deadlock for me when
 running -N32.
+
+[2012.08.10] {Differing performance across small and large SMPs}
+
+I will be referring to these machines:
+
+ * hive -- 32 core westmere @ 2.13 ghz
+ * basalt -- 4 core westmere @ 3.1 ghz
+ * veronica -- 2 core harpertown @ 3ghz
+
+Here are the times for running:
+
+    time ./Test.exe -t Half +RTS -N2 
+
+ * hive     -- 400-700ms
+ * basalt   -- ~200ms
+ * veronica -- ~300ms
+
+Why does it do so badly on the bigger SMP EVEN whene there are only 2
+threads.  Remember, in the current version of this benchmark, we are
+using forkOS -- the threads are real OS threads.  Is the problem that
+they're getting placed on different chips?
+
+And then what about adding more parallelism & contention?  But recall
+that this benchmark is pushing exactly 500K elements through the queue
+IRRESPECTIVE of how many threads are used.  So it is doing the same
+amount of "work" in each case, just under more contention.
+
+    time ./Test.exe -t Half +RTS -N4
+
+ * hive     -- ~1000 ms
+ * basalt   -- ~100  ms
+ * veronica -- ~1000 ms 
+
+    time ./Test.exe -t Half +RTS -N8
+
+ * hive     -- 1 - 1.5s
+ * basalt   -- 1.2 - 1.5s 
+ * veronica -- 2.3 - 2.5s
+
+    time ./Test.exe -t Half +RTS -N16
+
+ * hive     -- 1.3 - 2.0s
+ * basalt   -- 1.6 - 2.3
+ * veronica -- 4.4s - 6s
+
+
+    time ./Test.exe -t Half +RTS -N32
+
+ * hive     -- 2.2 - 3.0s
+ * basalt   -- 3.3 - 3.8s 
+ * veronica -- 8.5s
+
+Are there issues here with blackholing and OS level context
+switching??  We really need to test this while changing forkOS/forkIO
+as well as -N.
+
+I am seeing NO retries on the consumer threads in ANY of the above...
+This would mean that the backoff that's built into the benchmark
+itself (spinPop function calls yield after failure and threadDelay
+after more than 1000 -- VERY aggressive backoff).  OH WAIT the current
+version of tryPop always retries under contention and only fails if
+the queue is empty.  So we would not expect contention to result in
+retries at the level of "spinPop".
+
+
+
+
+
+
+
+

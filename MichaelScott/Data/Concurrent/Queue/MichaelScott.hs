@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, CPP  #-}
+{-# LANGUAGE BangPatterns, CPP #-}
 -- TypeFamilies, FlexibleInstances
 
 -- | Michael and Scott lock-free, single-ended queues.
@@ -35,7 +35,7 @@ import Data.CAS (casIORef, ptrEq)
 
 
 -- Considering using the Queue class definition:
--- import Data.MQueue.Class28
+-- import Data.MQueue.Class
 
 data LinkedQueue a = LQ 
     { head :: IORef (Pair a)
@@ -93,14 +93,15 @@ checkInvariant = do
   return ()
 
 -- | Attempt to pop an element from the queue if one is available.
---   tryPop will always return promptly, but will return 'Nothing' if
---   the queue is empty.
+--   tryPop will return semi-promptly (depending on contention), but
+--   will return 'Nothing' if the queue is empty.
 tryPopR ::  LinkedQueue a -> IO (Maybe a)
+-- FIXME -- this version
 -- TODO -- add some kind of backoff.  This should probably at least
 -- yield after a certain number of failures.
-tryPopR (LQ headPtr tailPtr) = loop
+tryPopR (LQ headPtr tailPtr) = loop (0::Int) 
  where 
-  loop = do 
+  loop !tries = do 
     head <- readIORef headPtr
     tail <- readIORef tailPtr
     case head of 
@@ -109,7 +110,7 @@ tryPopR (LQ headPtr tailPtr) = loop
         next' <- readIORef next
         -- As with push, double-check our information is up-to-date. (head,tail,next consistent)
         head' <- readIORef headPtr -- ANDREAS: used atomicModifyIORef headPtr (\x -> (x,x))
-        if not (ptrEq head head') then loop else do 
+        if not (ptrEq head head') then loop (tries+1) else do 
 	  -- Is queue empty or tail falling behind?:
           if ptrEq head tail then do 
 	    case next' of -- Is queue empty?
@@ -117,19 +118,19 @@ tryPopR (LQ headPtr tailPtr) = loop
 	      Cons _ _ -> do
   	        -- Tail is falling behind.  Try to advance it:
 	        casIORef tailPtr tail next'
-		loop 
+		loop (tries+1)
            
 	   else do -- head /= tail
 	      -- No need to deal with Tail.  Read value before CAS.
 	      -- Otherwise, another dequeue might free the next node
 	      case next' of 
 --	        Null -> error "tryPop: Internal error.  Next should not be null if head/=tail."
-	        Null -> loop 
+	        Null -> loop (tries+1)
 		Cons value _ -> do 
                   -- Try to swing Head to the next node
 		  (b,_) <- casIORef headPtr head next' -- ANDREAS: FOUND CONDITION VIOLATED AFTER HERE
 		  if b then return (Just value) -- Dequeue done; exit loop.
-		       else loop   -- ANDREAS: observed this loop being taken >1M times
+		       else loop (tries+1) -- ANDREAS: observed this loop being taken >1M times
           
 -- | Create a new queue.
 newQ :: IO (LinkedQueue a)
