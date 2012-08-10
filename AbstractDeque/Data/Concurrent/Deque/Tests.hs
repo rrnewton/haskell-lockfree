@@ -28,12 +28,37 @@ import Text.Printf
 import GHC.IO (unsafePerformIO)
 import GHC.Conc
 import Control.Concurrent.MVar
-import Control.Concurrent (yield, forkOS)
+import Control.Concurrent (yield, forkOS, forkIO)
 import Control.Exception (catch, SomeException, fromException, AsyncException(ThreadKilled))
 import System.IO (hPutStrLn, stderr)
 import System.Environment
 import Test.HUnit
 
+import System.Environment (getEnvironment)
+import System.IO.Unsafe (unsafePerformIO)
+import Debug.Trace (trace)
+
+theEnv = unsafePerformIO getEnvironment
+
+-- How many elements should each of the tests pump through the queue(s)?
+numElems :: Int
+numElems = case lookup "NUMELEMS" theEnv of 
+             Nothing  -> 500000 
+             Just str -> warnUsing "NUMELEMS" $ 
+                         read str
+
+forkThread :: IO () -> IO ThreadId
+forkThread = case lookup "OSTHREADS" theEnv of 
+               Nothing -> forkIO
+               Just x -> warnUsing "OSTHREADS" $ 
+                 case x of 
+                   "0"     -> forkIO
+                   "False" -> forkIO
+                   "1"     -> forkOS
+                   "True"  -> forkOS
+                   oth -> error$"OSTHREAD environment variable set to unrecognized option: "++oth
+
+warnUsing str a = trace ("  [Warning]: Using environment variable "++str) a
 
 ----------------------------------------------------------------------------------------------------
 -- Test a plain FIFO queue:
@@ -64,7 +89,7 @@ test_fifo_filldrain q =
      return ()
 
 -- myfork = forkIO
-myfork msg = forkWithExceptions forkOS msg
+myfork msg = forkWithExceptions forkThread msg
 
 -- Exceptions that walk up the fork tree of threads:
 forkWithExceptions :: (IO () -> IO ThreadId) -> String -> IO () -> IO ThreadId
@@ -134,7 +159,7 @@ test_fifo newq = TestList
   [
     TestLabel "test_fifo_filldrain"  (TestCase$ assert $ newq >>= test_fifo_filldrain)
     -- Do half a million elements by default:
-  , TestLabel "test_fifo_HalfToHalf" (TestCase$ assert $ newq >>= test_fifo_HalfToHalf (500 * 1000))
+  , TestLabel "test_fifo_HalfToHalf" (TestCase$ assert $ newq >>= test_fifo_HalfToHalf numElems)
 --  , TestLabel "test the tests" (TestCase$ assert $ assertFailure "This SHOULD fail.")
   ]
 
