@@ -8,7 +8,7 @@
 module Data.Concurrent.Deque.Tests 
  ( 
    -- * Tests for simple FIFOs.
-   test_fifo_filldrain, test_fifo_HalfToHalf, test_fifo,
+   test_fifo_filldrain, test_fifo_OneBottleneck, test_fifo,
 
    -- * Tests for Work-stealing queues.
    test_ws_triv1, test_ws_triv2, test_wsqueue,
@@ -40,17 +40,22 @@ import Debug.Trace (trace)
 
 theEnv = unsafePerformIO getEnvironment
 
+----------------------------------------------------------------------------------------------------
+-- TODO: In addition to setting these parameters from environment
+-- variables, it would be nice to route all of this through a
+-- configuration record, so that it can be changed programmatically.
+
 -- How many elements should each of the tests pump through the queue(s)?
 numElems :: Int
 numElems = case lookup "NUMELEMS" theEnv of 
-             Nothing  -> 500000 
-             Just str -> warnUsing "NUMELEMS" $ 
+             Nothing  -> 50 * 1000 -- 500000 
+             Just str -> warnUsing ("NUMELEMS = "++str) $ 
                          read str
 
 forkThread :: IO () -> IO ThreadId
 forkThread = case lookup "OSTHREADS" theEnv of 
                Nothing -> forkIO
-               Just x -> warnUsing "OSTHREADS" $ 
+               Just x -> warnUsing ("OSTHREADS = "++x) $ 
                  case x of 
                    "0"     -> forkIO
                    "False" -> forkIO
@@ -58,35 +63,29 @@ forkThread = case lookup "OSTHREADS" theEnv of
                    "True"  -> forkOS
                    oth -> error$"OSTHREAD environment variable set to unrecognized option: "++oth
 
+-- | How many communicating agents are there?  By default one per
+-- thread used by the RTS.
+numAgents :: Int
+numAgents = case lookup "NUMAGENTS" theEnv of 
+             Nothing  -> numCapabilities
+             Just str -> warnUsing ("NUMAGENTS = "++str) $ 
+                         read str
+
+-- | It is possible to have imbalanced concurrency where there is more
+-- contention on the producing or consuming side (which corresponds to
+-- settings of this parameter less than or greater than 1).
+producerRatio :: Double
+producerRatio = case lookup "PRODUCERRATIO" theEnv of 
+                 Nothing  -> 1.0
+                 Just str -> warnUsing ("PRODUCERRATIO = "++str) $ 
+                             read str
+
 warnUsing str a = trace ("  [Warning]: Using environment variable "++str) a
 
-----------------------------------------------------------------------------------------------------
--- Test a plain FIFO queue:
-----------------------------------------------------------------------------------------------------
 
--- | This test serially fills up a queue and then drains it.
-test_fifo_filldrain :: DequeClass d => d Int -> IO ()
-test_fifo_filldrain q = 
-  do -- q <- newQ
-     putStrLn "\nTest FIFO queue: sequential fill and then drain"
-     putStrLn "==============================================="
-     let n = 1000
-     putStrLn$ "Done creating queue.  Pushing elements:"
-     forM_ [1..n] $ \i -> do 
-       pushL q i
-       when (i < 200) $ printf " %d" i
-     putStrLn "\nDone filling queue with elements.  Now popping..."
-     sumR <- newIORef 0
-     forM_ [1..n] $ \i -> do
-       (x,_) <- spinPop q 
-       when (i < 200) $ printf " %d" x
-       modifyIORef sumR (+x)
-     s <- readIORef sumR
-     let expected = sum [1..n] :: Int
-     printf "\nSum of popped vals: %d should be %d\n" s expected
-     when (s /= expected) (assertFailure "Incorrect sum!")
---     return s
-     return ()
+----------------------------------------------------------------------------------------------------
+-- Misc Helpers
+----------------------------------------------------------------------------------------------------
 
 -- myfork = forkIO
 myfork msg = forkWithExceptions forkThread msg
@@ -106,20 +105,52 @@ forkWithExceptions forkit descr action = do
 	      throwTo parent (e::SomeException)
 	 )
 
--- | This one splits the 'numCapabilities' threads into producers and
--- consumers.  Each thread performs its designated operation as fast
--- as possible.  The 'Int' argument 'total' designates how many total
--- items should be communicated (irrespective of 'numCapabilities').
-test_fifo_HalfToHalf :: DequeClass d => Int -> d Int -> IO ()
-test_fifo_HalfToHalf total q = 
+
+----------------------------------------------------------------------------------------------------
+-- Test a plain FIFO queue:
+----------------------------------------------------------------------------------------------------
+
+-- | This test serially fills up a queue and then drains it.
+test_fifo_filldrain :: DequeClass d => d Int -> IO ()
+test_fifo_filldrain q = 
+  do -- q <- newQ
+     putStrLn "\nTest FIFO queue: sequential fill and then drain"
+     putStrLn "==============================================="
+--     let n = 1000
+     let n = numElems
+     putStrLn$ "Done creating queue.  Pushing elements:"
+     forM_ [1..n] $ \i -> do 
+       pushL q i
+       when (i < 200) $ printf " %d" i
+     putStrLn "\nDone filling queue with elements.  Now popping..."
+     sumR <- newIORef 0
+     forM_ [1..n] $ \i -> do
+       (x,_) <- spinPop q 
+       when (i < 200) $ printf " %d" x
+       modifyIORef sumR (+x)
+     s <- readIORef sumR
+     let expected = sum [1..n] :: Int
+     printf "\nSum of popped vals: %d should be %d\n" s expected
+     when (s /= expected) (assertFailure "Incorrect sum!")
+--     return s
+     return ()
+
+
+-- | This test splits the 'numAgents' threads into producers and
+-- consumers which all communicate through a SINGLE queue.  Each
+-- thread performs its designated operation as fast as possible.  The
+-- 'Int' argument 'total' designates how many total items should be
+-- communicated (irrespective of 'numAgents').
+test_fifo_OneBottleneck :: DequeClass d => Int -> d Int -> IO ()
+test_fifo_OneBottleneck total q = 
   do -- q <- newQ
      putStrLn$ "\nTest FIFO queue: producer/consumer Half-To-Half"
      putStrLn "==============================================="
      mv <- newEmptyMVar          
      x <- nullQ q
      putStrLn$ "Check that queue is initially null: "++show x
-     let producers = max 1 (numCapabilities `quot` 2)
-	 consumers = producers
+     let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
+	 consumers = max 1 (numAgents - producers)
 	 perthread = total `quot` producers
 
      printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
@@ -153,13 +184,21 @@ test_fifo_HalfToHalf total q =
      if b then putStrLn$ "Sum matched expected, test passed."
           else assertFailure "Queue was not empty!!"
 
+-- | This test uses a separate queue per consumer thread.  The queues
+-- are used in a single-writer multiple-reader fashion (mailboxes).
+          
+-- test_fifo_mailboxes
+
+------------------------------------------------------------
+
 -- | This creates an HUnit test list to perform all the tests above.
 test_fifo :: DequeClass d => (forall elt. IO (d elt)) -> Test
 test_fifo newq = TestList 
   [
     TestLabel "test_fifo_filldrain"  (TestCase$ assert $ newq >>= test_fifo_filldrain)
     -- Do half a million elements by default:
-  , TestLabel "test_fifo_HalfToHalf" (TestCase$ assert $ newq >>= test_fifo_HalfToHalf numElems)
+  , TestLabel "test_fifo_OneBottleneck_backoff"    (TestCase$ assert $ newq >>= test_fifo_OneBottleneck numElems)
+  , TestLabel "test_fifo_OneBottleneck_aggressive" (TestCase$ assert $ newq >>= test_fifo_OneBottleneck numElems)
 --  , TestLabel "test the tests" (TestCase$ assert $ assertFailure "This SHOULD fail.")
   ]
 
