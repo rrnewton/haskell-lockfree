@@ -168,13 +168,13 @@ This would mean that the backoff that's built into the benchmark
 itself (spinPop function calls yield after failure and threadDelay
 after more than 1000 -- VERY aggressive backoff).  OH WAIT the current
 version of tryPop always retries under contention and only fails if
-the queue is empty.  So we would not expect contention to result in
+the queue is empty.  So we would not expect *contention* to result in
 retries at the level of "spinPop".
 
-
-
-
-
+But, the lack of retries DOES mean that the queue is not running dry.
+Producers are staying ahead of consumers on average in this benchmark.
+In fact, I would not be surprised if the avg queue capacity was quite
+high.  With -N2 the queue does run dry, but never with -N32.
 
 
 

@@ -8,6 +8,9 @@
 -- 
 --   <http://www.cs.rochester.edu/research/synchronization/pseudocode/queues.html>
 
+-- Uncomment this if desired.  Needs more testing:
+-- #define RECHECK_ASSUMPTIONS
+
 module Data.Concurrent.Queue.MichaelScott
  (
    -- The convention here is to directly provide the concrete
@@ -16,23 +19,19 @@ module Data.Concurrent.Queue.MichaelScott
  )
   where
 
-import Control.Monad
-import Data.IORef
-import System.Mem.StableName
-import Text.Printf
-import GHC.IO (unsafePerformIO)
-import GHC.Conc
-import Control.Concurrent.MVar
+import Data.IORef (readIORef, IORef, newIORef)
+import System.IO (stderr)
+import Data.ByteString.Char8 (hPutStrLn, pack)
 
 import qualified Data.Concurrent.Deque.Class as C
-
-import Data.CAS (casIORef, ptrEq)
 -- NOTE: you can switch which CAS implementation is used here:
+--------------------------------------------------------------
+import Data.CAS (casIORef, ptrEq)
 -- import Data.CAS.Internal.Fake (casIORef, ptrEq)
 -- #warning "Using fake CAS"
 -- import Data.CAS.Internal.Native (casIORef, ptrEq)
 -- #warning "Using NATIVE CAS"
-
+--------------------------------------------------------------
 
 -- Considering using the Queue class definition:
 -- import Data.MQueue.Class
@@ -66,7 +65,7 @@ pushL (LQ headPtr tailPtr) val = do
 	next <- readIORef nextPtr
 
 -- Optimization: The algorithm can reread tailPtr here to make sure it is still good:
-#if 0
+#ifdef RECHECK_ASSUMPTIONS
  -- There's a possibility for an infinite loop here with StableName based ptrEq.
  -- (And at one point I observed such an infinite loop.)
  -- But with one based on reallyUnsafePtrEquality# we should be ok.
@@ -101,6 +100,13 @@ tryPopR ::  LinkedQueue a -> IO (Maybe a)
 -- yield after a certain number of failures.
 tryPopR (LQ headPtr tailPtr) = loop (0::Int) 
  where 
+#ifdef DEBUG
+   --  loop 10 = do hPutStrLn stderr (pack "tryPopR: tried ~10 times!!");  loop 11 -- This one happens a lot on -N32
+  loop 25   = do hPutStrLn stderr (pack "tryPopR: tried ~25 times!!");   loop 26
+  loop 50   = do hPutStrLn stderr (pack "tryPopR: tried ~50 times!!");   loop 51
+  loop 100  = do hPutStrLn stderr (pack "tryPopR: tried ~100 times!!");  loop 101
+  loop 1000 = do hPutStrLn stderr (pack "tryPopR: tried ~1000 times!!"); loop 1001
+#endif
   loop !tries = do 
     head <- readIORef headPtr
     tail <- readIORef tailPtr
@@ -108,9 +114,14 @@ tryPopR (LQ headPtr tailPtr) = loop (0::Int)
       Null -> error "tryPopR: LinkedQueue invariants broken.  Internal error."
       Cons _ next -> do
         next' <- readIORef next
+#ifdef RECHECK_ASSUMPTIONS
         -- As with push, double-check our information is up-to-date. (head,tail,next consistent)
         head' <- readIORef headPtr -- ANDREAS: used atomicModifyIORef headPtr (\x -> (x,x))
         if not (ptrEq head head') then loop (tries+1) else do 
+#else
+        let head' = head
+        do 
+#endif                 
 	  -- Is queue empty or tail falling behind?:
           if ptrEq head tail then do 
 	    case next' of -- Is queue empty?
