@@ -22,6 +22,7 @@ module Data.Concurrent.Deque.Reference
 
 import Prelude hiding (length)
 import qualified Data.Concurrent.Deque.Class as C
+import Control.Exception (evaluate)
 import Data.Sequence
 import Data.IORef
 #ifdef USE_CAS
@@ -53,7 +54,9 @@ newBoundedQ lim =
      return $! DQ lim r
 
 pushL :: SimpleDeque t -> t -> IO ()
-pushL (DQ 0 qr) !x = modify qr addleft
+pushL (DQ 0 qr) !x = do 
+   () <- modify qr addleft
+   return ()
  where 
    -- Here we are very strict to avoid stack leaks.
    addleft !s = extended `seq` pair
