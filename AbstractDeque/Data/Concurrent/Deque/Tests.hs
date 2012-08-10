@@ -125,7 +125,7 @@ test_fifo_filldrain q =
      putStrLn "\nDone filling queue with elements.  Now popping..."
      sumR <- newIORef 0
      forM_ [1..n] $ \i -> do
-       (x,_) <- spinPop q 
+       (x,_) <- spinPopBkoff q 
        when (i < 200) $ printf " %d" x
        modifyIORef sumR (+x)
      s <- readIORef sumR
@@ -141,11 +141,12 @@ test_fifo_filldrain q =
 -- thread performs its designated operation as fast as possible.  The
 -- 'Int' argument 'total' designates how many total items should be
 -- communicated (irrespective of 'numAgents').
-test_fifo_OneBottleneck :: DequeClass d => Int -> d Int -> IO ()
-test_fifo_OneBottleneck total q = 
+test_fifo_OneBottleneck :: DequeClass d => Bool -> Int -> d Int -> IO ()
+test_fifo_OneBottleneck doBackoff total q = 
   do -- q <- newQ
      putStrLn$ "\nTest FIFO queue: producers & consumers thru 1 queue"
-     putStrLn "======================================================"
+               ++(if doBackoff then " (with backoff)" else "(hard busy wait)")
+     putStrLn "======================================================"       
      mv <- newEmptyMVar          
      x <- nullQ q
      putStrLn$ "Check that queue is initially null: "++show x
@@ -153,6 +154,9 @@ test_fifo_OneBottleneck total q =
 	 consumers = max 1 (numAgents - producers)
 	 perthread = total `quot` producers
 
+     when (not doBackoff && (numCapabilities == 1 || numCapabilities < producers + consumers)) $ 
+       error$ "The aggressively busy-waiting version of the test can only run with the right thread settings."
+     
      printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
     
      forM_ [0..producers-1] $ \ id -> 
@@ -166,8 +170,9 @@ test_fifo_OneBottleneck total q =
      forM_ [0..consumers-1] $ \ id -> 
  	myfork "consumer thread" $ do 
 
-          let fn (!sum,!maxiters) i = do
-	       (x,iters) <- spinPop q 
+          let fn (!sum,!maxiters) i = do                
+	       (x,iters) <- if doBackoff then spinPopBkoff q 
+                                         else spinPopHard  q
 	       when (i - id*producers < 10) $ printf " [%d] popped %d \n" id i
 	       return (sum+x, max maxiters iters)
              
@@ -197,8 +202,8 @@ test_fifo newq = TestList
   [
     TestLabel "test_fifo_filldrain"  (TestCase$ assert $ newq >>= test_fifo_filldrain)
     -- Do half a million elements by default:
-  , TestLabel "test_fifo_OneBottleneck_backoff"    (TestCase$ assert $ newq >>= test_fifo_OneBottleneck numElems)
-  , TestLabel "test_fifo_OneBottleneck_aggressive" (TestCase$ assert $ newq >>= test_fifo_OneBottleneck numElems)
+  , TestLabel "test_fifo_OneBottleneck_backoff"    (TestCase$ assert $ newq >>= test_fifo_OneBottleneck True  numElems)
+--  , TestLabel "test_fifo_OneBottleneck_aggressive" (TestCase$ assert $ newq >>= test_fifo_OneBottleneck False numElems)
 --  , TestLabel "test the tests" (TestCase$ assert $ assertFailure "This SHOULD fail.")
   ]
 
@@ -250,7 +255,7 @@ test_all newq =
 ----------------------------------------------------------------------------------------------------
 -- Helpers
 
-spinPop q = loop 1
+spinPopBkoff q = loop 1
  where 
   hardspinfor = 10
   sleepevery = 1000
@@ -264,15 +269,29 @@ spinPop q = loop 1
      x <- tryPopR q 
      case x of 
        -- This yields EVERY time.  And yet we get these real bursts / runs of failure.
-       Nothing -> do putStr "."
+       Nothing -> do 
                      -- Every `sleepevery` times do a significant delay:
 		     if n `mod` sleepevery == 0 
-		      then threadDelay n -- 1ms after 1K fails, 2 after 2K...
-		      else when (n > hardspinfor)
+		      then do putStr "!"
+                              threadDelay n -- 1ms after 1K fails, 2 after 2K...
+		      else when (n > hardspinfor) $ do 
+                             putStr "."
 			     yield -- At LEAST yield... you'd think this is pretty strong backoff.
-		     		     
 		     loop (n+1)
        Just x  -> return (x, n)
+
+
+-- | This is always a crazy and dangerous thing to do -- GHC cannot
+--   deschedule this spinning thread because it does not allocate:
+spinPopHard q = loop 1
+ where 
+  loop n = do
+     x <- tryPopR q 
+     case x of 
+       Nothing -> do loop (n+1)
+       Just x  -> return (x, n)
+
+
 
 ----------------------------------------------------------------------------------------------------
 

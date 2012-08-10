@@ -177,4 +177,24 @@ In fact, I would not be surprised if the avg queue capacity was quite
 high.  With -N2 the queue does run dry, but never with -N32.
 
 
+[2012.08.10] {Divergance with constant space usage}
 
+I'm noticing the M&S queues diverging in the no-backoff version.  That
+would make sense if the consumer IO thread is running on the same OS
+thread as the producer... but I ran with OSTHREADS=1, so what gives?
+
+Moreover, while it happens every time with -N1, it still happens some
+of the time with -N2.  [Note -- this is not true with forkIO threads,
+in that case -N2 always works and -N1 always fails, as expected.]
+
+Does forkOS merely guarantee that a thread will run on a given OS
+thread, not that it will have exclusive access to that OS thread?
+Perhaps I need forKOn or -qm.
+
+------
+
+This comes down to GHC's inability to deschedule a thread if it does
+not allocate.
+
+But why does forkOS make the problem WORSE?  Is it because it merely
+pins and does not introduce additional threads?
