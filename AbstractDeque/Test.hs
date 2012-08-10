@@ -2,12 +2,14 @@
 #if __GLASGOW_HASKELL >= 700
 {-# OPTIONS_GHC -with-rtsopts=-K32M #-}
 #endif
+
 import Data.Concurrent.Deque.Class
 -- import Data.Concurrent.Deque.Class.Reference (newQueue)
 -- import Data.Concurrent.MegaDeque 
 
-import Test.HUnit
-import Control.Monad
+import Test.Framework (defaultMain)
+import Test.Framework.Providers.HUnit     (hUnitTestToTests)
+import Test.HUnit (assert, assertEqual, Test(TestCase, TestList))
 import qualified Data.Concurrent.Deque.Tests as T
 import qualified Data.Concurrent.Deque.Reference as R
 
@@ -31,20 +33,15 @@ test_2 = TestCase $ assert $
      assertEqual "test_2 result" x 33
 
 #if __GLASGOW_HASKELL__ >= 700
-main = 
- do putStrLn "Testing reference deque implementation."
-    Counts{errors, failures} <- runTestTT $ 
+main = do 
+  putStrLn "[ Test executable: test reference deque implementation... ]"
+  defaultMain$ hUnitTestToTests$ 
       TestList $ 
         [ 
           T.test_all R.newQ 
         , test_1
 	, test_2
         ]
-
-    when (errors + failures > 0) $ do 
-       putStrLn$ "Test.hs: Some tests failed! ("++show (errors+failures)++
-		 ") Reporting non zero exit code..."
-       exitFailure
 #else
 main = putStrLn "WARNING: Tests disabled for GHC < 7"
 #endif
