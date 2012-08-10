@@ -123,16 +123,16 @@ test_fifo_filldrain q =
        pushL q i
        when (i < 200) $ printf " %d" i
      putStrLn "\nDone filling queue with elements.  Now popping..."
-     sumR <- newIORef 0
-     forM_ [1..n] $ \i -> do
-       (x,_) <- spinPopBkoff q 
-       when (i < 200) $ printf " %d" x
-       modifyIORef sumR (+x)
-     s <- readIORef sumR
+     
+     let loop 0 !sumR = return sumR
+         loop i !sumR = do 
+           (x,_) <- spinPopBkoff q 
+           when (i < 200) $ printf " %d" x
+           loop (i-1) (sumR + x)
+     s <- loop n 0
      let expected = sum [1..n] :: Int
      printf "\nSum of popped vals: %d should be %d\n" s expected
      when (s /= expected) (assertFailure "Incorrect sum!")
---     return s
      return ()
 
 
