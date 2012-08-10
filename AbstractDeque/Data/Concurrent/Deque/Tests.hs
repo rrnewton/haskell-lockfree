@@ -1,5 +1,9 @@
 {-# LANGUAGE BangPatterns, RankNTypes #-}
 
+-- | This module contains a battery of simple tests for queues
+--   implementing the interface defined in
+-- ` Data.Concurrent.Deque.Class`.
+
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Data.Concurrent.Deque.Tests 
  ( 

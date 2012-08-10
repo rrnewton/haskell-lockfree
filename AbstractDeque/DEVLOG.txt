@@ -91,3 +91,4 @@ regular cabal still results in the stack overflow.
   stack overflows DO result in test failures.  ]
 
 Right now it's failing nondeterministically.
+

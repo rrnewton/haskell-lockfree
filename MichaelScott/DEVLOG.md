@@ -107,4 +107,3 @@ I just confirmed that on hive with -N32 I definitely see a deadlock.
 Go Andreas!  There was flagrantly incorrect code at the end of pushL
 which he caught.  That one fix corrects the deadlock for me when
 running -N32.
-

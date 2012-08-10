@@ -14,7 +14,9 @@
 
 module Data.Concurrent.Deque.Reference 
  (SimpleDeque(..),
-  newQ, nullQ, newBoundedQ, pushL, pushR, tryPopR, tryPopL, tryPushL, tryPushR
+  newQ, nullQ, newBoundedQ, pushL, pushR, tryPopR, tryPopL, tryPushL, tryPushR,
+  
+  _is_using_CAS -- Internal
  )
  where
 
@@ -27,8 +29,10 @@ import Data.IORef
 import Data.CAS (atomicModifyIORefCAS)
 -- Toggle these and compare performance:
 modify = atomicModifyIORefCAS
+_is_using_CAS = True
 #else
 modify = atomicModifyIORef
+_is_using_CAS = False
 #endif
 {-# INLINE modify #-}
 
