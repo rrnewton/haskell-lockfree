@@ -43,11 +43,18 @@ data LinkedQueue a = LQ
 
 data Pair a = Null | Cons a (IORef (Pair a))
 
+-- Only checks that the node type is the same and in the case of a Cons Pair checks that
+-- the IORefs are pointer-equal. This suffices to check equality since IORefs are never used in different 
+-- Pair values.
+pairEq :: Pair a -> Pair a -> Bool
+pairEq Null       Null        = True
+pairEq (Cons _ r) (Cons _ r') = ptrEq r r'
+pairEq _          _           = False
 
 -- | Push a new element onto the queue.  Because the queue can grow,
 --   this always succeeds.
 pushL :: LinkedQueue a -> a  -> IO ()
-pushL (LQ headPtr tailPtr) val = do
+pushL q@(LQ headPtr tailPtr) val = do
    r <- newIORef Null
    let newp = Cons val r   -- Create the new cell that stores val.
    tail <- loop newp
@@ -70,7 +77,7 @@ pushL (LQ headPtr tailPtr) val = do
  -- (And at one point I observed such an infinite loop.)
  -- But with one based on reallyUnsafePtrEquality# we should be ok.
 	tail' <- readIORef tailPtr   -- ANDREAS: used atomicModifyIORef here
-        if not (ptrEq tail tail') then loop newp 
+        if not (pairEq tail tail') then loop newp 
          else case next of 
 #else
 	case next of 
@@ -82,15 +89,26 @@ pushL (LQ headPtr tailPtr) val = do
           Cons _ _ -> do 
              -- Someone has beat us by extending the tail.  Here we
              -- might have to do some community service by updating the tail ptr.
-             casIORef tailPtr tail next 
+             casIORef tailPtr tail next
              loop newp
 
--- Andreas's checked this invariant in several places
-checkInvariant :: IO ()
-checkInvariant = do 
-  -- Check for: head /= tail, and head->next == NULL
-  return ()
 
+-- Andreas's checked this invariant in several places
+-- Check for: head /= tail, and head->next == NULL
+checkInvariant :: String -> LinkedQueue a -> IO ()
+checkInvariant s (LQ headPtr tailPtr) = 
+  do head <- readIORef headPtr
+     tail <- readIORef tailPtr
+     if (not (pairEq head tail))
+       then case head of 
+              Null -> error (s ++ " checkInvariant: LinkedQueue invariants broken.  Internal error.")
+              Cons _ next -> do
+                next' <- readIORef next
+                case next' of 
+                  Null -> error (s ++ " checkInvariant: next' should not be null")
+                  _ -> return ()
+       else return ()
+            
 -- | Attempt to pop an element from the queue if one is available.
 --   tryPop will return semi-promptly (depending on contention), but
 --   will return 'Nothing' if the queue is empty.
@@ -98,7 +116,7 @@ tryPopR ::  LinkedQueue a -> IO (Maybe a)
 -- FIXME -- this version
 -- TODO -- add some kind of backoff.  This should probably at least
 -- yield after a certain number of failures.
-tryPopR (LQ headPtr tailPtr) = loop (0::Int) 
+tryPopR q@(LQ headPtr tailPtr) = loop (0::Int) 
  where 
 #ifdef DEBUG
    --  loop 10 = do hPutStrLn stderr (pack "tryPopR: tried ~10 times!!");  loop 11 -- This one happens a lot on -N32
@@ -117,13 +135,14 @@ tryPopR (LQ headPtr tailPtr) = loop (0::Int)
 #ifdef RECHECK_ASSUMPTIONS
         -- As with push, double-check our information is up-to-date. (head,tail,next consistent)
         head' <- readIORef headPtr -- ANDREAS: used atomicModifyIORef headPtr (\x -> (x,x))
-        if not (ptrEq head head') then loop (tries+1) else do 
+        if not (pairEq head head') then loop (tries+1) else do 
 #else
         let head' = head
         do 
 #endif                 
 	  -- Is queue empty or tail falling behind?:
-          if ptrEq head tail then do 
+          if pairEq head tail then do 
+          -- if ptrEq head tail then do 
 	    case next' of -- Is queue empty?
               Null -> return Nothing -- Queue is empty, couldn't dequeue
 	      Cons _ _ -> do
@@ -135,8 +154,8 @@ tryPopR (LQ headPtr tailPtr) = loop (0::Int)
 	      -- No need to deal with Tail.  Read value before CAS.
 	      -- Otherwise, another dequeue might free the next node
 	      case next' of 
---	        Null -> error "tryPop: Internal error.  Next should not be null if head/=tail."
-	        Null -> loop (tries+1)
+	        Null -> error "tryPop: Internal error.  Next should not be null if head/=tail."
+--	        Null -> loop (tries+1)
 		Cons value _ -> do 
                   -- Try to swing Head to the next node
 		  (b,_) <- casIORef headPtr head next' -- ANDREAS: FOUND CONDITION VIOLATED AFTER HERE
@@ -157,7 +176,7 @@ nullQ :: LinkedQueue a -> IO Bool
 nullQ (LQ headPtr tailPtr) = do 
     head <- readIORef headPtr
     tail <- readIORef tailPtr
-    return (ptrEq head tail)
+    return (pairEq head tail)
 
 
 
