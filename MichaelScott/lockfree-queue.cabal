@@ -27,7 +27,7 @@ Library
   exposed-modules:   Data.Concurrent.Queue.MichaelScott,
                      Data.Concurrent.Queue.MichaelScott.DequeInstance
   build-depends:     base >= 4.4.0.0 && < 5,
-                     ghc-prim, IORefCAS >= 0.2, abstract-deque
+                     ghc-prim, IORefCAS >= 0.2, abstract-deque, bytestring
   -- Build failure on GHC 7.2:
   --                     queuelike
   ghc-options: -O2
