@@ -1,5 +1,5 @@
 Name:                abstract-deque
-Version:             0.1.5
+Version:             0.1.6
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan R. Newton
@@ -17,6 +17,7 @@ Homepage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
 -- 0.1.3: Actually turned on real CAS! DANGER
 -- 0.1.4: Another release.
 -- 0.1.5: Fix for 6.12 and 7.0.
+-- 0.1.6: Make useCAS default FALSE.
 
 Synopsis: Abstract, parameterized interface to mutable Deques.
 
@@ -42,9 +43,11 @@ Description:
   on 'IORef' and "Data.Sequence".
 
 
+-- Making this default False because abstract-deque should be VERY depndency-safe.
+-- The reference implementation can be factored out in the future.
 Flag useCAS
   Description: Enable the reference implementation to use hardware compare-and-swap.
-  Default:     True
+  Default:     False
 
 Library
   exposed-modules:   Data.Concurrent.Deque.Class,
