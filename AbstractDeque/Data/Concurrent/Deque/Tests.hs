@@ -152,20 +152,20 @@ test_fifo_OneBottleneck doBackoff total q =
      putStrLn$ "Check that queue is initially null: "++show x
      let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
 	 consumers = max 1 (numAgents - producers)
-	 perthread = total `quot` producers
+	 perthread  = total `quot` producers
+         perthread2 = total `quot` consumers
 
      when (not doBackoff && (numCapabilities == 1 || numCapabilities < producers + consumers)) $ 
        error$ "The aggressively busy-waiting version of the test can only run with the right thread settings."
      
      printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
+     printf "Forking %d consumer threads, each consuming %d elements.\n" producers perthread2
     
      forM_ [0..producers-1] $ \ id -> 
  	myfork "producer thread" $ 
           forM_ (take perthread [id * producers .. ]) $ \ i -> do 
 	     pushL q i
              when (i - id*producers < 10) $ printf " [%d] pushed %d \n" id i
-
-     printf "Forking %d consumer threads.\n" consumers
 
      forM_ [0..consumers-1] $ \ id -> 
  	myfork "consumer thread" $ do 
@@ -176,7 +176,7 @@ test_fifo_OneBottleneck doBackoff total q =
 	       when (i - id*producers < 10) $ printf " [%d] popped %d \n" id i
 	       return (sum+x, max maxiters iters)
              
-          pr <- foldM fn (0,0) (take perthread [id * producers .. ])
+          pr <- foldM fn (0,0) (take perthread2 [id * producers .. ])
 	  putMVar mv pr
 
      printf "Reading sums from MVar...\n" 
@@ -202,7 +202,7 @@ test_fifo newq = TestList
   [
     TestLabel "test_fifo_filldrain"  (TestCase$ assert $ newq >>= test_fifo_filldrain)
     -- Do half a million elements by default:
-  , TestLabel "test_fifo_OneBottleneck_backoff"    (TestCase$ assert $ newq >>= test_fifo_OneBottleneck True  numElems)
+  , TestLabel "test_fifo_OneBottleneck_backoff" (TestCase$ assert $ newq >>= test_fifo_OneBottleneck True  numElems)
 --  , TestLabel "test_fifo_OneBottleneck_aggressive" (TestCase$ assert $ newq >>= test_fifo_OneBottleneck False numElems)
 --  , TestLabel "test the tests" (TestCase$ assert $ assertFailure "This SHOULD fail.")
   ]
