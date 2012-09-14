@@ -1,4 +1,4 @@
-{-# LANGUAGE MagicHash, UnboxedTuples, BangPatterns, MagicHash,
+{-# LANGUAGE MagicHash, UnboxedTuples, BangPatterns,
     TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
 
 module Data.CAS.Internal.Native
