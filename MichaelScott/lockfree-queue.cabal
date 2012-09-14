@@ -1,5 +1,5 @@
 Name:                lockfree-queue
-Version:             0.1
+Version:             0.2
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan R. Newton
@@ -9,6 +9,10 @@ Build-type:          Simple
 Cabal-version:       >=1.8
 
 Homepage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
+
+-- Version History:
+-- 0.1 -- initial version
+-- 0.2 -- switched to MutVar 
 
 Synopsis: Michael and Scott lock-free queues.
 
