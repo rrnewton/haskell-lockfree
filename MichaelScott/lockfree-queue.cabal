@@ -27,6 +27,9 @@ Description:
   As a well-known efficient algorithm they became the basis for Java's
   @ConcurrentLinkedQueue@.
 
+extra-source-files:
+     stress_test.sh
+
 Library
   exposed-modules:   Data.Concurrent.Queue.MichaelScott,
                      Data.Concurrent.Queue.MichaelScott.DequeInstance
