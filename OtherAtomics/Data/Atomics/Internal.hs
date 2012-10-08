@@ -50,7 +50,7 @@ casMutVar2# = unsafeCoerce# casMutVar_TypeErased#
 -- Type-erased versions that call the raw foreign primops:
 --------------------------------------------------------------------------------
 
--- type Dummy = Any () -- The above type only works in GHC 7.6!!!  We want 7.4 support.
+-- type TheValType = Any () -- The above type only works in GHC 7.6!!!  We want 7.4 support.
 type TheValType = Word#
 
 -- Due to limitations of the "foreign import prim" mechanism, we can't

@@ -63,6 +63,9 @@ stg_readMutVar2zh
 {
     W_ mv, res;
     mv  = R1;
-    res = W_[mv];
+    // Do the actual read:
+    res = W_[mv + SIZEOF_StgHeader + OFFSET_StgMutVar_var];
     RET_NP(res, res);
 }
+/* emitPrimOp [res] ReadMutVarOp [mutv] _ */
+/*    = stmtC (CmmAssign (CmmLocal res) (cmmLoadIndexW mutv fixedHdrSize gcWord)) */

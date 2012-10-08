@@ -38,7 +38,6 @@ main = do
   (tick,val) <- A.readForCAS mutvar
   putStrLn$"YAY, read the IORef, ticket "++show tick
   putStrLn$"     and the value was:  "++show val
-
   return ()
   
 ----------------------------------------------------------------------------------------------------
