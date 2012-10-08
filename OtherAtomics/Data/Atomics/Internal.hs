@@ -1,8 +1,10 @@
 {-# LANGUAGE ForeignFunctionInterface, GHCForeignImportPrim, MagicHash, UnboxedTuples, UnliftedFFITypes #-}
 
 module Data.Atomics.Internal 
-       (casArray#, readForCAS#, Ticket, Ticket#)
-       where 
+   (casArray#, 
+    readForCAS#, casMutVar2#, 
+    Ticket, Ticket#)
+  where 
 import GHC.Prim
 import GHC.Base (Int(I#))
 import GHC.Word (Word(W#))
@@ -24,37 +26,54 @@ casArray# = unsafeCoerce# casArrayTypeErased#
 type Ticket = Word
 type Ticket# = Word# 
 
+
+type STRep2 a b   = State# RealWorld -> (# State# RealWorld, a, b #)
+type STRep3 a b c = State# RealWorld -> (# State# RealWorld, a, b, c #)
+-- readForCAS# :: MutVar# RealWorld a -> STRep2 Ticket# a
+
 readForCAS# :: MutVar# RealWorld a -> State# RealWorld -> (# State# RealWorld, Ticket#, a #)
-readForCAS# = unsafeCoerce# readMutVar_TypeErased
+readForCAS# = unsafeCoerce# readMutVar_TypeErased#
+
+
+-- readForCAS# :: MutVar# RealWorld a -> State# RealWorld -> (# State# RealWorld, Ticket#, a #)
+-- readForCAS# = unsafeCoerce# readMutVar_TypeErased
+casMutVar2# :: MutVar# RealWorld a -> Ticket# -> a ->
+               State# RealWorld -> (# State# RealWorld, Int#, Ticket#, a #)
+casMutVar2# = unsafeCoerce# casMutVar_TypeErased#
+
+-- bultin:
+--  MutVar# d a -> a -> a -> State# d -> (# State# d, Int#, a #)
+
+
 
 --------------------------------------------------------------------------------
 -- Type-erased versions that call the raw foreign primops:
 --------------------------------------------------------------------------------
 
 -- type Dummy = Any () -- The above type only works in GHC 7.6!!!  We want 7.4 support.
-type Dummy = Word#
+type TheValType = Word#
 
 -- Due to limitations of the "foreign import prim" mechanism, we can't
 -- use the polymorphic signature for this function.  So we lie to the
 -- type system here.
 foreign import prim "stg_casArrayzh" casArrayTypeErased#
-  :: MutableArray# RealWorld () -> Int# -> Dummy -> Dummy -> 
-     State# RealWorld  -> (# State# RealWorld, Int#, Dummy #) 
+  :: MutableArray# RealWorld () -> Int# -> TheValType -> TheValType -> 
+     State# RealWorld  -> (# State# RealWorld, Int#, TheValType #) 
 
 --   out_of_line = True
 --   has_side_effects = True
 
 
 
--- This alternate version of casMutVar returns a numeric "ticket" for
--- future CAS operations.
-foreign import prim "stg_casArray2zh" casMutVar2#
-  :: MutVar# RealWorld () -> Word# -> Dummy ->
-     State# RealWorld -> (# State# RealWorld, Int#, Word#, Dummy #)
+-- | This alternate version of casMutVar returns a numeric "ticket" for
+--   future CAS operations.
+foreign import prim "stg_casMutVar2zh" casMutVar_TypeErased#
+  :: MutVar# RealWorld () -> Ticket# -> TheValType ->
+     State# RealWorld -> (# State# RealWorld, Int#, Ticket#, TheValType #)
 
 
-foreign import prim "stg_readMutVar2zh" readMutVar_TypeErased
+foreign import prim "stg_readMutVar2zh" readMutVar_TypeErased#
   :: MutVar# RealWorld () -> 
-     State# RealWorld -> (# State# RealWorld, Word#, Dummy #)
+     State# RealWorld -> (# State# RealWorld, Ticket#, TheValType #)
 
      

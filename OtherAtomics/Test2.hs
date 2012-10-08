@@ -24,6 +24,8 @@ import qualified GHC.Prim     as P
 import qualified Data.Atomics as A
 
 import GHC.ST
+import GHC.STRef
+import GHC.IORef
 
 {-# NOINLINE zer #-}
 zer = 0
@@ -32,10 +34,10 @@ default_iters = 100000
 main = do
   putStrLn "Using new 'ticket' based compare and swap:"
 
-  -- let x :: P.State# d0 -> (# P.State# d0, P.MutVar# d0 Int #)
-  --     x = \st -> (P.newMutVar# (33::Int) st) 
-  --     y = ST x
- --  stToIO$ P.newMutVar# (33::Int)
+  IORef (STRef mutvar) <- newIORef (3::Int)  
+  (tick,val) <- A.readForCAS mutvar
+  putStrLn$"YAY, read the IORef, ticket "++show tick
+  putStrLn$"     and the value was:  "++show val
 
   return ()
   
