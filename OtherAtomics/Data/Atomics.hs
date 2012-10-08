@@ -2,7 +2,7 @@
 
 module Data.Atomics 
  (casArrayElem, 
-  readForCAS, Ticket
+  readForCAS, casMutVar, Ticket, CASResult(..)
  ) where
 
 import Control.Monad.ST (stToIO)
@@ -42,6 +42,7 @@ readForCAS mv = IO$ \ st ->
 --   ticket for future operations on the same location.
 data CASResult a = Fail    {-# UNPACK #-} !Ticket !a
                  | Succeed {-# UNPACK #-} !Ticket
+  deriving (Show, Eq, Read, Ord)
 
 {-# INLINE casMutVar #-}
 casMutVar :: MutVar# RealWorld a -> Ticket -> a -> IO (CASResult a)

@@ -38,6 +38,20 @@ main = do
   (tick,val) <- A.readForCAS mutvar
   putStrLn$"YAY, read the IORef, ticket "++show tick
   putStrLn$"     and the value was:  "++show val
+
+  res <- A.casMutVar mutvar tick 99 
+  putStrLn$"Hoorah!  Attempted compare and swap..."
+  putStrLn$"         Result was: "++show res
+  let tick2 = case res of 
+               A.Succeed tick2 -> tick2
+
+  putStrLn$"Ok, next take a look at a SECOND CAS attempt, to see if the ticket from the first works..."
+  res2 <- A.casMutVar mutvar tick2 12345678
+
+--  res <- A.casMutVar mutvar tick 99 
+  res3 <- A.readForCAS mutvar
+  putStrLn$"To check contents, did a SECOND read: "++show res2
+
   return ()
   
 ----------------------------------------------------------------------------------------------------
