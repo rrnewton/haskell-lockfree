@@ -1,7 +1,16 @@
 
-#GHC=ghc-7.6.1
-GHC=ghc-7.4.2
+ifeq ($(GHC),)
+  GHC=`which ghc`
+endif 
 
 all:
-	${GHC} -c -dcmm-lint cbits/primops.cmm
+	${GHC} -c -dcmm-lint -keep-s-file cbits/primops.cmm
 	${GHC} -O2 -fforce-recomp --make cbits/primops.o Test.hs -o Test.exe
+
+test: test74 test76
+
+test74:
+	GHC=ghc-7.4.2 make && ./Test.exe
+
+test76:
+	GHC=ghc-7.6.1 make && ./Test.exe

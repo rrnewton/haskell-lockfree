@@ -1,3 +1,5 @@
+ 
+{-# LANGUAGE MagicHash, UnboxedTuples #-}
 {-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP, BangPatterns, OverlappingInstances 
     , FlexibleInstances, MultiParamTypeClasses, TypeSynonymInstances
   #-}
@@ -6,42 +8,80 @@
 -- C preprocessor.  Any subset of the three may be activated.
 
 import Control.Monad
+import Control.Monad.ST (stToIO)
 import Control.Exception
 import Control.Concurrent.MVar
 import GHC.Conc
 import Data.IORef
 import Data.Word
-import Data.CAS.Internal.Class
 import Data.Time.Clock
 import System.Environment
 import System.Mem.StableName
 import GHC.IO (unsafePerformIO)
-
-#ifdef T1
-import qualified Data.CAS.Internal.Native  as A
-#endif
-#ifdef T2
-import qualified Data.CAS.Internal.Fake    as B
-#endif
-#ifdef T3
-import qualified Data.CAS.Internal.Foreign as C
-#endif
-
 import Text.Printf
 
-----------------------------------------------------------------------------------------------------
--- TODO:
---  * Switch the [Bool] implementation to use a BitList.
---  
-----------------------------------------------------------------------------------------------------
+import qualified GHC.Prim     as P
+import qualified Data.Atomics as A
+
+import GHC.ST
 
 {-# NOINLINE zer #-}
 zer = 0
-
--- iters = 100
--- iters = 10000
 default_iters = 100000
--- iters = 1000000
+
+main = do
+  putStrLn "Using new 'ticket' based compare and swap:"
+
+  -- let x :: P.State# d0 -> (# P.State# d0, P.MutVar# d0 Int #)
+  --     x = \st -> (P.newMutVar# (33::Int) st) 
+  --     y = ST x
+ --  stToIO$ P.newMutVar# (33::Int)
+
+  return ()
+  
+----------------------------------------------------------------------------------------------------
+
+-- The element type for our CAS test.
+-- type ElemTy = Int
+type ElemTy = Word32 -- This will trigger CAS.Foreign's specialization.
+
+{-
+
+{-# INLINE testCAS1 #-}
+-- First test: Run a simple CAS a small number of times.
+testCAS1 :: P.MutVar# ElemTy -> IO [Bool]
+testCAS1 r = 
+  do 
+     bitls <- newIORef []
+--     let zer = (0::Int)
+
+--     r :: CASRef Int <- newCASable zer 
+     let loop 0 = return ()
+	 loop n = do
+
+          (b,v) <- cas r zer 100  -- Must use "zer" here.
+          atomicModifyIORef bitls (\x -> (b:x, ()))
+
+--          (b,v) <- casIORef r zer 100  -- Must use "zer" here.
+--          (b,v) <- casStrict r 0 100  -- Otherwise this is nondeterministic based on compiler opts.
+		   -- Sometimes the latter version works on the SECOND evaluation of testCAS.  Interesting.
+          putStrLn$ "  After CAS " ++ show (b,v)
+          loop (n-1)
+     loop 10
+
+     -- x <- readCASable r
+     -- putStrLn$ "  Finished with loop, read cell: " ++ show x
+     -- writeCASable r 111
+     -- y <- readCASable r
+     -- putStrLn$ "  Wrote and read again read: " ++ show y
+
+     -- ls <- readIORef bitls
+     -- return (reverse ls)
+
+     return []
+
+-}
+
 
 ----------------------------------------------------------------------------------------------------
 -- Helpers
@@ -80,40 +120,8 @@ timeit ioact = do
 
 ----------------------------------------------------------------------------------------------------
 
--- The element type for our CAS test.
--- type ElemTy = Int
-type ElemTy = Word32 -- This will trigger CAS.Foreign's specialization.
 
-{-# INLINE testCAS1 #-}
--- First test: Run a simple CAS a small number of times.
-testCAS1 :: CASable ref ElemTy => ref ElemTy -> IO [Bool]
-testCAS1 r = 
-  do 
-     bitls <- newIORef []
---     let zer = (0::Int)
-
---     r :: CASRef Int <- newCASable zer 
-     let loop 0 = return ()
-	 loop n = do
-
-          (b,v) <- cas r zer 100  -- Must use "zer" here.
-          atomicModifyIORef bitls (\x -> (b:x, ()))
-
---          (b,v) <- casIORef r zer 100  -- Must use "zer" here.
---          (b,v) <- casStrict r 0 100  -- Otherwise this is nondeterministic based on compiler opts.
-		   -- Sometimes the latter version works on the SECOND evaluation of testCAS.  Interesting.
-          putStrLn$ "  After CAS " ++ show (b,v)
-          loop (n-1)
-     loop 10
-
-     x <- readCASable r
-     putStrLn$ "  Finished with loop, read cell: " ++ show x
-     writeCASable r 111
-     y <- readCASable r
-     putStrLn$ "  Wrote and read again read: " ++ show y
-
-     ls <- readIORef bitls
-     return (reverse ls)
+{-
 
 
 ----------------------------------------------------------------------------------------------------
@@ -431,3 +439,4 @@ Ok, going to attempt to tease this out by first testing only one implementation 
 
 
 -- main = test 3
+-}

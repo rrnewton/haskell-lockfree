@@ -1,14 +1,21 @@
 {-# LANGUAGE  MagicHash, UnboxedTuples #-}
 
-module Data.Atomics (casArrayElem) where
+module Data.Atomics 
+ (casArrayElem, 
+  readForCAS, Ticket
+ ) where
 
-import Data.Atomics.Internal (casArray#)
+import Control.Monad.ST (stToIO)
+import Data.Primitive.Array (MutableArray(MutableArray))
+import Data.Atomics.Internal (casArray#, readForCAS#, Ticket)
+import Data.Int -- TEMPORARY
+
 import GHC.ST
 import GHC.Prim
 import GHC.Arr 
 import GHC.Base (Int(I#))
-import Data.Primitive.Array (MutableArray(MutableArray))
-import Control.Monad.ST (stToIO)
+import GHC.IO (IO(IO))
+import GHC.Word (Word(W#))
 
 {-# INLINE casArrayST #-}
 
@@ -23,4 +30,10 @@ casArrayST (MutableArray arr#) (I# i#) old new = ST$ \s1# ->
 casArrayElem :: MutableArray RealWorld a -> Int -> a -> a -> IO (Bool, a)
 casArrayElem arr i old new = stToIO (casArrayST arr i old new)
 
--- stToIO (casSTRef var old new)
+
+{-# INLINE readForCAS #-}
+readForCAS :: MutVar# RealWorld a -> IO ( Ticket, a )
+readForCAS mv = IO$ \ st -> 
+  case readForCAS# mv st of 
+   (# st, tick, val #) -> (# st, (W# tick, val) #)
+

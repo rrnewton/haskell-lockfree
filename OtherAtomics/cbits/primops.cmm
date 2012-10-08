@@ -34,3 +34,35 @@ stg_casArrayzh
         RET_NP(0,h);
     }
 }
+
+
+stg_casMutVar2zh
+ /* MutVar# s a -> Word# -> a -> State# s -> (# State#, Int#, Word#, a #) */
+{
+    W_ mv, old, new, h;
+
+    mv  = R1;
+    old = R2;
+    new = R3;
+
+    (h) = foreign "C" cas(mv + SIZEOF_StgHeader + OFFSET_StgMutVar_var,
+                          old, new) [];
+    if (h != old) {
+        RET_NNP(1,h,h);
+    } else {
+        if (GET_INFO(mv) == stg_MUT_VAR_CLEAN_info) {
+           foreign "C" dirty_MUT_VAR(BaseReg "ptr", mv "ptr") [];
+        }
+        RET_NNP(0,h,h);
+    }
+}
+
+
+stg_readMutVar2zh
+/*  MutVar# RealWorld a -> State# RealWorld -> (# State# RealWorld, Word#, a #) */
+{
+    W_ mv, res;
+    mv  = R1;
+    res = W_[mv];
+    RET_NP(res, res);
+}
