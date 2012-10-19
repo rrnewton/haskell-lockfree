@@ -20,8 +20,8 @@ import qualified Data.CAS as CAS
 $[hdats|
  -- Here's our abstract data definition.
  data LinkedQueue a = LQ 
-    { head :: IORef (Pair a)
-    , tail :: IORef (Pair a)
+    { head :: Ref (Pair a)
+    , tail :: Ref (Pair a)
     }
  data Pair a = Null | Cons a (Ref (Pair a))
  ]
@@ -198,8 +198,6 @@ pushL lq val = do
    return ()
  where
   (headPtr,tailPtr) = unLQ lq  -- Magic
---  (headPtr,tailPtr) = untuple lq  -- Magic
---  LQ headPtr tailPtr = untuple lq  -- Magic
 
   loop newp = do 
    tail <- readRef tailPtr -- Reread the tailptr from the queue structure.
