@@ -48,6 +48,7 @@ Test-Suite test-lockfree-queue
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
     build-depends: base >= 4.4.0.0 && < 5, IORefCAS >= 0.2, abstract-deque, bytestring,
-                   HUnit, test-framework, test-framework-hunit
+                   HUnit, test-framework, test-framework-hunit,
+                   ghc-prim
     ghc-options: -O2 -threaded -rtsopts 
 
