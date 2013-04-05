@@ -15,7 +15,8 @@ import GHC.Word (Word(W#))
 
 {-# INLINE casArray# #-}
 -- | Unsafe, machine-level atomic compare and swap on an element within an Array.  
-casArray# :: MutableArray# RealWorld a -> Int# -> a -> a -> State# RealWorld -> (# State# RealWorld, Int#, a #)    
+casArray# :: MutableArray# RealWorld a -> Int# -> a -> a 
+          -> State# RealWorld -> (# State# RealWorld, Int#, a #)    
 casArray# = unsafeCoerce# casArrayTypeErased#
 
 

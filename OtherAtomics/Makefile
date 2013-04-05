@@ -7,6 +7,11 @@ all:
 	${GHC} -c -dcmm-lint -keep-s-file cbits/primops.cmm
 	${GHC} -O2 -fforce-recomp --make cbits/primops.o Test.hs -o Test.exe
 
+all2:
+	${GHC} -c -dcmm-lint -keep-s-file cbits/primops.cmm
+	${GHC} -O2 -fforce-recomp --make cbits/primops.o Test2.hs -o Test2.exe
+
+
 test: test74 test76
 
 test74:
