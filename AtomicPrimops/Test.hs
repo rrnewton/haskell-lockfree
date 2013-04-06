@@ -1,4 +1,3 @@
- 
 {-# LANGUAGE MagicHash, UnboxedTuples #-}
 {-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP, BangPatterns, OverlappingInstances 
     , FlexibleInstances, MultiParamTypeClasses, TypeSynonymInstances
@@ -8,31 +7,79 @@
 -- C preprocessor.  Any subset of the three may be activated.
 
 import Control.Monad
-import Control.Monad.ST (stToIO)
-import Control.Exception
+-- import Control.Monad.ST (stToIO)
+-- import Control.Exception
 import Control.Concurrent.MVar
 import GHC.Conc
 import Data.IORef
-import Data.Word
+-- import Data.Word
 import Data.Time.Clock
-import System.Environment
-import System.Mem.StableName
-import GHC.IO (unsafePerformIO)
+-- import System.Environment
+-- import System.Mem.StableName
+-- import GHC.IO (unsafePerformIO)
 import Text.Printf
-
-import qualified GHC.Prim     as P
-import qualified Data.Atomics as A
-
-import GHC.ST
+-- import qualified GHC.Prim     as P
+-- import GHC.ST
 import GHC.STRef
 import GHC.IORef
+import Data.Primitive.Array
+-- import Control.Monad
+
+import qualified Data.Atomics as A
+import Data.Atomics (casArrayElem)
+
+------------------------------------------------------------------------
+main :: IO ()
+main = do
+
+  case_casmutarray1
+  case_casTicket1  
+
+------------------------------------------------------------------------
+{-# NOINLINE mynum #-}
+mynum :: Int
+mynum = 33
+
+-- Expected output: 
+{---------------------------------------
+    Perform a CAS within a MutableArray#
+      1st try should succeed: (True,33)
+    2nd should fail: (False,44)
+    Printing array:
+      33  33  33  44  33
+    Done.
+-}
+case_casmutarray1 :: IO ()
+case_casmutarray1 = do 
+ putStrLn "Perform a CAS within a MutableArray#"
+ arr <- newArray 5 mynum
+
+ res  <- casArrayElem arr 3 mynum 44
+ res2 <- casArrayElem arr 3 mynum 44
+-- res  <- stToIO$ casArrayST arr 3 mynum 44
+-- res2 <- stToIO$ casArrayST arr 3 mynum 44 
+ 
+ putStrLn$ "  1st try should succeed: "++show res
+ putStrLn$ "2nd should fail: "++show res2
+
+ putStrLn "Printing array:"
+ forM_ [0..4] $ \ i -> do
+   x <- readArray arr i 
+   putStr ("  "++show x)
+ putStrLn ""
+ putStrLn "Done."
+  
+----------------------------------------------------------------------------------------------------
 
 {-# NOINLINE zer #-}
+zer :: Int
 zer = 0
+default_iters :: Int
 default_iters = 100000
 
-main = do
-  putStrLn "Using new 'ticket' based compare and swap:"
+case_casTicket1 :: IO ()
+case_casTicket1 = do
+  putStrLn "\nUsing new 'ticket' based compare and swap:"
 
   IORef (STRef mutvar) <- newIORef (3::Int)  
   (tick,val) <- A.readForCAS mutvar
@@ -47,20 +94,22 @@ main = do
 
   putStrLn$"Ok, next take a look at a SECOND CAS attempt, to see if the ticket from the first works..."
   res2 <- A.casMutVar mutvar tick2 12345678
-
+  putStrLn$"Result was: "++show res2
+  
 --  res <- A.casMutVar mutvar tick 99 
   res3 <- A.readForCAS mutvar
-  putStrLn$"To check contents, did a SECOND read: "++show res2
+  putStrLn$"To check contents, did a SECOND read: "++show res3
 
   return ()
-  
+
 ----------------------------------------------------------------------------------------------------
+
+-- Old tests from original CAS library:
+{-
 
 -- The element type for our CAS test.
 -- type ElemTy = Int
 type ElemTy = Word32 -- This will trigger CAS.Foreign's specialization.
-
-{-
 
 {-# INLINE testCAS1 #-}
 -- First test: Run a simple CAS a small number of times.
@@ -94,12 +143,12 @@ testCAS1 r =
      -- return (reverse ls)
 
      return []
-
 -}
 
 
 ----------------------------------------------------------------------------------------------------
 -- Helpers
+----------------------------------------------------------------------------------------------------
 
 printBits = print . map pb
  where pb True  = '1' 
