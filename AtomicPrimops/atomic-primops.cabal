@@ -37,7 +37,8 @@ Description:
 Library
   exposed-modules:   Data.Atomics
   other-modules:     Data.Atomics.Internal
-
+  ghc-options: -O2 -threaded 
+  
   -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
   -- (base 4.5 or greater).
   build-depends:     base >= 4.5.0.0, ghc-prim, primitive
@@ -54,7 +55,7 @@ Test-Suite test-atomic-primops
 
     build-depends: base >= 4.5, ghc-prim, primitive, 
     -- For Testing:
-                   atomic-primops,
+--                   atomic-primops,
                    time, HUnit, test-framework, test-framework-hunit,
                    test-framework-th
 

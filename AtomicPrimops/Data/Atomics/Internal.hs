@@ -41,16 +41,12 @@ casMutVar2# :: MutVar# RealWorld a -> Ticket# -> a ->
                State# RealWorld -> (# State# RealWorld, Int#, Ticket#, a #)
 casMutVar2# = unsafeCoerce# casMutVar_TypeErased#
 
--- bultin:
---  MutVar# d a -> a -> a -> State# d -> (# State# d, Int#, a #)
-
-
 
 --------------------------------------------------------------------------------
 -- Type-erased versions that call the raw foreign primops:
 --------------------------------------------------------------------------------
 
--- type TheValType = Any () -- The above type only works in GHC 7.6!!!  We want 7.4 support.
+-- type TheValType = Any () -- This type only works in GHC 7.6!!!  We want 7.4 support.
 type TheValType = Word#
 
 -- Due to limitations of the "foreign import prim" mechanism, we can't

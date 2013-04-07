@@ -5,7 +5,7 @@ endif
 
 all:
 	${GHC} -c -dcmm-lint -keep-s-file cbits/primops.cmm
-	${GHC} -O2 -fforce-recomp --make cbits/primops.o Test.hs -o Test$(SUFFIX).exe
+	${GHC} -threaded -O2 -fforce-recomp --make cbits/primops.o Test.hs -o Test$(SUFFIX).exe
 
 onecall:
 #	${GHC} -c -dcmm-lint -keep-s-file cbits/primops.cmm

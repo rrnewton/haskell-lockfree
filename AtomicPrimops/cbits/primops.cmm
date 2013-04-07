@@ -1,6 +1,17 @@
 
 #include "Cmm.h"
 
+// Duplicate some of the RTS here (CAS instruction).
+#include "RtsDup.h"
+
+// #include "Cmm.h"
+// Problems if we try this:
+// #include "stg/SMP.h"
+// #include "Rts.h"
+
+// Defined in SMP.h: 
+// EXTERN_INLINE StgWord cas(StgVolatilePtr p, StgWord o, StgWord n);
+
 add1Op
 /* Int# -> Int# */
 {

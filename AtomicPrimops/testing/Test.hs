@@ -38,14 +38,6 @@ import Test.Framework.TH (defaultMainGenerator)
 
 main = $(defaultMainGenerator)
 
--- testSuite :: Test
--- testSuite = $(testGroupGenerator)
-
--- main :: IO ()
--- main = do
---   case_casmutarray1
---   case_casTicket1
-
 ------------------------------------------------------------------------
 {-# NOINLINE mynum #-}
 mynum :: Int
@@ -64,6 +56,10 @@ case_casmutarray1 :: IO ()
 case_casmutarray1 = do 
  putStrLn "Perform a CAS within a MutableArray#"
  arr <- newArray 5 mynum
+
+ writeArray arr 4 33
+ x <- readArray arr 4 
+ putStrLn$ "(Poking at array was ok: "++show x++")"
 
  res  <- casArrayElem arr 3 mynum 44
  res2 <- casArrayElem arr 3 mynum 44
