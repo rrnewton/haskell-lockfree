@@ -1,7 +1,5 @@
 {-# LANGUAGE MagicHash, UnboxedTuples #-}
-{-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP, BangPatterns, OverlappingInstances 
-    , FlexibleInstances, MultiParamTypeClasses, TypeSynonymInstances
-  #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- | This test has three different modes which can be toggled via the
 -- C preprocessor.  Any subset of the three may be activated.
@@ -28,12 +26,25 @@ import Data.Primitive.Array
 import qualified Data.Atomics as A
 import Data.Atomics (casArrayElem)
 
-------------------------------------------------------------------------
-main :: IO ()
-main = do
+-- import Test.QuickCheck hiding (NonEmpty)
+import Test.HUnit (Assertion, assertEqual, assertBool)
+import Test.Framework  (Test, defaultMain)
+import Test.Framework.Providers.HUnit (testCase)
+-- import Test.Framework.Providers.QuickCheck2 (testProperty)
+-- import Test.Framework.TH (testGroupGenerator)
+import Test.Framework.TH (defaultMainGenerator)
 
-  case_casmutarray1
-  case_casTicket1  
+------------------------------------------------------------------------
+
+main = $(defaultMainGenerator)
+
+-- testSuite :: Test
+-- testSuite = $(testGroupGenerator)
+
+-- main :: IO ()
+-- main = do
+--   case_casmutarray1
+--   case_casTicket1
 
 ------------------------------------------------------------------------
 {-# NOINLINE mynum #-}

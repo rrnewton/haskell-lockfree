@@ -40,27 +40,23 @@ Library
 
   -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
   -- (base 4.5 or greater).
-  build-depends:     base >= 4.5.0.0 && < 5,
-                     ghc-prim, primitive
+  build-depends:     base >= 4.5.0.0, ghc-prim, primitive
+-- TEMP: these are really only 
 
   Include-Dirs:     cbits
   C-Sources:        cbits/primops.cmm
---  CMM-Sources:        cbits/primops.cmm
 
 
--- Test-Suite test-atomic-primops
---     type:       exitcode-stdio-1.0
---     main-is:    Test.hs
---     ghc-options: -O2 -threaded -rtsopts
--- --     cpp-options: cbits/primops.o
+Test-Suite test-atomic-primops
+    type:       exitcode-stdio-1.0
+    main-is:    Test.hs
+    ghc-options: -O2 -threaded -rtsopts
 
---     build-depends: base >= 4.5 && < 5, time, ghc-prim,
---                    QuickCheck, HUnit, bits-atomic
--- -- TODO: Refactor to use test-framework:
--- --                 , test-framework, test-framework-hunit
--- -- test-framework-quickcheck2
-
-
+    build-depends: base >= 4.5, ghc-prim, primitive, 
+    -- For Testing:
+                   atomic-primops,
+                   time, HUnit, test-framework, test-framework-hunit,
+                   test-framework-th
 
 
 Source-Repository head
