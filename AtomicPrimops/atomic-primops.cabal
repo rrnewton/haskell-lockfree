@@ -1,0 +1,68 @@
+Name:                atomic-primops
+Version:             0.1.0.0
+License:             BSD3
+License-file:        LICENSE
+Author:              Ryan Newton
+Maintainer:          rrnewton@gmail.com
+Category:            Data
+Stability:           Provisional
+-- Portability:         non-portabile (x86_64)
+Build-type:          Simple
+Cabal-version:       >=1.8
+HomePage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
+
+-- Version History:
+-- 0.1.0.0 -- initial release
+
+
+Synopsis: A safe approach to CAS and other atomic ops in Haskell.
+
+Description:
+
+  After GHC 7.4 a new `casMutVar#` primop became available, but it's
+  difficult to use safely, because pointer equality is a highly
+  unstable property in Haskell.  This library provides a safer method
+  based on the concept of "Tickets".
+ .
+  Also, this library uses the "foreign primop" capability of GHC to
+  add access to other atomic processor instructions that may be of
+  interest.  For example, compare and swap inside an array, as well as
+  on a IORef or `MutVar#`.
+ . 
+  For now it only supports the x86 instruction set.
+
+-- Extra-Source-Files:
+--                     Makefile, Test.hs, README.md
+
+Library
+  exposed-modules:   Data.Atomics
+  other-modules:     Data.Atomics.Internal
+
+  -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
+  -- (base 4.5 or greater).
+  build-depends:     base >= 4.5.0.0 && < 5,
+                     ghc-prim, primitive
+
+  Include-Dirs:     cbits
+  C-Sources:        cbits/primops.cmm
+--  CMM-Sources:        cbits/primops.cmm
+
+
+-- Test-Suite test-atomic-primops
+--     type:       exitcode-stdio-1.0
+--     main-is:    Test.hs
+--     ghc-options: -O2 -threaded -rtsopts
+-- --     cpp-options: cbits/primops.o
+
+--     build-depends: base >= 4.5 && < 5, time, ghc-prim,
+--                    QuickCheck, HUnit, bits-atomic
+-- -- TODO: Refactor to use test-framework:
+-- --                 , test-framework, test-framework-hunit
+-- -- test-framework-quickcheck2
+
+
+
+
+Source-Repository head
+    Type:         git
+    Location:     git://github.com/rrnewton/haskell-lockfree-queue.git
