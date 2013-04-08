@@ -127,4 +127,9 @@ How about with ghc-7.4.2?
  
 
  
- 
+[2013.04.08] {Also trying HPC mode}
+-----------------------------------
+
+Under ghc-7.6.2, and installing with --enable-library-coverage, then
+building Test.exe with -fhpc, it works on my Mac.
+
