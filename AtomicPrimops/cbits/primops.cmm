@@ -69,6 +69,7 @@ stg_casMutVar2zh
 }
 
 
+// Takes a single input argument in R1:
 stg_readMutVar2zh
 /*  MutVar# RealWorld a -> State# RealWorld -> (# State# RealWorld, Word#, a #) */
 {

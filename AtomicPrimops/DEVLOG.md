@@ -84,4 +84,47 @@ haskell it seems.  I did that, and it builds and DOESN'T SEGFAULT.
 So it's building WITHOUT profiling after installing with profiling
 that breaks!!
 
+[2013.04.08] {Further investigating}
+------------------------------------
 
+Ok, let's see what the chain of causation here is.  HOW is it actually
+picking up anything from those profiling installs if profiling is
+disabled in the final build-and-link?
+
+Here are the sizes of the relevant binaries on a profile compile:
+
+    Summing ./lib/atomic-primops-0.1.0.0/ghc-7.6.2/HSatomic-primops-0.1.0.0.o
+	      44,392 bytes in 1 plain files.
+    Summing ./lib/atomic-primops-0.1.0.0/ghc-7.6.2/libHSatomic-primops-0.1.0.0.a
+	      58,808 bytes in 1 plain files.
+
+
+The final link command issued to gcc says this:
+
+    '-L/Users/rrnewton/.cabal/lib/atomic-primops-0.1.0.0/ghc-7.6.2' ...
+    '-lHSatomic-primops-0.1.0.0'
+
+There doesn't seem to be anything that would cause it to pull in the
+"_p.a" version...  How about I manually delete the "*p_*" files and
+see what happens?  Same behavior!  It is NOT using those files
+directly.
+
+And, indeed, if I try to actually build the profiling version of
+Test.exe then it fails to find Data.Atomics (presumably based on
+failing to find the .p_hi file.)
+
+How about a binary difference in the NON-profiling binaries?  Here are
+their sizes in the non-profiling (WORKING) build.  YES, there are
+binary differences:
+
+            44,336 bytes in 1 plain files.
+            58,752 bytes in 1 plain files.
+	    
+How about with ghc-7.4.2?
+-------------------------
+
+ * Exact same pattern of behavior, segfaults with atomic-primops/prof Test.exe/noprof
+ 
+
+ 
+ 
