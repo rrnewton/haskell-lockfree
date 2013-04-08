@@ -38,4 +38,50 @@ the original, it is now passing in BOTH compile methods on Mac OS.
 Further, it will happily run hundreds of time without segfaulting.  So
 it appears to be compile time nondeterminism rather than runtime ;-).
 
+-----------------
+
+AHA!  It works when I build like this:
+
+   cabal install --disable-library-profiling --disable-documentation
+   
+But NOT with a vanially cabal install (profiling and documentation).
+As expected, it is the profiling that makes the difference.
+Note that I am NOT building the test with profiling.  The profiling
+version should be IRRELEVANT.  Why does this cause the segfault?
+
+Well, if it is cabal installed WITH profiling, we can change the
+error, at least, by changing how Test.exe is built.  Building with no
+options (without -threaded -O2) and we see a false positive with the
+casArrayElem, then a segfault on the ticket-test:
+
+    Perform a CAS within a MutableArray#
+    (Poking at array was ok: 33)
+      1st try should succeed: (False,4377552852)
+    2nd should fail: (False,4377552852)
+    Printing array:
+      33  33  33  33  33
+    Done.
+
+      casmutarray1: [OK]
+
+    Using new 'ticket' based compare and swap:
+    YAY, read the IORef, ticket 4382124888
+    Test.exe: internal error: MUT_VAR_DIRTY object entered!
+	(GHC version 7.6.2 for x86_64_apple_darwin)
+	Please report this as a GHC bug:  http://www.haskell.org/ghc/reportabug
+
+What if we actually DO build with profiling?
+
+    ghc  -prof -fforce-recomp Test.hs -o Test.exe
+    
+    Test.hs:39:10:
+	Dynamic linking required, but this is a non-standard build (eg. prof).
+	You need to build the program twice: once the normal way, and then
+	in the desired way using -osuf to set the object file suffix.    
+
+Oops, I have to disable the use of test-framework-th and template
+haskell it seems.  I did that, and it builds and DOESN'T SEGFAULT. 
+So it's building WITHOUT profiling after installing with profiling
+that breaks!!
+
 

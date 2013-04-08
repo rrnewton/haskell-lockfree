@@ -1,5 +1,5 @@
 {-# LANGUAGE MagicHash, UnboxedTuples #-}
-{-# LANGUAGE TemplateHaskell #-}
+-- {-# LANGUAGE TemplateHaskell #-}
 
 -- | This test has three different modes which can be toggled via the
 -- C preprocessor.  Any subset of the three may be activated.
@@ -26,17 +26,19 @@ import Data.Primitive.Array
 import qualified Data.Atomics as A
 import Data.Atomics (casArrayElem)
 
--- import Test.QuickCheck hiding (NonEmpty)
 import Test.HUnit (Assertion, assertEqual, assertBool)
-import Test.Framework  (Test, defaultMain)
+import Test.Framework  (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
--- import Test.Framework.Providers.QuickCheck2 (testProperty)
--- import Test.Framework.TH (testGroupGenerator)
-import Test.Framework.TH (defaultMainGenerator)
+
+-- import Test.Framework.TH (defaultMainGenerator)
 
 ------------------------------------------------------------------------
 
-main = $(defaultMainGenerator)
+-- main = $(defaultMainGenerator)
+main = defaultMain
+       [ testCase "casTicket1"   case_casTicket1
+       , testCase "casmutarray1" case_casmutarray1
+       ]
 
 ------------------------------------------------------------------------
 {-# NOINLINE mynum #-}
