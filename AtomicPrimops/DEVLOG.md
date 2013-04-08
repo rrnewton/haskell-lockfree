@@ -133,3 +133,11 @@ How about with ghc-7.4.2?
 Under ghc-7.6.2, and installing with --enable-library-coverage, then
 building Test.exe with -fhpc, it works on my Mac.
 
+Also, note that the cabal driven test-suite is not working right now
+on Mac or Linux....  I think it worked some before I moved it to the
+testing/ subdir.
+
+Having a completely separate .cabal for testing/...  That works on Mac
+and Linux subject to the above bug concerning profiling installs.
+
+

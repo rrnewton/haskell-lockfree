@@ -1,0 +1,18 @@
+
+-- Trying a completely separate .cabal for testing.
+
+Name:                testing
+Version:             0.1.0.0
+Build-type:          Simple
+Cabal-version:       >=1.8
+
+Executable test-atomic-primops
+    type:       exitcode-stdio-1.0
+    main-is:    Test.hs
+    ghc-options: -O2 -threaded -rtsopts
+
+    build-depends: base >= 4.5, ghc-prim, primitive, 
+    -- For Testing:
+                   atomic-primops,
+                   time, HUnit, test-framework, test-framework-hunit,
+                   test-framework-th

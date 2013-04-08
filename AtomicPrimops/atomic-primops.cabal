@@ -47,18 +47,17 @@ Library
   Include-Dirs:     cbits
   C-Sources:        cbits/primops.cmm
 
+-- -- [2013.04.08] This isn't working presently:
+-- Test-Suite test-atomic-primops
+--     type:       exitcode-stdio-1.0
+--     main-is:    testing/Test.hs
+--     ghc-options: -O2 -threaded -rtsopts -
 
-Test-Suite test-atomic-primops
-    type:       exitcode-stdio-1.0
-    main-is:    Test.hs
-    ghc-options: -O2 -threaded -rtsopts
-
-    build-depends: base >= 4.5, ghc-prim, primitive, 
-    -- For Testing:
---                   atomic-primops,
-                   time, HUnit, test-framework, test-framework-hunit,
-                   test-framework-th
-
+--     build-depends: base >= 4.5, ghc-prim, primitive, 
+--     -- For Testing:
+-- --                   atomic-primops,
+--                    time, HUnit, test-framework, test-framework-hunit,
+--                    test-framework-th
 
 Source-Repository head
     Type:         git
