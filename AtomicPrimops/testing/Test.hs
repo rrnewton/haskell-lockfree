@@ -111,6 +111,37 @@ case_casTicket1 = do
 
   return ()
 
+---- toddaaro's tests -----
+
+case_create_and_read :: Assertion
+case_create_and_read :: Assertion
+  putStrLn$ "\nCreating a single value and trying to read it."
+  x <- newIORef (120::Int)
+  assert "Does x equal 120?" x == 120
+
+case_create_and_mutate :: Assertion
+case_create_and_mutate = do
+  putStrLn$ "\nCreating a single 'ticket' based variable to use and mutating it once."
+  x <- newIORef (5::Int)
+  (tick,val) <- A.readForCAS(x)
+  res <- A.casIORef x tick 120
+  putStrLn$ "\nDid setting it to 120 work?"
+  putStrLn$ "\nResult was: " ++ show res
+
+  assert "Does our x equal 120?" x == 120
+
+case_create_and_mutate_twice :: Assertion
+case_create_and_mutate_twice :: Assertion
+  putStrLn$ "\nCreating a single 'ticket' based variable to mutate twice."
+  x - newIORef (0::Int)
+  (tick1,val1) <- A.readForCAS(x)
+  res1 <- A.casIORef x tick1 5
+  (tick2,val2) <- A.readForCAS(x)
+  res2 <- A.casIORef x tick2 120
+  do 
+     assert "Does the value after the first mutate equal 5?" val2 == 5
+     assert "Does the value after the second mutate equal 120?" x == 120
+
 ----------------------------------------------------------------------------------------------------
 
 -- Old tests from original CAS library:
