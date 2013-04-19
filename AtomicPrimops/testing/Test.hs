@@ -33,7 +33,7 @@ import Test.Framework.Providers.HUnit (testCase)
 -- import Test.Framework.TH (defaultMainGenerator)
 
 ------------------------------------------------------------------------
-
+{-
 -- main = $(defaultMainGenerator)
 main = defaultMain
        [ testCase "casTicket1"   case_casTicket1
@@ -110,14 +110,21 @@ case_casTicket1 = do
   putStrLn$"To check contents, did a SECOND read: "++show res3
 
   return ()
-
+-}
 ---- toddaaro's tests -----
 
+main = defaultMain
+       [ testCase "case_create_and_read" case_create_and_read
+       , testCase "case_create_and_mutate" case_create_and_mutate
+       , testCase "case_create_and_mutate_twice" case_create_and_mutate_twice
+       ]
+
 case_create_and_read :: Assertion
-case_create_and_read :: Assertion
+case_create_and_read = do
   putStrLn$ "\nCreating a single value and trying to read it."
   x <- newIORef (120::Int)
-  assert "Does x equal 120?" x == 120
+  valf <- readIORef x
+  assertBool "Does x equal 120?" (valf == 120)
 
 case_create_and_mutate :: Assertion
 case_create_and_mutate = do
@@ -127,20 +134,24 @@ case_create_and_mutate = do
   res <- A.casIORef x tick 120
   putStrLn$ "\nDid setting it to 120 work?"
   putStrLn$ "\nResult was: " ++ show res
+  valf <- readIORef x
 
-  assert "Does our x equal 120?" x == 120
+  assertBool "Does our x equal 120?" (valf == 120)
 
 case_create_and_mutate_twice :: Assertion
-case_create_and_mutate_twice :: Assertion
+case_create_and_mutate_twice = do
   putStrLn$ "\nCreating a single 'ticket' based variable to mutate twice."
-  x - newIORef (0::Int)
+  x <- newIORef (0::Int)
   (tick1,val1) <- A.readForCAS(x)
   res1 <- A.casIORef x tick1 5
   (tick2,val2) <- A.readForCAS(x)
   res2 <- A.casIORef x tick2 120
-  do 
-     assert "Does the value after the first mutate equal 5?" val2 == 5
-     assert "Does the value after the second mutate equal 120?" x == 120
+  valf <- readIORef x
+
+  assertBool "Does the value after the first mutate equal 5?" (val2 == 5)
+  assertBool "Does the value after the second mutate equal 120?" (valf == 120)
+
+{--
 
 ----------------------------------------------------------------------------------------------------
 
@@ -184,7 +195,7 @@ testCAS1 r =
      return []
 -}
 
-
+--}
 ----------------------------------------------------------------------------------------------------
 -- Helpers
 ----------------------------------------------------------------------------------------------------
