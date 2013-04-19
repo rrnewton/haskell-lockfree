@@ -9,7 +9,7 @@ import Control.Monad
 -- import Control.Exception
 import Control.Concurrent.MVar
 import GHC.Conc
-import Data.IORef
+-- import Data.IORef
 -- import Data.Word
 import Data.Time.Clock
 -- import System.Environment
@@ -22,6 +22,7 @@ import GHC.STRef
 import GHC.IORef
 import Data.Primitive.Array
 -- import Control.Monad
+import Data.Word
 
 import qualified Data.Atomics as A
 import Data.Atomics (casArrayElem)
@@ -91,7 +92,7 @@ case_casTicket1 = do
   putStrLn "\nUsing new 'ticket' based compare and swap:"
 
   IORef (STRef mutvar) <- newIORef (3::Int)  
-  (tick,val) <- A.readForCAS mutvar
+  (tick,val) <- A.readMutVarForCAS mutvar
   putStrLn$"YAY, read the IORef, ticket "++show tick
   putStrLn$"     and the value was:  "++show val
 
@@ -106,7 +107,7 @@ case_casTicket1 = do
   putStrLn$"Result was: "++show res2
   
 --  res <- A.casMutVar mutvar tick 99 
-  res3 <- A.readForCAS mutvar
+  res3 <- A.readMutVarForCAS mutvar
   putStrLn$"To check contents, did a SECOND read: "++show res3
 
   return ()
@@ -117,41 +118,32 @@ case_casTicket1 = do
 
 -- The element type for our CAS test.
 -- type ElemTy = Int
- type ElemTy = Word32 -- This will trigger CAS.Foreign's specialization.
+type ElemTy = Word32 -- This will trigger CAS.Foreign's specialization.
 
 {-# INLINE testCAS1 #-}
 -- First test: Run a simple CAS a small number of times.
-testCAS1 :: P.MutVar# ElemTy -> IO [Bool]
+testCAS1 :: IORef ElemTy -> IO [A.CASResult Integer]
 testCAS1 r = 
   do 
      bitls <- newIORef []
---     let zer = (0::Int)
-
---     r :: CASRef Int <- newCASable zer 
+     r <- newIORef 0
+     (tick1,zer2) <- A.readForCAS r
      let loop 0 = return ()
 	 loop n = do
-
-          (b,v) <- cas r zer 100  -- Must use "zer" here.
-          atomicModifyIORef bitls (\x -> (b:x, ()))
-
---          (b,v) <- casIORef r zer 100  -- Must use "zer" here.
---          (b,v) <- casStrict r 0 100  -- Otherwise this is nondeterministic based on compiler opts.
-		   -- Sometimes the latter version works on the SECOND evaluation of testCAS.  Interesting.
-          putStrLn$ "  After CAS " ++ show (b,v)
+          res <- A.casIORef r tick1 100
+          atomicModifyIORef bitls (\x -> (res:x, ()))
+          putStrLn$ "  After CAS " ++ show res
           loop (n-1)
      loop 10
 
-     -- x <- readCASable r
-     -- putStrLn$ "  Finished with loop, read cell: " ++ show x
-     -- writeCASable r 111
-     -- y <- readCASable r
-     -- putStrLn$ "  Wrote and read again read: " ++ show y
+     x <- readIORef r
+     putStrLn$ "  Finished with loop, read cell: " ++ show x
+     writeIORef r 111
+     y <- readIORef r
+     putStrLn$ "  Wrote and read again read: " ++ show y
 
-     -- ls <- readIORef bitls
-     -- return (reverse ls)
-
-     return []
--}
+     ls <- readIORef bitls
+     return (reverse ls)
 
 
 ----------------------------------------------------------------------------------------------------
@@ -512,3 +504,5 @@ Ok, going to attempt to tease this out by first testing only one implementation 
 
 -- main = test 3
 -}
+
+
