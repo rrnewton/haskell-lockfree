@@ -48,6 +48,7 @@ Library
   C-Sources:        cbits/primops.cmm
 
 -- -- [2013.04.08] This isn't working presently:
+-- -- I'm having problems with building it along with the library; see DEVLOG.
 -- Test-Suite test-atomic-primops
 --     type:       exitcode-stdio-1.0
 --     main-is:    testing/Test.hs
@@ -62,3 +63,5 @@ Library
 Source-Repository head
     Type:         git
     Location:     git://github.com/rrnewton/haskell-lockfree-queue.git
+
+

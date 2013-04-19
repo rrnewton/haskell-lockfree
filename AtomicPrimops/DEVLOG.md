@@ -140,4 +140,3 @@ testing/ subdir.
 Having a completely separate .cabal for testing/...  That works on Mac
 and Linux subject to the above bug concerning profiling installs.
 
-

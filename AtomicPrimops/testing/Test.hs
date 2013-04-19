@@ -145,11 +145,10 @@ case_create_and_mutate_twice :: Assertion
 ----------------------------------------------------------------------------------------------------
 
 -- Old tests from original CAS library:
-{-
 
 -- The element type for our CAS test.
 -- type ElemTy = Int
-type ElemTy = Word32 -- This will trigger CAS.Foreign's specialization.
+ type ElemTy = Word32 -- This will trigger CAS.Foreign's specialization.
 
 {-# INLINE testCAS1 #-}
 -- First test: Run a simple CAS a small number of times.
