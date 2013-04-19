@@ -34,11 +34,15 @@ import Test.Framework.Providers.HUnit (testCase)
 -- import Test.Framework.TH (defaultMainGenerator)
 
 ------------------------------------------------------------------------
-{-
+
 -- main = $(defaultMainGenerator)
 main = defaultMain
        [ testCase "casTicket1"   case_casTicket1
        , testCase "casmutarray1" case_casmutarray1
+       , testCase "case_create_and_read" case_create_and_read
+       , testCase "case_create_and_mutate" case_create_and_mutate
+       , testCase "case_create_and_mutate_twice" case_create_and_mutate_twice
+       , testCase "case_n_threads_mutate" case_n_threads_mutate
        ]
 
 ------------------------------------------------------------------------
@@ -111,14 +115,8 @@ case_casTicket1 = do
   putStrLn$"To check contents, did a SECOND read: "++show res3
 
   return ()
--}
----- toddaaro's tests -----
 
-main = defaultMain
-       [ testCase "case_create_and_read" case_create_and_read
-       , testCase "case_create_and_mutate" case_create_and_mutate
-       , testCase "case_create_and_mutate_twice" case_create_and_mutate_twice
-       ]
+---- toddaaro's tests -----
 
 case_create_and_read :: Assertion
 case_create_and_read = do
@@ -151,6 +149,22 @@ case_create_and_mutate_twice = do
 
   assertBool "Does the value after the first mutate equal 5?" (val2 == 5)
   assertBool "Does the value after the second mutate equal 120?" (valf == 120)
+
+case_n_threads_mutate :: Assertion
+case_n_threads_mutate = do
+  putStrLn$ "\nCreating 120 threads and having each increment a counter value."
+  counter <- newIORef (0::Int)
+  let work :: IORef Int -> IO ()
+      work = (\counter -> do
+                        (tick,val) <- A.readForCAS(counter)
+                        res <- A.casIORef counter tick (val + 1)
+                        case res of
+                          A.Fail _ _ -> work counter
+                          A.Succeed _ -> return ())
+  
+  arr <- forkJoin 120 (work counter) 
+  ans <- readIORef counter
+  assertBool "Did the sum end up equal to 120?" (ans == 120)
 
 {--
 
