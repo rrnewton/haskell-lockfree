@@ -1,4 +1,4 @@
-{-# LANGUAGE MagicHash, UnboxedTuples, BangPatterns #-}
+{-# LANGUAGE MagicHash, UnboxedTuples, BangPatterns, ScopedTypeVariables #-}
 -- {-# LANGUAGE TemplateHaskell #-}
 
 -- | This test has three different modes which can be toggled via the
@@ -36,19 +36,26 @@ import Test.Framework.Providers.HUnit (testCase)
 ------------------------------------------------------------------------
 
 -- main = $(defaultMainGenerator)
-main = defaultMain
-       [ testCase "casTicket1"   case_casTicket1
-       , testCase "casmutarray1" case_casmutarray1
-       , testCase "case_create_and_read" case_create_and_read
-       , testCase "case_create_and_mutate" case_create_and_mutate
-       , testCase "case_create_and_mutate_twice" case_create_and_mutate_twice
-       , testCase "case_n_threads_mutate" case_n_threads_mutate
+main = defaultMain $ 
+       [ testCase "casTicket1"              case_casTicket1
+       , testCase "casmutarray1"            case_casmutarray1
+       , testCase "create_and_read"         case_create_and_read
+       , testCase "create_and_mutate"       case_create_and_mutate
+       , testCase "create_and_mutate_twice" case_create_and_mutate_twice
+       , testCase "n_threads_mutate"        case_n_threads_mutate
 
        , testCase "test_succeed_then_fail" (test_succeed_then_fail (0::Int))
        , testCase "test_succeed_then_fail" (test_succeed_then_fail (0::Word32))
        , testCase "test_succeed_then_fail" (test_succeed_then_fail (0::Word16))
        , testCase "test_succeed_then_fail" (test_succeed_then_fail (0::Word8))
        ]
+       ++
+--       all_hammerConfigs (0::Int64)
+       -- Test several configurations of this one:
+       [ testCase ("test_all_hammer_one_"++show threads++"_"++show iters ++":")
+                  (test_all_hammer_one threads iters (0::Int))
+       | threads <- [1 .. numCapabilities]
+       , iters   <- [1, 10, 100, 1000, 10000]]
 
 ------------------------------------------------------------------------
 {-# NOINLINE mynum #-}
@@ -230,10 +237,10 @@ test_succeed_then_fail n =
 -- 
 -- Conversely, for N threads each aiming to complete K operations,
 -- there should be at most N*N*K total operations required.
-test_all_hammer_one :: (Show a, Num a, Eq a) => Int -> Int -> a -> IO [[Bool]] -- Assertion
+test_all_hammer_one :: (Show a, Num a, Eq a) => Int -> Int -> a -> Assertion
 test_all_hammer_one threads iters seed = do
   ref <- newIORef seed
-  forkJoin threads $ 
+  logs::[[Bool]] <- forkJoin threads $ 
     do 
        let loop 0 _ _ !acc = return (reverse acc)
 	   loop n ticket expected !acc = do
@@ -246,14 +253,28 @@ test_all_hammer_one threads iters seed = do
               Succeed tick -> loop (n-1) tick bumped (True:acc)
               Fail tick v  -> loop (n-1) tick v      (False:acc)
 
-       (tick0,val) <- readForCAS ref
+       (tick0,val) <- readForCAS ref       
        loop iters tick0 val []
 
+  let successes = map (length . filter id) logs
+      total_success = sum successes
+      bool2char True  = '1'
+      bool2char False = '0'
+  assertBool ("Runs "++show (map length logs)++", had enough successes?: "
+              ++show successes++" >= "++ show iters++"\n"
+              ++(unlines $ map (dotdot 80 . ("  "++) . map bool2char) logs) )
+             (total_success >= iters)
 
 
 ----------------------------------------------------------------------------------------------------
 -- Helpers
 ----------------------------------------------------------------------------------------------------
+
+dotdot :: Int -> String -> String
+dotdot len chars = 
+  if length chars > len
+  then take len chars ++ "..."
+  else chars
 
 printBits = print . map pb
  where pb True  = '1' 

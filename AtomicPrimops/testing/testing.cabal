@@ -13,5 +13,5 @@ Executable test-atomic-primops
     build-depends: base, ghc-prim, primitive, 
     -- For Testing:
                    atomic-primops,
-                   time, HUnit, test-framework, test-framework-hunit,
-                   test-framework-th
+                   time, HUnit, test-framework, test-framework-hunit
+--                   test-framework-th

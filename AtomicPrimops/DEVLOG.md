@@ -140,3 +140,19 @@ testing/ subdir.
 Having a completely separate .cabal for testing/...  That works on Mac
 and Linux subject to the above bug concerning profiling installs.
 
+[2013.04.20] {Cabal-dev poor isolation}
+---------------------------------------
+
+I thought I could build different GHC versions in parallel (ghc-7.6.2,
+ghc-7.4.2 etc).  But it looks like they interfere.  Further, even when
+running serially I'm getting excessive rebuilding as I switch modes
+(e.g. "make prof74" then "make prof76").  I need to add some isolation
+of my own.
+
+
+
+
+
+
+
+
