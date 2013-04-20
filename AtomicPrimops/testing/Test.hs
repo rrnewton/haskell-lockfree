@@ -31,6 +31,10 @@ import Test.HUnit (Assertion, assertEqual, assertBool)
 import Test.Framework  (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 
+import GHC.IO (unsafePerformIO)
+import System.Mem.StableName (makeStableName, hashStableName)
+
+
 -- import Test.Framework.TH (defaultMainGenerator)
 
 ------------------------------------------------------------------------
@@ -243,17 +247,24 @@ test_all_hammer_one threads iters seed = do
   logs::[[Bool]] <- forkJoin threads $ 
     do 
        let loop 0 _ _ !acc = return (reverse acc)
-	   loop n ticket expected !acc = do
-            let bumped = expected + 1 
+	   loop n !ticket !expected !acc = do
+            -- This line will result in boxing/unboxing and using extra memory locations:
+--            let bumped = expected + 1 
+            bumped <- evaluate$ expected + 1
 	    res <- casIORef ref ticket bumped
-            -- when (iters < 30) $ 
-            --   putStrLn$ "  Attempted to CAS "++show bumped ++" for "++ show expected ++ " (#"++show (unsafeName expected)++"): " 
-	    --     	++ show b ++ " found " ++ show v ++ " (#"++show (unsafeName v)++")"
 	    case res of
-              Succeed tick -> loop (n-1) tick bumped (True:acc)
-              Fail tick v  -> loop (n-1) tick v      (False:acc)
+              Succeed tick -> do
+                when (iters < 30) $
+                  putStrLn$ "  Succeed CAS, old tick "++show ticket++" new "++show tick++", wrote "++show bumped
+                loop (n-1) tick bumped (True:acc)
+              Fail tick v  -> do
+                when (iters < 30) $ 
+                  putStrLn$ "  Failed CAS with ticket: "++show ticket ++", expected: "++ show expected ++
+                            " (#"++show (unsafeName expected)++"): " 
+                            ++ " found " ++ show v ++ " (#"++show (unsafeName v)++", ticket "++show tick++")"
+                loop (n-1) tick v      (False:acc)
 
-       (tick0,val) <- readForCAS ref       
+       (tick0,val) <- readForCAS ref
        loop iters tick0 val []
 
   let successes = map (length . filter id) logs
@@ -301,12 +312,20 @@ data Forkable a = Fork Int (IO a)
 --                | Barrier Forkable
 
 
+timeit :: IO a -> IO a 
 timeit ioact = do 
    start <- getCurrentTime
    res <- ioact
    end   <- getCurrentTime
    putStrLn$ "  Time elapsed: " ++ show (diffUTCTime end start)
    return res
+
+{-# NOINLINE unsafeName #-}
+unsafeName :: a -> Int
+unsafeName x = unsafePerformIO $ do 
+   sn <- makeStableName x
+   return (hashStableName sn)
+
 
 ----------------------------------------------------------------------------------------------------
 {-

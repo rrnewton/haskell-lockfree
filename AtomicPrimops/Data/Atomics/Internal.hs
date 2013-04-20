@@ -45,21 +45,18 @@ casMutVar2# = unsafeCoerce# casMutVar_TypeErased#
 --------------------------------------------------------------------------------
 -- Type-erased versions that call the raw foreign primops:
 --------------------------------------------------------------------------------
+-- Due to limitations of the "foreign import prim" mechanism, we can't use the
+-- polymorphic signature for the below functions.  So we lie to the type system
+-- instead.
 
 -- type TheValType = Any () -- This type only works in GHC 7.6!!!  We want 7.4 support.
 type TheValType = Word#
 
--- Due to limitations of the "foreign import prim" mechanism, we can't
--- use the polymorphic signature for this function.  So we lie to the
--- type system here.
 foreign import prim "stg_casArrayzh" casArrayTypeErased#
   :: MutableArray# RealWorld () -> Int# -> TheValType -> TheValType -> 
      State# RealWorld  -> (# State# RealWorld, Int#, TheValType #) 
-
 --   out_of_line = True
 --   has_side_effects = True
-
-
 
 -- | This alternate version of casMutVar returns a numeric "ticket" for
 --   future CAS operations.
