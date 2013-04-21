@@ -161,9 +161,40 @@ iteration one regularly sees GC's happen, whereas the 1K doesn't.  Yet
 it APPEARS that the segfault happens *before* the first GC (i.e. as
 reported by "+RTS -T").  Is it GC itself that is crashing?
 
+ [Nope ,this was the null pointer error - FIXED]
 
+-----------------------
 
+Ok, things are going pretty well.  I've been running many tests with
+7.4 and 7.6 that are passing completely.  However, I just switched
+focus back to the profiling version and got this:
 
+    Installed testing-0.1.0.0
+    ./cabal-dev/ghc-7.4.2_prof/bin/test-atomic-primops_ghc-7.4.2 +RTS -N -T -RTS
+    test-atomic-primops_ghc-7.4.2: internal error: evacuate(static): strange closure type -385875961
+	(GHC version 7.4.2 for x86_64_apple_darwin)
+	Please report this as a GHC bug:  http://www.haskell.org/ghc/reportabug
+    make[1]: *** [runtest] Abort trap: 6
 
+On another run I got this:
 
+    test-atomic-primops_ghc-7.4.2: internal error: MUT_VAR_DIRTY object entered!
+	(GHC version 7.4.2 for x86_64_apple_darwin)
+	Please report this as a GHC bug:  http://www.haskell.org/ghc/reportabug
+
+And on 7.6 I got this:
+
+    /cabal-dev/ghc-7.6.2_prof/bin/test-atomic-primops_ghc-7.6.2 +RTS -N -T -RTS
+    test-atomic-primops_ghc-7.6.2: internal error: MVAR object entered!
+	(GHC version 7.6.2 for x86_64_apple_darwin)
+	Please report this as a GHC bug:  http://www.haskell.org/ghc/reportabug
+    make[1]: *** [runtest] Abort trap: 6
+    
+Uh oh... it seems like there's been regression on the profiling version....
+
+STRANGE -- it looks like it was based on extra double quotes in the args to GHC:
+
+    cabal-dev install "-v --enable-library-profiling --ghc-options=-prof" -s cabal-dev/ghc-7.6.2_prof --disable-documentation --with-ghc=ghc-7.6.2 --program-suffix=_ghc-7.6.2 .
+    
+How did that cause it to compile and yet run with an internal failure?
 
