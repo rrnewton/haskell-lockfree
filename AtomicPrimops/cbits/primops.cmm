@@ -70,7 +70,7 @@ stg_casMutVar2zh
            foreign "C" dirty_MUT_VAR(BaseReg "ptr", mv "ptr") [];
         }
 	// Return the NEW value as the ticket for next time.
-        RET_NNP(0,new,0);
+        RET_NNP(0,new,new);
     }
 }
 
