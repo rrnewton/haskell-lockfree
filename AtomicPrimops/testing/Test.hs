@@ -1,4 +1,4 @@
-{-# LANGUAGE MagicHash, UnboxedTuples, BangPatterns, ScopedTypeVariables #-}
+{-# LANGUAGE MagicHash, UnboxedTuples, BangPatterns, ScopedTypeVariables, NamedFieldPuns, CPP #-}
 -- {-# LANGUAGE TemplateHaskell #-}
 
 -- | This test has three different modes which can be toggled via the
@@ -10,7 +10,7 @@ import Control.Exception (evaluate)
 import Control.Concurrent.MVar
 import GHC.Conc
 -- import Data.IORef
--- import Data.Word
+import Data.Int
 import Data.Time.Clock
 -- import System.Environment
 -- import System.Mem.StableName
@@ -20,6 +20,7 @@ import Text.Printf
 -- import GHC.ST
 import GHC.STRef
 import GHC.IORef
+import GHC.Stats -- (getGCStats, getGCStatsEnabled, GCStats(numGcs))
 import Data.Primitive.Array
 -- import Control.Monad
 import Data.Word
@@ -32,6 +33,7 @@ import Test.Framework  (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 
 import GHC.IO (unsafePerformIO)
+import System.Mem (performGC)
 import System.Mem.StableName (makeStableName, hashStableName)
 
 
@@ -39,28 +41,35 @@ import System.Mem.StableName (makeStableName, hashStableName)
 
 ------------------------------------------------------------------------
 
+#if 1
 -- main = $(defaultMainGenerator)
-main = defaultMain $ 
-       [ testCase "casTicket1"              case_casTicket1
-       , testCase "casmutarray1"            case_casmutarray1
-       , testCase "create_and_read"         case_create_and_read
-       , testCase "create_and_mutate"       case_create_and_mutate
-       , testCase "create_and_mutate_twice" case_create_and_mutate_twice
-       , testCase "n_threads_mutate"        case_n_threads_mutate
+main =        
+       defaultMain $ 
+         [ testCase "casTicket1"              case_casTicket1
+         , testCase "casmutarray1"            case_casmutarray1
+         , testCase "create_and_read"         case_create_and_read
+         , testCase "create_and_mutate"       case_create_and_mutate
+         , testCase "create_and_mutate_twice" case_create_and_mutate_twice
+         , testCase "n_threads_mutate"        case_n_threads_mutate
 
-       , testCase "test_succeed_then_fail" (test_succeed_then_fail (0::Int))
-       , testCase "test_succeed_then_fail" (test_succeed_then_fail (0::Word32))
-       , testCase "test_succeed_then_fail" (test_succeed_then_fail (0::Word16))
-       , testCase "test_succeed_then_fail" (test_succeed_then_fail (0::Word8))
-       ]
-       ++
---       all_hammerConfigs (0::Int64)
-       -- Test several configurations of this one:
-       [ testCase ("test_all_hammer_one_"++show threads++"_"++show iters ++":")
-                  (test_all_hammer_one threads iters (0::Int))
-       | threads <- [1 .. numCapabilities]
-       , iters   <- [1, 10, 100, 1000, 10000]]
-
+         , testCase "test_succeed_then_fail Int"   (test_succeed_then_fail (0::Int))
+         , testCase "test_succeed_then_fail Int64" (test_succeed_then_fail (0::Int64))
+         , testCase "test_succeed_then_fail Word32" (test_succeed_then_fail (0::Word32))
+         , testCase "test_succeed_then_fail Word16" (test_succeed_then_fail (0::Word16))
+         , testCase "test_succeed_then_fail Word8"  (test_succeed_then_fail (0::Word8))
+         ]
+         ++
+  --       all_hammerConfigs (0::Int64)
+         -- Test several configurations of this one:
+         [ testCase ("test_all_hammer_one_"++show threads++"_"++show iters ++":")
+                    (test_all_hammer_one threads iters (0::Int))
+         | threads <- [1 .. numCapabilities]
+         , iters   <- [1, 10, 100, 1000, 10000]]
+#else
+main = do
+  test_all_hammer_one 1 10000 (0::Int)
+  putStrLn "Test Done!"
+#endif
 ------------------------------------------------------------------------
 {-# NOINLINE mynum #-}
 mynum :: Int
@@ -138,39 +147,37 @@ case_casTicket1 = do
 
 case_create_and_read :: Assertion
 case_create_and_read = do
-  putStrLn$ "\nCreating a single value and trying to read it."
+  putStrLn$ "   Creating a single value and trying to read it."
   x <- newIORef (120::Int)
   valf <- readIORef x
-  assertBool "Does x equal 120?" (valf == 120)
+  assertBool "   Does x equal 120?" (valf == 120)
 
 case_create_and_mutate :: Assertion
 case_create_and_mutate = do
-  putStrLn$ "\nCreating a single 'ticket' based variable to use and mutating it once."
+  putStrLn$ "   Creating a single 'ticket' based variable to use and mutating it once."
   x <- newIORef (5::Int)
   (tick,val) <- A.readForCAS(x)
   res <- A.casIORef x tick 120
-  putStrLn$ "\nDid setting it to 120 work?"
-  putStrLn$ "\nResult was: " ++ show res
+  putStrLn$ "  Did setting it to 120 work?"
+  putStrLn$ "  Result was: " ++ show res
   valf <- readIORef x
-
   assertBool "Does our x equal 120?" (valf == 120)
 
 case_create_and_mutate_twice :: Assertion
 case_create_and_mutate_twice = do
-  putStrLn$ "\nCreating a single 'ticket' based variable to mutate twice."
+  putStrLn$ "  Creating a single 'ticket' based variable to mutate twice."
   x <- newIORef (0::Int)
   (tick1,val1) <- A.readForCAS(x)
   res1 <- A.casIORef x tick1 5
   (tick2,val2) <- A.readForCAS(x)
   res2 <- A.casIORef x tick2 120
   valf <- readIORef x
-
   assertBool "Does the value after the first mutate equal 5?" (val2 == 5)
   assertBool "Does the value after the second mutate equal 120?" (valf == 120)
 
 case_n_threads_mutate :: Assertion
 case_n_threads_mutate = do
-  putStrLn$ "\nCreating 120 threads and having each increment a counter value."
+  putStrLn$ "   Creating 120 threads and having each increment a counter value."
   counter <- newIORef (0::Int)
   let work :: IORef Int -> IO ()
       work = (\counter -> do
@@ -179,7 +186,6 @@ case_n_threads_mutate = do
                         case res of
                           A.Fail _ _ -> work counter
                           A.Succeed _ -> return ())
-  
   arr <- forkJoin 120 (work counter) 
   ans <- readIORef counter
   assertBool "Did the sum end up equal to 120?" (ans == 120)
@@ -194,6 +200,9 @@ case_n_threads_mutate = do
 test_succeed_then_fail :: (Show a, Num a, Eq a) => a -> Assertion
 test_succeed_then_fail n = 
   do
+     performGC -- We *ASSUME* GC does not happen below.
+     checkGCStats
+     GCStats{numGcs=gc1} <- getGCStats
      r <- newIORef n
      bitls <- newIORef []
      (tick1,zer2) <- A.readForCAS r
@@ -221,10 +230,15 @@ test_succeed_then_fail n =
          fn2 (Succeed tic) = tic
          fn2 (Fail tic _) = tic
 
-         (hd:tl) = tickets         
+         (hd:tl) = scrubbed
+
+     GCStats{numGcs=gc2} <- getGCStats
+     unless (gc1 == gc2) $ error ("test_succeed_then_fail: may not have GC during this interval: "
+                                   ++ show (gc2-gc1))
      
-     assertBool "none equal to first" (all (/= hd) tl)
-     assertBool "all equal to second" (all (== head tl) (tail tl))
+--     print scrubbed
+     assertBool "Only first succeeds" (all (/= hd) tl)
+     assertBool "All but first fail" (all (== head tl) (tail tl))
      assertEqual "First should succeed, rest fail"
                  scrubbed
                  (Succeed 0 : replicate 9 (Fail 0 100))
@@ -245,7 +259,7 @@ test_all_hammer_one :: (Show a, Num a, Eq a) => Int -> Int -> a -> Assertion
 test_all_hammer_one threads iters seed = do
   ref <- newIORef seed
   logs::[[Bool]] <- forkJoin threads $ 
-    do 
+    do checkGCStats
        let loop 0 _ _ !acc = return (reverse acc)
 	   loop n !ticket !expected !acc = do
             -- This line will result in boxing/unboxing and using extra memory locations:
@@ -267,19 +281,29 @@ test_all_hammer_one threads iters seed = do
        (tick0,val) <- readForCAS ref
        loop iters tick0 val []
 
+  GCStats{numGcs} <- getGCStats
   let successes = map (length . filter id) logs
       total_success = sum successes
       bool2char True  = '1'
       bool2char False = '0'
-  assertBool ("Runs "++show (map length logs)++", had enough successes?: "
-              ++show successes++" >= "++ show iters++"\n"
+      -- EACH thread may fail on a single GC (in theory)
+      expected_success = iters - (threads * fromIntegral numGcs)
+      msg = ("Runs "++show (map length logs)++", had enough successes?: "
+              ++show successes++" >= "++ show expected_success ++"\n"
               ++(unlines $ map (dotdot 80 . ("  "++) . map bool2char) logs) )
-             (total_success >= iters)
+  putStrLn msg
+  assertBool msg
+             (total_success >= expected_success)
 
 
 ----------------------------------------------------------------------------------------------------
 -- Helpers
 ----------------------------------------------------------------------------------------------------
+
+checkGCStats :: IO ()
+checkGCStats = 
+    do b <- getGCStatsEnabled
+       unless b $ error "Cannot run tests without +RTS -T !!"
 
 dotdot :: Int -> String -> String
 dotdot len chars = 

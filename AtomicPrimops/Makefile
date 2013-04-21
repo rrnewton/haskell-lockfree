@@ -45,7 +45,7 @@ buildtest:
 	$(CABAL) install $(INSTALL_FLAGS) --disable-documentation --with-ghc=$(GHC) --program-suffix=_$(GHC) ./ ./testing/
 
 runtest:
-	$(EXEC)
+	$(EXEC) +RTS -N -T
 
 #--------------------------------------------------------------------------
 

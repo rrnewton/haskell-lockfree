@@ -150,6 +150,17 @@ running serially I'm getting excessive rebuilding as I switch modes
 of my own.
 
 
+[2013.04.20] {Debugging}
+
+I fixed a major bug in the primop.  I also verified that GC is what is
+causing all_hammer_one to observe fewer successes than ideal.
+
+Now it passes all tests, *some* of the time.  Other times I see
+segfaults on the all_hammer_one test with 10K iterations.  The 10K
+iteration one regularly sees GC's happen, whereas the 1K doesn't.  Yet
+it APPEARS that the segfault happens *before* the first GC (i.e. as
+reported by "+RTS -T").  Is it GC itself that is crashing?
+
 
 
 
