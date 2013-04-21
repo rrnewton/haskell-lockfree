@@ -22,8 +22,9 @@ ifeq ($(INSTALL_FLAGS),)
 endif 
 
 ifeq ($(CABAL),cabal-dev)
-  DEPSINSTALL= install-deps
-  EXEC= ./cabal-dev/bin/test-atomic-primops_$(GHC)
+  DEPSINSTALL= install-deps -s cabal-dev/$(GHC)
+  EXEC= ./cabal-dev/$(GHC)/bin/test-atomic-primops_$(GHC)
+  INSTALL_FLAGS += -s cabal-dev/$(GHC)
 else
   DEPSINSTALL= install --only-dependencies -j
 #  EXEC= ./dist/build/test-atomic-primops/test-atomic-primops_$(GHC)
@@ -45,17 +46,18 @@ buildtest:
 	$(CABAL) install $(INSTALL_FLAGS) --disable-documentation --with-ghc=$(GHC) --program-suffix=_$(GHC) ./ ./testing/
 
 runtest:
-	$(EXEC) +RTS -N -T
+	$(EXEC) +RTS -N -T -RTS
 
 #--------------------------------------------------------------------------
 
-# 7.0 having problems...
-all: test76 test74 test72 
+# 7.0 and 7.2 having problems...
+all: test76 test74 
 
 hydra:
-	hydra-view &
-	DEST=hydra-head ${MAKE} -j all
-#	${MAKE} -j allprof
+#	DEST=hydra-head ${MAKE} -j all 
+#	(hydra-view &); (DEST=hydra-head ${MAKE} -j all &); fg %1
+	(DEST=hydra-head ${MAKE} -j all) | hydra-view
+
 
 test70:
 	GHC=ghc-7.0.4 ${MAKE} test 2>&1 | ${DEST}

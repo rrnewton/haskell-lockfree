@@ -41,10 +41,11 @@ Library
   
   -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
   -- (base 4.5 or greater).
---  build-depends:     base >= 4.5.0.0, ghc-prim, primitive
+  build-depends:     base >= 4.5.0.0, ghc-prim, primitive
 
+  -- TODO: Try to push support back to 7.0:
   -- Ah, but if we don't USE casMutVar# in this package we are ok:
-  build-depends:     base >= 4.3, ghc-prim, primitive
+  -- build-depends:     base >= 4.3, ghc-prim, primitive
 
 -- TEMP: these are really only 
 
