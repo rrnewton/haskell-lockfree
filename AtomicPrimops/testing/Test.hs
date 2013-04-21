@@ -12,7 +12,6 @@ import GHC.Conc
 -- import Data.IORef
 import Data.Int
 import Data.Time.Clock
--- import System.Environment
 -- import System.Mem.StableName
 -- import GHC.IO (unsafePerformIO)
 import Text.Printf
@@ -35,7 +34,9 @@ import Test.Framework.Providers.HUnit (testCase)
 import GHC.IO (unsafePerformIO)
 import System.Mem (performGC)
 import System.Mem.StableName (makeStableName, hashStableName)
-
+import System.Environment (getEnvironment)
+import System.IO        (stdout, hFlush)
+import Debug.Trace      (trace)
 
 -- import Test.Framework.TH (defaultMainGenerator)
 
@@ -63,8 +64,8 @@ main =
          -- Test several configurations of this one:
          [ testCase ("test_all_hammer_one_"++show threads++"_"++show iters ++":")
                     (test_all_hammer_one threads iters (0::Int))
-         | threads <- [1 .. numCapabilities]
-         , iters   <- [1, 10, 100, 1000, 10000]]
+         | threads <- [1 .. 2*numCapabilities]
+         , iters   <- [1, 10, 100, 1000, 10000, 100000, 500000]]
 #else
 main = do
   test_all_hammer_one 1 10000 (0::Int)
@@ -270,11 +271,12 @@ test_all_hammer_one threads iters seed = do
 	    case res of
               Succeed tick -> do
                 when (iters < 30) $
-                  putStrLn$ "  Succeed CAS, old tick "++show ticket++" new "++show tick++", wrote "++show bumped
+                  dbgPrint 1$ "  Succeed CAS, old tick "++show ticket++" new "++show tick++", wrote "++show bumped
                 loop (n-1) tick bumped (True:acc)
               Fail tick v  -> do
-                when (iters < 30) $ 
-                  putStrLn$ "  Fizzled CAS with ticket: "++show ticket ++", expected: "++ show expected ++
+                when (iters < 30) $
+                  dbgPrint 1 $ 
+                            "  Fizzled CAS with ticket: "++show ticket ++", expected: "++ show expected ++
                             " (#"++show (unsafeName expected)++"): " 
                             ++ " found " ++ show v ++ " (#"++show (unsafeName v)++", ticket "++show tick++")"
                 loop (n-1) tick v      (False:acc)
@@ -289,10 +291,10 @@ test_all_hammer_one threads iters seed = do
       bool2char False = '0'
       -- EACH thread may fail on a single GC (in theory)
       expected_success = iters - (threads * fromIntegral numGcs)
-      msg = ("Runs "++show (map length logs)++", had enough successes?: "
+      msg = ("Runs "++show (map length logs)++" (GCs "++show numGcs++"), had enough successes?: "
               ++show successes++" >= "++ show expected_success ++"\n"
               ++(unlines $ map (dotdot 80 . ("  "++) . map bool2char) logs) )
-  putStrLn msg
+  dbgPrint 1 msg
   assertBool msg
              (total_success >= expected_success)
 
@@ -320,14 +322,14 @@ forkJoin :: Int -> (IO b) -> IO [b]
 forkJoin numthreads action = 
   do
      answers <- sequence (replicate numthreads newEmptyMVar) -- padding?
-     printf "Forking %d threads.\n" numthreads
+     dbgPrint 1 $ printf "Forking %d threads.\n" numthreads
     
      forM_ answers $ \ mv -> 
  	forkIO (action >>= putMVar mv)
 
      -- Reading answers:
      ls <- mapM readMVar answers
-     printf "All %d thread(s) completed\n" numthreads
+     dbgPrint 1 $ printf "All %d thread(s) completed\n" numthreads
      return ls
 
 -- Describe a structure of forking and joining threads for tests:
@@ -452,4 +454,34 @@ checkOutput3 msg iters ls fin = do
 -- main = test 3
 -}
 
+
+
+----------------------------------------------------------------------------------------------------
+-- DEBUGGING
+----------------------------------------------------------------------------------------------------
+
+-- | Debugging flag shared by all accelerate-backend-kit modules.
+--   This is activated by setting the environment variable DEBUG=1..5
+dbg :: Int
+dbg = case lookup "DEBUG" unsafeEnv of
+       Nothing  -> defaultDbg
+       Just ""  -> defaultDbg
+       Just "0" -> defaultDbg
+       Just s   ->
+         trace (" ! Responding to env Var: DEBUG="++s)$
+         case reads s of
+           ((n,_):_) -> n
+           [] -> error$"Attempt to parse DEBUG env var as Int failed: "++show s
+
+defaultDbg :: Int
+defaultDbg = 0
+
+unsafeEnv :: [(String,String)]
+unsafeEnv = unsafePerformIO getEnvironment
+
+-- | Print if the debug level is at or above a threshold.
+dbgPrint :: Int -> String -> IO ()
+dbgPrint lvl str = if dbg < lvl then return () else do
+    putStrLn str
+    hFlush stdout
 
