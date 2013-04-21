@@ -121,26 +121,26 @@ default_iters = 100000
 
 case_casTicket1 :: IO ()
 case_casTicket1 = do
-  putStrLn "\nUsing new 'ticket' based compare and swap:"
+  dbgPrint 1 "\nUsing new 'ticket' based compare and swap:"
 
   IORef (STRef mutvar) <- newIORef (3::Int)  
   (tick,val) <- A.readMutVarForCAS mutvar
-  putStrLn$"YAY, read the IORef, ticket "++show tick
-  putStrLn$"     and the value was:  "++show val
+  dbgPrint 1$"YAY, read the IORef, ticket "++show tick
+  dbgPrint 1$"     and the value was:  "++show val
 
   res <- A.casMutVar mutvar tick 99 
-  putStrLn$"Hoorah!  Attempted compare and swap..."
-  putStrLn$"         Result was: "++show res
+  dbgPrint 1$"Hoorah!  Attempted compare and swap..."
+  dbgPrint 1$"         Result was: "++show res
   let tick2 = case res of 
                A.Succeed tick2 -> tick2
 
-  putStrLn$"Ok, next take a look at a SECOND CAS attempt, to see if the ticket from the first works..."
+  dbgPrint 1$"Ok, next take a look at a SECOND CAS attempt, to see if the ticket from the first works..."
   res2 <- A.casMutVar mutvar tick2 12345678
-  putStrLn$"Result was: "++show res2
+  dbgPrint 1$"Result was: "++show res2
   
 --  res <- A.casMutVar mutvar tick 99 
   res3 <- A.readMutVarForCAS mutvar
-  putStrLn$"To check contents, did a SECOND read: "++show res3
+  dbgPrint 1$"To check contents, did a SECOND read: "++show res3
 
   return ()
 
@@ -148,25 +148,25 @@ case_casTicket1 = do
 
 case_create_and_read :: Assertion
 case_create_and_read = do
-  putStrLn$ "   Creating a single value and trying to read it."
+  dbgPrint 1$ "   Creating a single value and trying to read it."
   x <- newIORef (120::Int)
   valf <- readIORef x
   assertBool "   Does x equal 120?" (valf == 120)
 
 case_create_and_mutate :: Assertion
 case_create_and_mutate = do
-  putStrLn$ "   Creating a single 'ticket' based variable to use and mutating it once."
+  dbgPrint 1$ "   Creating a single 'ticket' based variable to use and mutating it once."
   x <- newIORef (5::Int)
   (tick,val) <- A.readForCAS(x)
   res <- A.casIORef x tick 120
-  putStrLn$ "  Did setting it to 120 work?"
-  putStrLn$ "  Result was: " ++ show res
+  dbgPrint 1$ "  Did setting it to 120 work?"
+  dbgPrint 1$ "  Result was: " ++ show res
   valf <- readIORef x
   assertBool "Does our x equal 120?" (valf == 120)
 
 case_create_and_mutate_twice :: Assertion
 case_create_and_mutate_twice = do
-  putStrLn$ "  Creating a single 'ticket' based variable to mutate twice."
+  dbgPrint 1$ "  Creating a single 'ticket' based variable to mutate twice."
   x <- newIORef (0::Int)
   (tick1,val1) <- A.readForCAS(x)
   res1 <- A.casIORef x tick1 5
@@ -178,7 +178,7 @@ case_create_and_mutate_twice = do
 
 case_n_threads_mutate :: Assertion
 case_n_threads_mutate = do
-  putStrLn$ "   Creating 120 threads and having each increment a counter value."
+  dbgPrint 1$ "   Creating 120 threads and having each increment a counter value."
   counter <- newIORef (0::Int)
   let work :: IORef Int -> IO ()
       work = (\counter -> do
