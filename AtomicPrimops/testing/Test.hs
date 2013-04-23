@@ -65,7 +65,10 @@ main =
          [ testCase ("test_all_hammer_one_"++show threads++"_"++show iters ++":")
                     (test_all_hammer_one threads iters (0::Int))
          | threads <- [1 .. 2*numCapabilities]
-         , iters   <- [1, 10, 100, 1000, 10000, 100000, 500000]]
+         , iters   <- [1, 10, 100, 1000, 10000, 100000, 500000]] ++
+         [ testCase ("test_hammer_many_threads_1000_10000:")
+                    (test_all_hammer_one 1000 10000 (0::Int)) ]
+
 #else
 main = do
   test_all_hammer_one 1 10000 (0::Int)

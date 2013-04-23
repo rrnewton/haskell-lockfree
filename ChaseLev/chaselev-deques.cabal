@@ -19,10 +19,12 @@ Synopsis: Chase & Lev work-stealing lock-free double-ended queues (deques).
 Library
   exposed-modules:   Data.Concurrent.Deque.ChaseLev.DequeInstance,
                      Data.Concurrent.Deque.ChaseLev
+                     Data.Concurrent.Deque.ChaseLev2
 -- Disabling this [2012.03.08].  It got terrible performance anyway:
 --                     Data.Concurrent.Deque.ReactorDeque
   build-depends:     base >= 4.4.0.0, array, transformers, bits-atomic,
                      abstract-deque, vector,
+                     atomic-primops, 
                      IORefCAS >= 0.2
   ghc-options: -O2
 
@@ -35,6 +37,8 @@ Source-Repository head
 Test-Suite test-chaselev-deque
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
-    build-depends: base >= 4.4.0.0 && < 5, IORefCAS >= 0.2, abstract-deque, 
-                   HUnit, test-framework, test-framework-hunit
+    build-depends: base >= 4.4.0.0 && < 5, abstract-deque, 
+                   HUnit, test-framework, test-framework-hunit,
+                   atomic-primops, 
+                   IORefCAS >= 0.2
     ghc-options: -O2 -threaded -rtsopts 

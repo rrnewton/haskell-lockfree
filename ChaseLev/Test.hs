@@ -6,6 +6,6 @@ module Main where
 import Test.Framework                  (defaultMain)
 import Test.Framework.Providers.HUnit  (hUnitTestToTests)
 import Data.Concurrent.Deque.Tests     (test_all)
-import Data.Concurrent.Deque.ChaseLev  (newQ)
+import Data.Concurrent.Deque.ChaseLev2  (newQ)
 
 main = defaultMain$ hUnitTestToTests$ test_all newQ 
