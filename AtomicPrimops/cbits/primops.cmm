@@ -1,6 +1,17 @@
 
 #include "Cmm.h"
 
+// Duplicate some of the RTS here (CAS instruction).
+// #include "RtsDup.h"
+
+// #include "Cmm.h"
+// Problems if we try this:
+// #include "stg/SMP.h"
+// #include "Rts.h"
+
+// Defined in SMP.h: 
+// EXTERN_INLINE StgWord cas(StgVolatilePtr p, StgWord o, StgWord n);
+
 add1Op
 /* Int# -> Int# */
 {
@@ -40,24 +51,31 @@ stg_casMutVar2zh
  /* MutVar# s a -> Word# -> a -> State# s -> (# State#, Int#, Word#, a #) */
 {
     W_ mv, old, new, h;
-
+    // Calling convention: Up to 8 registers contain arguments.
     mv  = R1;
     old = R2;
     new = R3;
 
+    // The "cas" function from the C runtime abstracts over
+    // platform/architecture differences.  It returns the old value,
+    // which, if equal to "old", means success.
     (h) = foreign "C" cas(mv + SIZEOF_StgHeader + OFFSET_StgMutVar_var,
                           old, new) [];
     if (h != old) {
+        // Failure:
         RET_NNP(1,h,h);
     } else {
+        // Success means a mutation and thus GC write barrier:
         if (GET_INFO(mv) == stg_MUT_VAR_CLEAN_info) {
            foreign "C" dirty_MUT_VAR(BaseReg "ptr", mv "ptr") [];
         }
-        RET_NNP(0,h,h);
+	// Return the NEW value as the ticket for next time.
+        RET_NNP(0,new,new);
     }
 }
 
 
+// Takes a single input argument in R1:
 stg_readMutVar2zh
 /*  MutVar# RealWorld a -> State# RealWorld -> (# State# RealWorld, Word#, a #) */
 {

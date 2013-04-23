@@ -42,29 +42,22 @@ casMutVar2# :: MutVar# RealWorld a -> Ticket# -> a ->
                State# RealWorld -> (# State# RealWorld, Int#, Ticket#, a #)
 casMutVar2# = unsafeCoerce# casMutVar_TypeErased#
 
--- bultin:
---  MutVar# d a -> a -> a -> State# d -> (# State# d, Int#, a #)
-
-
 
 --------------------------------------------------------------------------------
 -- Type-erased versions that call the raw foreign primops:
 --------------------------------------------------------------------------------
+-- Due to limitations of the "foreign import prim" mechanism, we can't use the
+-- polymorphic signature for the below functions.  So we lie to the type system
+-- instead.
 
--- type TheValType = Any () -- The above type only works in GHC 7.6!!!  We want 7.4 support.
+-- type TheValType = Any () -- This type only works in GHC 7.6!!!  We want 7.4 support.
 type TheValType = Word#
 
--- Due to limitations of the "foreign import prim" mechanism, we can't
--- use the polymorphic signature for this function.  So we lie to the
--- type system here.
 foreign import prim "stg_casArrayzh" casArrayTypeErased#
   :: MutableArray# RealWorld () -> Int# -> TheValType -> TheValType -> 
      State# RealWorld  -> (# State# RealWorld, Int#, TheValType #) 
-
 --   out_of_line = True
 --   has_side_effects = True
-
-
 
 -- | This alternate version of casMutVar returns a numeric "ticket" for
 --   future CAS operations.

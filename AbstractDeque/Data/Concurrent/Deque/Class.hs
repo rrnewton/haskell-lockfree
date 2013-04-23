@@ -10,6 +10,9 @@
 
    This interface includes a non-associated type family for Deques
    plus separate type classes encapsulating the Deque operations.
+   That is, we separate type selection (type family) from function overloading
+   (vanilla type classes).
+
    This design strives to hide the extra phantom-type parameters from
    the Class constraints and therefore from the type signatures of
    client code.
@@ -34,18 +37,23 @@ module Data.Concurrent.Deque.Class
   -- ** Aliases for commonly used Deque configurations:
  , Queue, ConcQueue, ConcDeque, WSDeque
 
-  -- * Classes containing Deque operations
+  -- * Class for basic Queue operations
  , DequeClass(..)
 
-  -- * Auxilary type classes.  
+  -- * Extra capabilities: type classes
 
-  -- | In spite of hiding the extra phantom type
-  --  parameters in the DequeClass, we wish to retain the ability for
-  --  clients to constrain the set of implementations they work with
-  --  **statically**.
+   -- | The "DequeClass" approach provides more programmer-friendly constraints than
+   -- directly using the phantom type parameters to constrain the type of each method.
+   -- Further, it allows such methods to be /more/ generic, as instances can be provided
+   -- for Deque types outside the type family.
+   -- 
+   -- However, we still must make a distinction between the different capabilities
+   -- (e.g. single-ended / double ended), and thus we need the below type classes for
+   -- the additional operations unsupported by the minimal "DequeClass".
 
   -- ** The \"unnatural\" double ended cases: pop left, push right.
  , PopL(..), PushR(..)
+             
   -- ** Operations that only make sense for bounded queues.
  , BoundedL(..), BoundedR(..)
 )
