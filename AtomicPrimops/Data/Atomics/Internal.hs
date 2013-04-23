@@ -2,7 +2,7 @@
 
 module Data.Atomics.Internal 
    (casArray#, 
-    readForCAS#, casMutVar2#, 
+    readForCAS#, casMutVarTicketed#, 
     Ticket, Ticket#)
   where 
 import GHC.Prim
@@ -38,9 +38,9 @@ readForCAS# = unsafeCoerce# readMutVar_TypeErased#
 
 -- readForCAS# :: MutVar# RealWorld a -> State# RealWorld -> (# State# RealWorld, Ticket#, a #)
 -- readForCAS# = unsafeCoerce# readMutVar_TypeErased
-casMutVar2# :: MutVar# RealWorld a -> Ticket# -> a ->
+casMutVarTicketed# :: MutVar# RealWorld a -> Ticket# -> a ->
                State# RealWorld -> (# State# RealWorld, Int#, Ticket#, a #)
-casMutVar2# = unsafeCoerce# casMutVar_TypeErased#
+casMutVarTicketed# = unsafeCoerce# casMutVar_TypeErased#
 
 
 --------------------------------------------------------------------------------

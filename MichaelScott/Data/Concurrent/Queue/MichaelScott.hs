@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, CPP #-}
+{-# LANGUAGE BangPatterns, CPP, ScopedTypeVariables #-}
 {-# LANGUAGE MagicHash, UnboxedTuples #-}
 -- TypeFamilies, FlexibleInstances
 
@@ -58,7 +58,7 @@ pairEq _          _           = False
 
 -- | Push a new element onto the queue.  Because the queue can grow,
 --   this always succeeds.
-pushL :: LinkedQueue a -> a  -> IO ()
+pushL :: forall a . LinkedQueue a -> a  -> IO ()
 pushL q@(LQ headPtr tailPtr) val = IO $ \ st1 ->
   case newMutVar# Null st1 of
     (# st2, mv #) ->
@@ -67,9 +67,10 @@ pushL q@(LQ headPtr tailPtr) val = IO $ \ st1 ->
        (# st3, tail #) -> 
         -- After the loop, enqueue is done.  Try to swing the tail.
         -- If we fail, that is ok.  Whoever came in after us deserves it.         
-        case casMutVar# tailPtr tail newp st2 of
-          (# st3, flag, res #) -> (# st3, () #)
+        case casMutVar# tailPtr tail newp st3 of
+          (# st4, flag, res #) -> (# st4, () #)
  where
+  loop :: State# RealWorld -> Pair a -> (# State# RealWorld, Pair a #)
   loop s1 newp = 
    case readMutVar# tailPtr s1 of -- [Re]read the tailptr from the queue structure.
      (# s2, tail #) ->

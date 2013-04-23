@@ -21,7 +21,7 @@ module Data.Atomics
 
 import Control.Monad.ST (stToIO)
 import Data.Primitive.Array (MutableArray(MutableArray))
-import Data.Atomics.Internal (casArray#, readForCAS#, casMutVar2#, Ticket)
+import Data.Atomics.Internal (casArray#, readForCAS#, casMutVarTicketed#, Ticket)
 import Data.Int -- TEMPORARY
 
 import Data.IORef
@@ -113,7 +113,7 @@ readMutVarForCAS mv = IO$ \ st ->
 {-# INLINE casMutVar #-}
 casMutVar :: MutVar# RealWorld a -> Ticket -> a -> IO (CASResult a)
 casMutVar mv (W# tick#) new = IO$ \st -> 
-  case casMutVar2# mv tick# new st of 
+  case casMutVarTicketed# mv tick# new st of 
     (# st, flag, tick', val #) -> 
       if flag ==# 0# 
       then (# st, Succeed (W# tick') #)

@@ -36,7 +36,7 @@ Description:
 
 Library
   exposed-modules:   Data.Atomics
-  other-modules:     Data.Atomics.Internal
+                     Data.Atomics.Internal
   ghc-options: -O2 -threaded 
   
   -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
