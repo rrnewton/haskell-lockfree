@@ -37,11 +37,11 @@ import Data.CAS (casIORef, ptrEq)
 -- import Data.MQueue.Class
 
 data LinkedQueue a = LQ 
-    { head :: IORef (Pair a)
-    , tail :: IORef (Pair a)
+    { head :: {-# UNPACK #-} !(IORef (Pair a))
+    , tail :: {-# UNPACK #-} !(IORef (Pair a))
     }
 
-data Pair a = Null | Cons a (IORef (Pair a))
+data Pair a = Null | Cons a {-# UNPACK #-}!(IORef (Pair a))
 
 -- Only checks that the node type is the same and in the case of a Cons Pair checks that
 -- the IORefs are pointer-equal. This suffices to check equality since IORefs are never used in different 
