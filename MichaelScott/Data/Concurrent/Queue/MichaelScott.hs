@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, CPP, MagicHash #-}
+{-# LANGUAGE BangPatterns, CPP, MagicHash, ScopedTypeVariables #-}
 -- TypeFamilies, FlexibleInstances
 
 -- | Michael and Scott lock-free, single-ended queues.
@@ -30,12 +30,15 @@ import GHC.STRef(STRef(STRef))
 import qualified Data.Concurrent.Deque.Class as C
 -- NOTE: you can switch which CAS implementation is used here:
 --------------------------------------------------------------
-import Data.CAS (casIORef, ptrEq)
+import qualified Data.CAS as Old 
 -- import Data.CAS.Internal.Fake (casIORef, ptrEq)
 -- #warning "Using fake CAS"
 -- import Data.CAS.Internal.Native (casIORef, ptrEq)
 -- #warning "Using NATIVE CAS"
 --------------------------------------------------------------
+
+import qualified Data.Atomics as A -- (readForCAS, casIORef)
+import Data.Atomics (readForCAS, Ticket)
 
 -- Considering using the Queue class definition:
 -- import Data.MQueue.Class
@@ -59,43 +62,44 @@ pairEq _          _           = False
 
 -- | Push a new element onto the queue.  Because the queue can grow,
 --   this always succeeds.
-pushL :: LinkedQueue a -> a  -> IO ()
+pushL :: forall a . LinkedQueue a -> a  -> IO ()
 pushL q@(LQ headPtr tailPtr) val = do
    r <- newIORef Null
    let newp = Cons val r   -- Create the new cell that stores val.
-   tail <- loop newp
+   (tailTicket, tail) <- loop newp
    -- After the loop, enqueue is done.  Try to swing the tail.
    -- If we fail, that is ok.  Whoever came in after us deserves it.
-   casIORef tailPtr tail newp
+   A.casIORef tailPtr tailTicket newp
    return ()
- where 
+ where
+  loop :: Pair a -> IO (Ticket, Pair a)
   loop newp = do 
-   tail <- readIORef tailPtr -- [Re]read the tailptr from the queue structure.
+   (tailTicket, tail) <- readForCAS tailPtr -- [Re]read the tailptr from the queue structure.
    case tail of
      -- The head and tail pointers should never themselves be NULL:
      Null -> error "push: LinkedQueue invariants broken.  Internal error."
      Cons _ nextPtr -> do
-	next <- readIORef nextPtr
+	(nextTicket, next) <- readForCAS nextPtr
 
 -- Optimization: The algorithm can reread tailPtr here to make sure it is still good:
 #ifdef RECHECK_ASSUMPTIONS
  -- There's a possibility for an infinite loop here with StableName based ptrEq.
  -- (And at one point I observed such an infinite loop.)
  -- But with one based on reallyUnsafePtrEquality# we should be ok.
-	tail' <- readIORef tailPtr   -- ANDREAS: used atomicModifyIORef here
+	(tailTicket', tail') <- readForCAS tailPtr   -- ANDREAS: used atomicModifyIORef here
         if not (pairEq tail tail') then loop newp 
          else case next of 
 #else
 	case next of 
 #endif
           -- Here tail points (or pointed!) to the last node.  Try to link our new node.
-          Null -> do (b,newtail) <- casIORef nextPtr next newp
-		     if b then return tail
+          Null -> do (b,newtail) <- Old.casIORef nextPtr next newp
+		     if b then return (tailTicket, tail)
                           else loop newp
           Cons _ _ -> do 
              -- Someone has beat us by extending the tail.  Here we
              -- might have to do some community service by updating the tail ptr.
-             casIORef tailPtr tail next
+             Old.casIORef tailPtr tail next
              loop newp
 
 
@@ -153,7 +157,7 @@ tryPopR q@(LQ headPtr tailPtr) = loop (0::Int)
               Null -> return Nothing -- Queue is empty, couldn't dequeue
 	      Cons _ _ -> do
   	        -- Tail is falling behind.  Try to advance it:
-	        casIORef tailPtr tail next'
+	        Old.casIORef tailPtr tail next'
 		loop (tries+1)
            
 	   else do -- head /= tail
@@ -164,7 +168,7 @@ tryPopR q@(LQ headPtr tailPtr) = loop (0::Int)
 --	        Null -> loop (tries+1)
 		Cons value _ -> do 
                   -- Try to swing Head to the next node
-		  (b,_) <- casIORef headPtr head next' -- ANDREAS: FOUND CONDITION VIOLATED AFTER HERE
+		  (b,_) <- Old.casIORef headPtr head next' -- ANDREAS: FOUND CONDITION VIOLATED AFTER HERE
 		  if b then return (Just value) -- Dequeue done; exit loop.
 		       else loop (tries+1) -- ANDREAS: observed this loop being taken >1M times
           
