@@ -55,4 +55,6 @@ Test-Suite test-lockfree-queue
                    atomic-primops,
                    IORefCAS >= 0.2
     ghc-options: -O2 -threaded -rtsopts 
-
+    -- Debugging generated code:
+    ghc-options: -keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint
+    ghc-options: -ddump-ds -ddump-simpl -ddump-stg -ddump-asm -ddump-bcos -ddump-cmm -ddump-opt-cmm 

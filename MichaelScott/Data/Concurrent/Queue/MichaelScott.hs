@@ -27,6 +27,8 @@ import Data.ByteString.Char8 (hPutStrLn, pack)
 import GHC.Prim -- (MutVar#, RealWorld, sameMutVar#, newMutVar#, casMutVar#, readMutVar#)
 import GHC.IO (IO(IO))
 
+import Debug.Trace 
+
 import qualified Data.Concurrent.Deque.Class as C
 -- NOTE: you can switch which CAS implementation is used here:
 --------------------------------------------------------------
@@ -86,7 +88,10 @@ pushL q@(LQ headPtr tailPtr) val = IO $ \ st1 ->
        Null -> error "push: LinkedQueue invariants broken.  Internal error."
        Cons _ nextMV ->
         case readForCAS# nextMV s2 of
-         (# s3, nextTicket#, next #) ->
+        (# s3, nextTicket#, next #) -> 
+--         case readMutVar# nextMV s2 of
+--         (# s3, next1 #) ->
+--           trace "PROBLEMS HERE:" $ 
              {-
              -- Optimization: The algorithm can reread tailPtr here to make sure it is still good:
              #ifdef RECHECK_ASSUMPTIONS

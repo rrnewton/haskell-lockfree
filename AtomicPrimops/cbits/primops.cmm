@@ -85,5 +85,6 @@ stg_readMutVar2zh
     res = W_[mv + SIZEOF_StgHeader + OFFSET_StgMutVar_var];
     RET_NP(res, res);
 }
+// Here's the inline emit code in the compiler:
 /* emitPrimOp [res] ReadMutVarOp [mutv] _ */
 /*    = stmtC (CmmAssign (CmmLocal res) (cmmLoadIndexW mutv fixedHdrSize gcWord)) */
