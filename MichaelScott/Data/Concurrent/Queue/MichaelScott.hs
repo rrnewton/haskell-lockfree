@@ -27,8 +27,6 @@ import Data.ByteString.Char8 (hPutStrLn, pack)
 import GHC.Prim -- (MutVar#, RealWorld, sameMutVar#, newMutVar#, casMutVar#, readMutVar#)
 import GHC.IO (IO(IO))
 
-import Debug.Trace 
-
 import qualified Data.Concurrent.Deque.Class as C
 -- NOTE: you can switch which CAS implementation is used here:
 --------------------------------------------------------------
@@ -70,28 +68,25 @@ pushL q@(LQ headPtr tailPtr) val = IO $ \ st1 ->
     (# st2, mv #) ->
      let newp = Cons val mv in -- Create the new cell that stores val.
      case loop st2 newp of
-       (# st3, tail #) -> 
+       (# st3, tailTicket #) -> 
         -- After the loop, enqueue is done.  Try to swing the tail.
         -- If we fail, that is ok.  Whoever came in after us deserves it.         
 --        case casMutVar# tailPtr tailTicket newp st3 of
         -- (WAIT, but what if we fail due to GC!? [2013.04.23])
-        case casMutVar# tailPtr tail newp st3 of
-          (# st4, flag, res #) -> (# st4, () #)
+        case casMutVarTicketed# tailPtr tailTicket newp st3 of
+          (# st4, flag, resTicket#, res #) -> (# st4, () #)
  where
 
-  loop :: State# RealWorld -> Pair a -> (# State# RealWorld, Pair a #)
+  loop :: State# RealWorld -> Pair a -> (# State# RealWorld, Ticket# #)
   loop s1 newp = 
-   case readMutVar# tailPtr s1 of -- [Re]read the tailptr from the queue structure.
-     (# s2, tail #) ->
+   case readForCAS# tailPtr s1 of -- [Re]read the tailptr from the queue structure.
+     (# s2, tailTicket#, tail #) ->
       case tail of
        -- The head and tail pointers should never themselves be NULL:
        Null -> error "push: LinkedQueue invariants broken.  Internal error."
        Cons _ nextMV ->
         case readForCAS# nextMV s2 of
-        (# s3, nextTicket#, next #) -> 
---         case readMutVar# nextMV s2 of
---         (# s3, next1 #) ->
---           trace "PROBLEMS HERE:" $ 
+         (# s3, nextTicket#, next #) ->
              {-
              -- Optimization: The algorithm can reread tailPtr here to make sure it is still good:
              #ifdef RECHECK_ASSUMPTIONS
@@ -107,16 +102,16 @@ pushL q@(LQ headPtr tailPtr) val = IO $ \ st1 ->
              -}
            case next of
             -- Here tail points (or pointed!) to the last node.  Try to link our new node.
-            Null -> case casMutVar# nextMV next newp s3 of
-                     (# s4, flag, newtail #) ->
+            Null -> case casMutVarTicketed# nextMV nextTicket# newp s3 of
+                     (# s4, flag, newtailTicket#, newtail #) ->
                        if flag ==# 0#
-                       then (# s4, tail #)
+                       then (# s4, tailTicket# #)
                        else loop s4 newp 
             Cons _ _ -> 
                -- Someone has beat us by extending the tail.  Here we
                -- might have to do some community service by updating the tail ptr.
-               case casMutVar# tailPtr tail next s3 of
-                 (# s4, _, _ #) -> loop s4 newp 
+               case casMutVarTicketed# tailPtr tailTicket# next s3 of
+                 (# s4, _, _, _ #) -> loop s4 newp 
 
 -- tryPopR ::  LinkedQueue a -> IO (Maybe a)
 -- tryPopR = error "tryPopR Unimplemented"
