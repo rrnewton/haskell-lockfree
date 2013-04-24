@@ -1,0 +1,89 @@
+
+#include "Cmm.h"
+
+// Duplicate some of the RTS here (CAS instruction).
+// #include "RtsDup.h"
+
+// #include "Cmm.h"
+// Problems if we try this:
+// #include "stg/SMP.h"
+// #include "Rts.h"
+
+// Defined in SMP.h: 
+// EXTERN_INLINE StgWord cas(StgVolatilePtr p, StgWord o, StgWord n);
+
+add1Op
+/* Int# -> Int# */
+{
+    W_ num;
+    num = R1 + 1;
+    RET_P(num);
+}
+
+
+stg_casArrayzh
+/* MutableArray# s a -> Int# -> a -> a -> State# s -> (# State# s, Int#, a #) */
+{
+    W_ arr, p, ind, old, new, h, len;
+    arr = R1; // anything else?
+    ind = R2;
+    old = R3;
+    new = R4;
+
+    p = arr + SIZEOF_StgMutArrPtrs + WDS(ind);
+    (h) = foreign "C" cas(p, old, new) [];
+    
+    if (h != old) {
+        // Failure, return what was there instead of 'old':
+        RET_NP(1,h);
+    } else {
+        // Compare and Swap Succeeded:
+	SET_HDR(arr, stg_MUT_ARR_PTRS_DIRTY_info, CCCS);
+	len = StgMutArrPtrs_ptrs(arr);
+	// The write barrier.  We must write a byte into the mark table:
+	I8[arr + SIZEOF_StgMutArrPtrs + WDS(len) + (ind >> MUT_ARR_PTRS_CARD_BITS )] = 1;
+        RET_NP(0,h);
+    }
+}
+
+
+stg_casMutVar2zh
+ /* MutVar# s a -> Word# -> a -> State# s -> (# State#, Int#, Word#, a #) */
+{
+    W_ mv, old, new, h;
+    // Calling convention: Up to 8 registers contain arguments.
+    mv  = R1;
+    old = R2;
+    new = R3;
+
+    // The "cas" function from the C runtime abstracts over
+    // platform/architecture differences.  It returns the old value,
+    // which, if equal to "old", means success.
+    (h) = foreign "C" cas(mv + SIZEOF_StgHeader + OFFSET_StgMutVar_var,
+                          old, new) [];
+    if (h != old) {
+        // Failure:
+        RET_NNP(1,h,h);
+    } else {
+        // Success means a mutation and thus GC write barrier:
+        if (GET_INFO(mv) == stg_MUT_VAR_CLEAN_info) {
+           foreign "C" dirty_MUT_VAR(BaseReg "ptr", mv "ptr") [];
+        }
+	// Return the NEW value as the ticket for next time.
+        RET_NNP(0,new,new);
+    }
+}
+
+
+// Takes a single input argument in R1:
+stg_readMutVar2zh
+/*  MutVar# RealWorld a -> State# RealWorld -> (# State# RealWorld, Word#, a #) */
+{
+    W_ mv, res;
+    mv  = R1;
+    // Do the actual read:
+    res = W_[mv + SIZEOF_StgHeader + OFFSET_StgMutVar_var];
+    RET_NP(res, res);
+}
+/* emitPrimOp [res] ReadMutVarOp [mutv] _ */
+/*    = stmtC (CmmAssign (CmmLocal res) (cmmLoadIndexW mutv fixedHdrSize gcWord)) */

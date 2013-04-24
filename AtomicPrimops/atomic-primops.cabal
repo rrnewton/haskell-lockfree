@@ -1,0 +1,72 @@
+Name:                atomic-primops
+Version:             0.1.0.0
+License:             BSD3
+License-file:        LICENSE
+Author:              Ryan Newton
+Maintainer:          rrnewton@gmail.com
+Category:            Data
+Stability:           Provisional
+-- Portability:         non-portabile (x86_64)
+Build-type:          Simple
+Cabal-version:       >=1.8
+HomePage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
+
+-- Version History:
+-- 0.1.0.0 -- initial release
+
+
+Synopsis: A safe approach to CAS and other atomic ops in Haskell.
+
+Description:
+
+  After GHC 7.4 a new `casMutVar#` primop became available, but it's
+  difficult to use safely, because pointer equality is a highly
+  unstable property in Haskell.  This library provides a safer method
+  based on the concept of "Tickets".
+ .
+  Also, this library uses the "foreign primop" capability of GHC to
+  add access to other atomic processor instructions that may be of
+  interest.  For example, compare and swap inside an array, as well as
+  on a IORef or `MutVar#`.
+ . 
+  For now it only supports the x86 instruction set.
+
+-- Extra-Source-Files:
+--                     Makefile, Test.hs, README.md
+
+Library
+  exposed-modules:   Data.Atomics
+                     Data.Atomics.Internal
+  ghc-options: -O2 -threaded 
+  
+  -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
+  -- (base 4.5 or greater).
+  build-depends:     base >= 4.5.0.0, ghc-prim, primitive
+
+  -- TODO: Try to push support back to 7.0:
+  -- Ah, but if we don't USE casMutVar# in this package we are ok:
+  -- build-depends:     base >= 4.3, ghc-prim, primitive
+
+-- TEMP: these are really only 
+
+  Include-Dirs:     cbits
+  C-Sources:        cbits/primops.cmm
+
+-- -- [2013.04.08] This isn't working presently:
+-- -- I'm having problems with building it along with the library; see DEVLOG.
+-- Test-Suite test-atomic-primops
+--     type:       exitcode-stdio-1.0
+--     main-is:    testing/Test.hs
+--     ghc-options: -O2 -threaded -rtsopts -
+
+--     build-depends: base >= 4.5, ghc-prim, primitive, 
+--     -- For Testing:
+-- --                   atomic-primops,
+--                    time, HUnit, test-framework, test-framework-hunit,
+--                    test-framework-th
+
+Source-Repository head
+    Type:         git
+    Location:     git://github.com/rrnewton/haskell-lockfree-queue.git
+
+
