@@ -1,4 +1,3 @@
-
 [2011.12.09] Some of the strange errors one can encounter presently
 -------------------------------------------------------------------
 
@@ -77,7 +76,7 @@ it be burning cycles if it is NOT in spinPop?
 This divergence problem happens under BOTH ghc-7.2.1 and 7.4 RC1 and
 with both Native and Fake CAS.
 
-   Another Hypethesis
+   Another Hypothesis
    ------------------
 
 We MIGHT hypethesize that this is a problem with spinPop not
@@ -101,6 +100,7 @@ recently added "yield" in spinPop.
 
 
 [2012.08.08] Back to debugging with help from Andreas.
+======================================================
 
 I just confirmed that on hive with -N32 I definitely see a deadlock.
 
@@ -109,6 +109,8 @@ which he caught.  That one fix corrects the deadlock for me when
 running -N32.
 
 [2012.08.10] {Differing performance across small and large SMPs}
+================================================================
+
 
 I will be referring to these machines:
 
@@ -140,13 +142,17 @@ amount of "work" in each case, just under more contention.
  * basalt   -- ~100  ms
  * veronica -- ~1000 ms 
 
+
     time ./Test.exe -t Half +RTS -N8
+
 
  * hive     -- 1 - 1.5s
  * basalt   -- 1.2 - 1.5s 
  * veronica -- 2.3 - 2.5s
 
+
     time ./Test.exe -t Half +RTS -N16
+
 
  * hive     -- 1.3 - 2.0s
  * basalt   -- 1.6 - 2.3
@@ -178,6 +184,7 @@ high.  With -N2 the queue does run dry, but never with -N32.
 
 
 [2012.08.10] {Divergance with constant space usage}
+===================================================
 
 I'm noticing the M&S queues diverging in the no-backoff version.  That
 would make sense if the consumer IO thread is running on the same OS
