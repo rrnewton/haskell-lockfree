@@ -68,7 +68,7 @@ pushL q@(LQ headPtr tailPtr) val = IO $ \ st1 ->
     (# st2, mv #) ->
      let newp = Cons val mv in -- Create the new cell that stores val.
      case loop st2 newp of
-       (# st3, tailTicket, tail #) -> 
+       (# st3, tail #) -> 
         -- After the loop, enqueue is done.  Try to swing the tail.
         -- If we fail, that is ok.  Whoever came in after us deserves it.         
 --        case casMutVar# tailPtr tailTicket newp st3 of
@@ -77,10 +77,10 @@ pushL q@(LQ headPtr tailPtr) val = IO $ \ st1 ->
           (# st4, flag, res #) -> (# st4, () #)
  where
 
-  loop :: State# RealWorld -> Pair a -> (# State# RealWorld, Ticket#, Pair a #)
+  loop :: State# RealWorld -> Pair a -> (# State# RealWorld, Pair a #)
   loop s1 newp = 
-   case readForCAS# tailPtr s1 of -- [Re]read the tailptr from the queue structure.
-     (# s2, tailTicket#, tail #) ->
+   case readMutVar# tailPtr s1 of -- [Re]read the tailptr from the queue structure.
+     (# s2, tail #) ->
       case tail of
        -- The head and tail pointers should never themselves be NULL:
        Null -> error "push: LinkedQueue invariants broken.  Internal error."
@@ -105,7 +105,7 @@ pushL q@(LQ headPtr tailPtr) val = IO $ \ st1 ->
             Null -> case casMutVar# nextMV next newp s3 of
                      (# s4, flag, newtail #) ->
                        if flag ==# 0#
-                       then (# s4, tailTicket#, tail #)
+                       then (# s4, tail #)
                        else loop s4 newp 
             Cons _ _ -> 
                -- Someone has beat us by extending the tail.  Here we
