@@ -37,8 +37,8 @@ import qualified Data.CAS as Old
 -- #warning "Using NATIVE CAS"
 --------------------------------------------------------------
 
-import qualified Data.Atomics as A -- (readForCAS, casIORef)
-import Data.Atomics (readForCAS, Ticket)
+import Data.Atomics as A -- (readForCAS, casIORef)
+-- import Data.Atomics (readForCAS, Ticket)
 
 -- Considering using the Queue class definition:
 -- import Data.MQueue.Class
@@ -69,9 +69,10 @@ pushL q@(LQ headPtr tailPtr) val = do
    (tailTicket, tail) <- loop newp
    -- After the loop, enqueue is done.  Try to swing the tail.
    -- If we fail, that is ok.  Whoever came in after us deserves it.
-   A.casIORef tailPtr tailTicket newp
+   _ <- casIORef tailPtr tailTicket newp
    return ()
  where
+  -- Enqueue loop: repeatedly read the tail pointer and attempt to extend the last pair.
   loop :: Pair a -> IO (Ticket, Pair a)
   loop newp = do 
    (tailTicket, tail) <- readForCAS tailPtr -- [Re]read the tailptr from the queue structure.
@@ -81,7 +82,9 @@ pushL q@(LQ headPtr tailPtr) val = do
      Cons _ nextPtr -> do
 	(nextTicket, next) <- readForCAS nextPtr
 
--- Optimization: The algorithm can reread tailPtr here to make sure it is still good:
+-- The algorithm can reread tailPtr here to make sure it is still good:
+-- [UPDATE: This is actually a necessary part of the algorithm's "hand-over-hand"
+--  locking, NOT an optimization.]
 #ifdef RECHECK_ASSUMPTIONS
  -- There's a possibility for an infinite loop here with StableName based ptrEq.
  -- (And at one point I observed such an infinite loop.)
@@ -93,13 +96,14 @@ pushL q@(LQ headPtr tailPtr) val = do
 	case next of 
 #endif
           -- Here tail points (or pointed!) to the last node.  Try to link our new node.
-          Null -> do (b,newtail) <- Old.casIORef nextPtr next newp
-		     if b then return (tailTicket, tail)
-                          else loop newp
+          Null -> do res <- casIORef nextPtr nextTicket newp
+                     case res of 
+                       Succeed newtick -> return (tailTicket, tail)
+                       Fail _ _        -> loop newp
           Cons _ _ -> do 
              -- Someone has beat us by extending the tail.  Here we
              -- might have to do some community service by updating the tail ptr.
-             Old.casIORef tailPtr tail next
+             _ <- casIORef tailPtr tailTicket next
              loop newp
 
 
