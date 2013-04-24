@@ -34,7 +34,9 @@ Library
   exposed-modules:   Data.Concurrent.Queue.MichaelScott,
                      Data.Concurrent.Queue.MichaelScott.DequeInstance
   build-depends:     base >= 4.4.0.0 && < 5,
-                     ghc-prim, IORefCAS >= 0.2, abstract-deque, bytestring
+                     ghc-prim, abstract-deque, bytestring,
+                     atomic-primops,
+                     IORefCAS >= 0.2
   -- Build failure on GHC 7.2:
   --                     queuelike
   ghc-options: -O2
@@ -47,8 +49,10 @@ Source-Repository head
 Test-Suite test-lockfree-queue
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
-    build-depends: base >= 4.4.0.0 && < 5, IORefCAS >= 0.2, abstract-deque, bytestring,
+    build-depends: base >= 4.4.0.0 && < 5, abstract-deque, bytestring,
                    HUnit, test-framework, test-framework-hunit,
-                   ghc-prim
+                   ghc-prim,
+                   atomic-primops,
+                   IORefCAS >= 0.2
     ghc-options: -O2 -threaded -rtsopts 
 
