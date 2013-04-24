@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, CPP #-}
+{-# LANGUAGE BangPatterns, CPP, MagicHash #-}
 -- TypeFamilies, FlexibleInstances
 
 -- | Michael and Scott lock-free, single-ended queues.
@@ -19,9 +19,13 @@ module Data.Concurrent.Queue.MichaelScott
  )
   where
 
-import Data.IORef (readIORef, IORef, newIORef)
+import Data.IORef (readIORef, newIORef)
 import System.IO (stderr)
 import Data.ByteString.Char8 (hPutStrLn, pack)
+
+import GHC.Prim (sameMutVar#)
+import GHC.IORef(IORef(IORef))
+import GHC.STRef(STRef(STRef))
 
 import qualified Data.Concurrent.Deque.Class as C
 -- NOTE: you can switch which CAS implementation is used here:
@@ -43,12 +47,14 @@ data LinkedQueue a = LQ
 
 data Pair a = Null | Cons a {-# UNPACK #-}!(IORef (Pair a))
 
--- Only checks that the node type is the same and in the case of a Cons Pair checks that
--- the IORefs are pointer-equal. This suffices to check equality since IORefs are never used in different 
--- Pair values.
+{-# INLINE pairEq #-}
+-- | This only checks that the node type is the same and in the case of a Cons Pair
+-- checks that the underlying MutVar#s are pointer-equal. This suffices to check
+-- equality since each IORef is never used in multiple Pair values.
 pairEq :: Pair a -> Pair a -> Bool
 pairEq Null       Null        = True
-pairEq (Cons _ r) (Cons _ r') = ptrEq r r'
+pairEq (Cons _ (IORef (STRef mv1)))
+       (Cons _ (IORef (STRef mv2))) = sameMutVar# mv1 mv2
 pairEq _          _           = False
 
 -- | Push a new element onto the queue.  Because the queue can grow,
