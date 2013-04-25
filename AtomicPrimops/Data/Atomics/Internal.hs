@@ -32,12 +32,12 @@ type STRep2 a b   = State# RealWorld -> (# State# RealWorld, a, b #)
 type STRep3 a b c = State# RealWorld -> (# State# RealWorld, a, b, c #)
 -- readForCAS# :: MutVar# RealWorld a -> STRep2 Ticket# a
 
+{-# INLINE readForCAS# #-}
 readForCAS# :: MutVar# RealWorld a -> State# RealWorld -> (# State# RealWorld, Ticket#, a #)
 readForCAS# = unsafeCoerce# readMutVar_TypeErased#
 
 
--- readForCAS# :: MutVar# RealWorld a -> State# RealWorld -> (# State# RealWorld, Ticket#, a #)
--- readForCAS# = unsafeCoerce# readMutVar_TypeErased
+{-# INLINE casMutVarTicketed# #-}
 casMutVarTicketed# :: MutVar# RealWorld a -> Ticket# -> a ->
                State# RealWorld -> (# State# RealWorld, Int#, Ticket#, a #)
 casMutVarTicketed# = unsafeCoerce# casMutVar_TypeErased#
