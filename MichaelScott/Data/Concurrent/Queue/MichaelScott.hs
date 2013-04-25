@@ -23,12 +23,14 @@ import Data.IORef (readIORef, newIORef)
 import System.IO (stderr)
 import Data.ByteString.Char8 (hPutStrLn, pack)
 
+-- import GHC.Types (Word(W#))
 import GHC.Prim (sameMutVar#)
 import GHC.IORef(IORef(IORef))
 import GHC.STRef(STRef(STRef))
 
 import qualified Data.Concurrent.Deque.Class as C
-import Data.Atomics as A (readForCAS, casIORef, Ticket, CASResult(..))
+import Data.Atomics (readForCAS, casIORef, Ticket, CASResult(..))
+import Data.Atomics.Internal (Ticket#)
 
 -- Considering using the Queue class definition:
 -- import Data.MQueue.Class
@@ -56,46 +58,47 @@ pushL :: forall a . LinkedQueue a -> a  -> IO ()
 pushL q@(LQ headPtr tailPtr) val = do
    r <- newIORef Null
    let newp = Cons val r   -- Create the new cell that stores val.
-   (tailTicket, tail) <- loop newp
-   -- After the loop, enqueue is done.  Try to swing the tail.
-   -- If we fail, that is ok.  Whoever came in after us deserves it.
-   _ <- casIORef tailPtr tailTicket newp
-   return ()
- where
-  -- Enqueue loop: repeatedly read the tail pointer and attempt to extend the last pair.
-  loop :: Pair a -> IO (Ticket, Pair a)
-  loop newp = do 
-   (tailTicket, tail) <- readForCAS tailPtr -- [Re]read the tailptr from the queue structure.
-   case tail of
-     -- The head and tail pointers should never themselves be NULL:
-     Null -> error "push: LinkedQueue invariants broken.  Internal error."
-     Cons _ nextPtr -> do
-	(nextTicket, next) <- readForCAS nextPtr
+       -- Enqueue loop: repeatedly read the tail pointer and attempt to extend the last pair.
+       loop :: IO ()
+       loop = do 
+        (tailTicket, tail) <- readForCAS tailPtr -- [Re]read the tailptr from the queue structure.
+        case tail of
+          -- The head and tail pointers should never themselves be NULL:
+          Null -> error "push: LinkedQueue invariants broken.  Internal error."
+          Cons _ nextPtr -> do
+             (nextTicket, next) <- readForCAS nextPtr
 
--- The algorithm can reread tailPtr here to make sure it is still good:
--- [UPDATE: This is actually a necessary part of the algorithm's "hand-over-hand"
---  locking, NOT an optimization.]
+     -- The algorithm can reread tailPtr here to make sure it is still good:
+     -- [UPDATE: This is actually a necessary part of the algorithm's "hand-over-hand"
+     --  locking, NOT an optimization.]
 #ifdef RECHECK_ASSUMPTIONS
- -- There's a possibility for an infinite loop here with StableName based ptrEq.
- -- (And at one point I observed such an infinite loop.)
- -- But with one based on reallyUnsafePtrEquality# we should be ok.
-	(tailTicket', tail') <- readForCAS tailPtr   -- ANDREAS: used atomicModifyIORef here
-        if not (pairEq tail tail') then loop newp 
-         else case next of 
+      -- There's a possibility for an infinite loop here with StableName based ptrEq.
+      -- (And at one point I observed such an infinite loop.)
+      -- But with one based on reallyUnsafePtrEquality# we should be ok.
+             (tailTicket', tail') <- readForCAS tailPtr   -- ANDREAS: used atomicModifyIORef here
+             if not (pairEq tail tail') then loop
+              else case next of 
 #else
-	case next of 
+             case next of 
 #endif
-          -- Here tail points (or pointed!) to the last node.  Try to link our new node.
-          Null -> do res <- casIORef nextPtr nextTicket newp
-                     case res of 
-                       Succeed newtick -> return (tailTicket, tail)
-                       Fail _ _        -> loop newp
-          Cons _ _ -> do 
-             -- Someone has beat us by extending the tail.  Here we
-             -- might have to do some community service by updating the tail ptr.
-             _ <- casIORef tailPtr tailTicket next
-             loop newp
+               -- Here tail points (or pointed!) to the last node.  Try to link our new node.
+               Null -> do res <- casIORef nextPtr nextTicket newp
+                          case res of 
+                            Succeed _newtick -> do 
+                              --------------------Exit Loop------------------
+                              -- After the loop, enqueue is done.  Try to swing the tail.
+                              -- If we fail, that is ok.  Whoever came in after us deserves it.
+                              _ <- casIORef tailPtr tailTicket newp
+                              return ()
+                              -----------------------------------------------
+                            Fail _ _        -> loop 
+               Cons _ _ -> do 
+                  -- Someone has beat us by extending the tail.  Here we
+                  -- might have to do some community service by updating the tail ptr.
+                  _ <- casIORef tailPtr tailTicket next
+                  loop 
 
+   loop -- Start the loop.
 
 -- Andreas's checked this invariant in several places
 -- Check for: head /= tail, and head->next == NULL
