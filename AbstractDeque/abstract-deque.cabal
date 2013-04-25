@@ -1,5 +1,5 @@
 Name:                abstract-deque
-Version:             0.1.6
+Version:             0.1.7
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan R. Newton
@@ -77,7 +77,11 @@ Test-Suite test-abstract-deque
     build-depends:  base >= 4 && < 5, containers, HUnit,
                     test-framework >= 0.6, test-framework-hunit >= 0.2.7
     ghc-options: -O2 -threaded -rtsopts
+    ghc-options: -keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint
+    ghc-options: -ddump-ds -ddump-simpl -ddump-stg -ddump-asm -ddump-bcos -ddump-cmm -ddump-opt-cmm -ddump-inlinings
+
     -- Disabling this for now due to a limitation of cabal-install-0.10.2:
+    -- Examining generated code:
     -- If 
     --------------------------------------------------------------------------------
     -- if flag(useCAS) && impl( ghc >= 7.4 ) && !os(mingw32) {
@@ -87,4 +91,3 @@ Test-Suite test-abstract-deque
     -- }
     -- if impl( ghc < 7 )
     --   buildable: False
-
