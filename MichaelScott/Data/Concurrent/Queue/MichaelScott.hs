@@ -1,5 +1,4 @@
-{-# LANGUAGE BangPatterns, CPP, ScopedTypeVariables #-}
-{-# LANGUAGE MagicHash, UnboxedTuples #-}
+{-# LANGUAGE BangPatterns, CPP #-}
 -- TypeFamilies, FlexibleInstances
 
 -- | Michael and Scott lock-free, single-ended queues.
@@ -24,9 +23,6 @@ import Data.IORef (readIORef, IORef, newIORef)
 import System.IO (stderr)
 import Data.ByteString.Char8 (hPutStrLn, pack)
 
-import GHC.Prim -- (MutVar#, RealWorld, sameMutVar#, newMutVar#, casMutVar#, readMutVar#)
-import GHC.IO (IO(IO))
-
 import qualified Data.Concurrent.Deque.Class as C
 -- NOTE: you can switch which CAS implementation is used here:
 --------------------------------------------------------------
@@ -41,75 +37,61 @@ import Data.CAS (casIORef, ptrEq)
 -- import Data.MQueue.Class
 
 data LinkedQueue a = LQ 
-    { head :: MutVar# RealWorld (Pair a)
-    , tail :: MutVar# RealWorld (Pair a)
+    { head :: IORef (Pair a)
+    , tail :: IORef (Pair a)
     }
 
-data Pair a = Null | Cons a (MutVar# RealWorld (Pair a))
+data Pair a = Null | Cons a (IORef (Pair a))
 
 -- Only checks that the node type is the same and in the case of a Cons Pair checks that
 -- the IORefs are pointer-equal. This suffices to check equality since IORefs are never used in different 
 -- Pair values.
 pairEq :: Pair a -> Pair a -> Bool
 pairEq Null       Null        = True
-pairEq (Cons _ r) (Cons _ r') = sameMutVar# r r'
+pairEq (Cons _ r) (Cons _ r') = ptrEq r r'
 pairEq _          _           = False
-
 
 -- | Push a new element onto the queue.  Because the queue can grow,
 --   this always succeeds.
-pushL :: forall a . LinkedQueue a -> a  -> IO ()
-pushL q@(LQ headPtr tailPtr) val = IO $ \ st1 ->
-  case newMutVar# Null st1 of
-    (# st2, mv #) ->
-     let newp = Cons val mv in -- Create the new cell that stores val.
-     case loop st2 newp of
-       (# st3, tail #) -> 
-        -- After the loop, enqueue is done.  Try to swing the tail.
-        -- If we fail, that is ok.  Whoever came in after us deserves it.         
-        case casMutVar# tailPtr tail newp st3 of
-          (# st4, flag, res #) -> (# st4, () #)
- where
-  loop :: State# RealWorld -> Pair a -> (# State# RealWorld, Pair a #)
-  loop s1 newp = 
-   case readMutVar# tailPtr s1 of -- [Re]read the tailptr from the queue structure.
-     (# s2, tail #) ->
-      case tail of
-       -- The head and tail pointers should never themselves be NULL:
-       Null -> error "push: LinkedQueue invariants broken.  Internal error."
-       Cons _ nextMV ->
-        case readMutVar# nextMV s2 of
-         (# s3, next #) ->
-             {-
-             -- Optimization: The algorithm can reread tailPtr here to make sure it is still good:
-             #ifdef RECHECK_ASSUMPTIONS
-              -- There's a possibility for an infinite loop here with StableName based ptrEq.
-              -- (And at one point I observed such an infinite loop.)
-              -- But with one based on reallyUnsafePtrEquality# we should be ok.
-                     tail' <- readIORef tailPtr   -- ANDREAS: used atomicModifyIORef here
-                     if not (pairEq tail tail') then loop newp 
-                      else case next of 
-             #else
-                     case next of 
-             #endif
-             -}
-           case next of
-            -- Here tail points (or pointed!) to the last node.  Try to link our new node.
-            Null -> case casMutVar# nextMV next newp s3 of
-                     (# s4, flag, newtail #) ->
-                       if flag ==# 0#
-                       then (# s4, tail #)
-                       else loop s4 newp 
-            Cons _ _ -> 
-               -- Someone has beat us by extending the tail.  Here we
-               -- might have to do some community service by updating the tail ptr.
-               case casMutVar# tailPtr tail next s3 of
-                 (# s4, _, _ #) -> loop s4 newp 
+pushL :: LinkedQueue a -> a  -> IO ()
+pushL q@(LQ headPtr tailPtr) val = do
+   r <- newIORef Null
+   let newp = Cons val r   -- Create the new cell that stores val.
+   tail <- loop newp
+   -- After the loop, enqueue is done.  Try to swing the tail.
+   -- If we fail, that is ok.  Whoever came in after us deserves it.
+   casIORef tailPtr tail newp
+   return ()
+ where 
+  loop newp = do 
+   tail <- readIORef tailPtr -- [Re]read the tailptr from the queue structure.
+   case tail of
+     -- The head and tail pointers should never themselves be NULL:
+     Null -> error "push: LinkedQueue invariants broken.  Internal error."
+     Cons _ nextPtr -> do
+	next <- readIORef nextPtr
 
-tryPopR ::  LinkedQueue a -> IO (Maybe a)
-tryPopR = error "tryPopR Unimplemented"
+-- Optimization: The algorithm can reread tailPtr here to make sure it is still good:
+#ifdef RECHECK_ASSUMPTIONS
+ -- There's a possibility for an infinite loop here with StableName based ptrEq.
+ -- (And at one point I observed such an infinite loop.)
+ -- But with one based on reallyUnsafePtrEquality# we should be ok.
+	tail' <- readIORef tailPtr   -- ANDREAS: used atomicModifyIORef here
+        if not (pairEq tail tail') then loop newp 
+         else case next of 
+#else
+	case next of 
+#endif
+          -- Here tail points (or pointed!) to the last node.  Try to link our new node.
+          Null -> do (b,newtail) <- casIORef nextPtr next newp
+		     if b then return tail
+                          else loop newp
+          Cons _ _ -> do 
+             -- Someone has beat us by extending the tail.  Here we
+             -- might have to do some community service by updating the tail ptr.
+             casIORef tailPtr tail next
+             loop newp
 
-{-           
 
 -- Andreas's checked this invariant in several places
 -- Check for: head /= tail, and head->next == NULL
@@ -179,27 +161,24 @@ tryPopR q@(LQ headPtr tailPtr) = loop (0::Int)
 		  (b,_) <- casIORef headPtr head next' -- ANDREAS: FOUND CONDITION VIOLATED AFTER HERE
 		  if b then return (Just value) -- Dequeue done; exit loop.
 		       else loop (tries+1) -- ANDREAS: observed this loop being taken >1M times
-
--}
-
+          
 -- | Create a new queue.
 newQ :: IO (LinkedQueue a)
-newQ = IO$ \ s1 ->
-  case newMutVar# Null s1 of
-    (# s2, mv #) ->
-     let newp = Cons (error "LinkedQueue: Used uninitialized magic value.") mv in
-     case newMutVar# newp s2 of
-       (# s3, hd #) ->
-         case newMutVar# newp s3 of
-          (# s4, tl #) -> (# s4, LQ hd tl #)
+newQ = do 
+  r <- newIORef Null
+  let newp = Cons (error "LinkedQueue: Used uninitialized magic value.") r
+  hd <- newIORef newp
+  tl <- newIORef newp
+  return (LQ hd tl)
 
 -- | Is the queue currently empty?  Beware that this can be a highly transient state.
 nullQ :: LinkedQueue a -> IO Bool
-nullQ (LQ headPtr tailPtr) = IO $ \ st ->
-  case readMutVar# headPtr st of
-    (# st, head #) ->
-      case readMutVar# tailPtr st of
-        (# st, tail #) -> (# st, pairEq head tail #)
+nullQ (LQ headPtr tailPtr) = do 
+    head <- readIORef headPtr
+    tail <- readIORef tailPtr
+    return (pairEq head tail)
+
+
 
 --------------------------------------------------------------------------------
 --   Instance(s) of abstract deque interface
@@ -213,4 +192,3 @@ instance C.DequeClass LinkedQueue where
   tryPopR = tryPopR
 
 --------------------------------------------------------------------------------
-
