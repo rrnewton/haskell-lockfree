@@ -135,7 +135,7 @@ test_fifo_filldrain q =
      when (s /= expected) (assertFailure "Incorrect sum!")
      return ()
 
-
+{-# INLINABLE test_fifo_OneBottleneck #-}
 -- | This test splits the 'numAgents' threads into producers and
 -- consumers which all communicate through a SINGLE queue.  Each
 -- thread performs its designated operation as fast as possible.  The
@@ -160,8 +160,9 @@ test_fifo_OneBottleneck doBackoff total q =
      printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
     
      forM_ [0..producers-1] $ \ id -> 
- 	myfork "producer thread" $ 
-          forM_ (take perthread [id * producers .. ]) $ \ i -> do 
+ 	myfork "producer thread" $
+          let start = id*perthread in
+          for_ start (start+perthread) $ \ i -> do 
 	     pushL q i
              when (i - id*producers < 10) $ printf " [%d] pushed %d \n" id i
 
@@ -169,14 +170,14 @@ test_fifo_OneBottleneck doBackoff total q =
 
      forM_ [0..consumers-1] $ \ id -> 
  	myfork "consumer thread" $ do 
-
-          let fn (!sum,!maxiters) i = do                
-	       (x,iters) <- if doBackoff then spinPopBkoff q 
-                                         else spinPopHard  q
-	       when (i - id*producers < 10) $ printf " [%d] popped %d \n" id i
-	       return (sum+x, max maxiters iters)
-             
-          pr <- foldM fn (0,0) (take perthread [id * producers .. ])
+          let consume_loop sum maxiters 0 = return (sum, maxiters)
+              consume_loop !sum !maxiters i = do
+                (x,iters) <- if doBackoff then spinPopBkoff q 
+                                          else spinPopHard  q
+                when (i < 10) $ printf " [%d] popped %d \n" id i
+                consume_loop (sum+x) (max maxiters iters) (i-1)
+          pr <- consume_loop 0 0 perthread
+--          pr <- foldM fn (0,0) (take perthread [id * producers .. ])
 	  putMVar mv pr
 
      printf "Reading sums from MVar...\n" 
@@ -255,6 +256,7 @@ test_all newq =
 ----------------------------------------------------------------------------------------------------
 -- Helpers
 
+spinPopBkoff :: DequeClass d => d t -> IO (t, Int)
 spinPopBkoff q = loop 1
  where 
   hardspinfor = 10
@@ -283,6 +285,7 @@ spinPopBkoff q = loop 1
 
 -- | This is always a crazy and dangerous thing to do -- GHC cannot
 --   deschedule this spinning thread because it does not allocate:
+spinPopHard :: (DequeClass d) => d t -> IO (t, Int)
 spinPopHard q = loop 1
  where 
   loop n = do
@@ -292,6 +295,15 @@ spinPopHard q = loop 1
        Just x  -> return (x, n)
 
 
+-- My own forM for numeric ranges (not requiring deforestation optimizations).
+-- Inclusive start, exclusive end.
+{-# INLINE for_ #-}
+for_ :: Monad m => Int -> Int -> (Int -> m ()) -> m ()
+for_ start end _fn | start > end = error "for_: start is greater than end"
+for_ start end fn = loop start
+  where
+   loop !i | i == end  = return ()
+	   | otherwise = do fn i; loop (i+1)
 
 ----------------------------------------------------------------------------------------------------
 

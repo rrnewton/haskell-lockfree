@@ -198,3 +198,75 @@ not allocate.
 
 But why does forkOS make the problem WORSE?  Is it because it merely
 pins and does not introduce additional threads?
+
+
+[2013.04.24] Timing different variants: IORef/MutVar CAS/TicketedCAS
+====================================================================
+
+At this point there are different branches for different
+(MichaelScott) strategies:
+
+ * master                      -- MutVar + raw CAS
+ * ioref-michaelscott          -- IORef (plus UNPACK) + raw CAS
+ * ticketed-michaelscott       -- MutVar + Ticketed CAS
+ * ioref-ticketed-michaelscott -- IORef + Ticketed CAS
+
+These should be deleted after performance analysis.
+
+----------------------
+
+Here's the min/med/max over 10 trials on the 4-core westmere platform:
+[Mutvar + raw, non-ticketed CAS, with NO extra RTS opts]
+
+    -N1: REALTIME 0.16 0.17 0.18
+         PRODUCTIVITY 50.000 47.058 47.058
+    -N2: REALTIME 0.16 0.18 0.18
+    -N4: REALTIME 0.08 0.13 0.14
+         PRODUCTIVITY 87.500 53.846 53.846
+    -N8: REALTIME 0.64 0.84 1.06
+
+And with IORef (but UNPACK)
+
+    -N1: REALTIME 0.17 0.17 0.17
+         PRODUCTIVITY 47.058 47.058 50.000
+    -N2: REALTIME 0.16 0.16 0.16
+         PRODUCTIVITY 43.750 46.666 46.666
+    -N4: REALTIME 0.08 0.12 0.18
+	 PRODUCTIVITY 87.500 58.333 38.888
+    -N8: REALTIME 0.68 0.81 1.08
+
+
+--------------------
+
+How about total allocation.  I'm just finishing the IORef/ticketed
+version.  When running with this command:
+
+    NUMELEMS=2000000 time ./dist/build/test-lockfree-queue/test-lockfree-queue -t One +RTS -N4  -s
+
+It allocates `1,138,660,200` bytes.  Looking at the STG I can see it's
+still allocating some tuples.  I can fix that.  Fixing it for the
+pushL loop brings allocation down to `1,090,655,664`.  (After looking
+at it, I can't fix the allocation of a Just in tryPopR.)
+
+Note that the 'master' branch (with raw MutVars) isn't allocating any
+less memory.  I don't see how we're getting to a gigabyte of heap
+allocation when pushing 2 million elements...  That's 500 bytes per
+element.  Productivities are very very low (22%).
+
+Can this much allocation be in the test harness itself?  In short,
+YES.  It's written horribly.
+
+Fix #1: change the for loops.  This drops us to 554.97 Mb allocation.
+
+
+-----------------------
+
+IORef (UNPACK) again, the old 500K one is too small:
+
+    -N4: REALTIME 0.07 0.07 0.08
+         PRODUCTIVITY 85.714 87.500 87.500
+	 
+
+    -N4 4M elems: 
+	 REALTIME 0.57 0.58 0.66
+	 PRODUCTIVITY 92.982 93.103 78.787    
