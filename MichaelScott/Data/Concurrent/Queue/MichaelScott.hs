@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, CPP, MagicHash, ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns, CPP, MagicHash, UnboxedTuples, ScopedTypeVariables #-}
 -- TypeFamilies, FlexibleInstances
 
 -- | Michael and Scott lock-free, single-ended queues.
@@ -119,12 +119,13 @@ checkInvariant s (LQ headPtr tailPtr) =
 -- | Attempt to pop an element from the queue if one is available.
 --   tryPop will return semi-promptly (depending on contention), but
 --   will return 'Nothing' if the queue is empty.
-tryPopR ::  LinkedQueue a -> IO (Maybe a)
+tryPopR :: forall a . LinkedQueue a -> IO (Maybe a)
 -- FIXME -- this version
 -- TODO -- add some kind of backoff.  This should probably at least
 -- yield after a certain number of failures.
-tryPopR q@(LQ headPtr tailPtr) = loop (0::Int) 
- where 
+tryPopR q@(LQ headPtr tailPtr) = loop 0
+ where
+  loop :: Int -> IO (Maybe a)
 #ifdef DEBUG
    --  loop 10 = do hPutStrLn stderr (pack "tryPopR: tried ~10 times!!");  loop 11 -- This one happens a lot on -N32
   loop 25   = do hPutStrLn stderr (pack "tryPopR: tried ~25 times!!");   loop 26
@@ -165,8 +166,9 @@ tryPopR q@(LQ headPtr tailPtr) = loop (0::Int)
 --	        Null -> loop (tries+1)
 		Cons value _ -> do 
                   -- Try to swing Head to the next node
-		  res <- casIORef headPtr headTicket next' -- ANDREAS: FOUND CONDITION VIOLATED AFTER HERE
+		  res <- casIORef headPtr headTicket next'
                   case res of
+                    -- [2013.04.24] Looking at the STG, I can't see a way to get rid of the allocation on this Just:
                     Succeed _ -> return (Just value) -- Dequeue done; exit loop.
                     Fail _ _  -> loop (tries+1) -- ANDREAS: observed this loop being taken >1M times
           
