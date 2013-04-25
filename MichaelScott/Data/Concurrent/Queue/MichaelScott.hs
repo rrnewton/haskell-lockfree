@@ -106,36 +106,36 @@ pushL q@(LQ headPtr tailPtr) val = IO $ \ st1 ->
                case casMutVar# tailPtr tail next s3 of
                  (# s4, _, _ #) -> loop s4 newp 
 
--- tryPopR ::  LinkedQueue a -> IO (Maybe a)
--- tryPopR = error "tryPopR Unimplemented"
+tryPopR ::  LinkedQueue a -> IO (Maybe a)
+tryPopR = error "tryPopR Unimplemented"
 
--- -- Andreas's checked this invariant in several places
--- -- Check for: head /= tail, and head->next == NULL
--- checkInvariant :: String -> LinkedQueue a -> IO ()
--- checkInvariant s (LQ headPtr tailPtr) = 
---   do head <- readIORef headPtr
---      tail <- readIORef tailPtr
---      if (not (pairEq head tail))
---        then case head of 
---               Null -> error (s ++ " checkInvariant: LinkedQueue invariants broken.  Internal error.")
---               Cons _ next -> do
---                 next' <- readIORef next
---                 case next' of 
---                   Null -> error (s ++ " checkInvariant: next' should not be null")
---                   _ -> return ()
---        else return ()
+{-           
 
-
+-- Andreas's checked this invariant in several places
+-- Check for: head /= tail, and head->next == NULL
+checkInvariant :: String -> LinkedQueue a -> IO ()
+checkInvariant s (LQ headPtr tailPtr) = 
+  do head <- readIORef headPtr
+     tail <- readIORef tailPtr
+     if (not (pairEq head tail))
+       then case head of 
+              Null -> error (s ++ " checkInvariant: LinkedQueue invariants broken.  Internal error.")
+              Cons _ next -> do
+                next' <- readIORef next
+                case next' of 
+                  Null -> error (s ++ " checkInvariant: next' should not be null")
+                  _ -> return ()
+       else return ()
+            
 -- | Attempt to pop an element from the queue if one is available.
 --   tryPop will return semi-promptly (depending on contention), but
 --   will return 'Nothing' if the queue is empty.
 tryPopR ::  LinkedQueue a -> IO (Maybe a)
--- FIXME / TODO -- add some kind of backoff.  This should probably at least
---   yield after a certain number of failures.
-tryPopR q@(LQ headPtr tailPtr) = IO $ \st -> loop (0::Int) st
- where
-   loop !tries st =
-   {-           
+-- FIXME -- this version
+-- TODO -- add some kind of backoff.  This should probably at least
+-- yield after a certain number of failures.
+tryPopR q@(LQ headPtr tailPtr) = loop (0::Int) 
+ where 
 #ifdef DEBUG
    --  loop 10 = do hPutStrLn stderr (pack "tryPopR: tried ~10 times!!");  loop 11 -- This one happens a lot on -N32
   loop 25   = do hPutStrLn stderr (pack "tryPopR: tried ~25 times!!");   loop 26
@@ -143,44 +143,44 @@ tryPopR q@(LQ headPtr tailPtr) = IO $ \st -> loop (0::Int) st
   loop 100  = do hPutStrLn stderr (pack "tryPopR: tried ~100 times!!");  loop 101
   loop 1000 = do hPutStrLn stderr (pack "tryPopR: tried ~1000 times!!"); loop 1001
 #endif
-   -}
-      case readMutVar# headPtr st of
-        (# st, head #) ->
-          case readMutVar# tailPtr st of
-            (# st, tail #) -> 
-             case head of 
-               Null -> error "tryPopR: LinkedQueue invariants broken.  Internal error."
-               Cons _ next -> 
-                case readMutVar# next st of
-                  (# st, next' #) -> 
+  loop !tries = do 
+    head <- readIORef headPtr
+    tail <- readIORef tailPtr
+    case head of 
+      Null -> error "tryPopR: LinkedQueue invariants broken.  Internal error."
+      Cons _ next -> do
+        next' <- readIORef next
 #ifdef RECHECK_ASSUMPTIONS
-                   -- As with push, double-check our information is up-to-date. (head,tail,next consistent)
-                   head' <- readIORef headPtr -- ANDREAS: used atomicModifyIORef headPtr (\x -> (x,x))
-                   if not (pairEq head head') then loop (tries+1) else do 
+        -- As with push, double-check our information is up-to-date. (head,tail,next consistent)
+        head' <- readIORef headPtr -- ANDREAS: used atomicModifyIORef headPtr (\x -> (x,x))
+        if not (pairEq head head') then loop (tries+1) else do 
 #else
-                   let head' = head in
+        let head' = head
+        do 
 #endif                 
-                   -- Is queue empty or tail falling behind?:
-                   if pairEq head tail then do 
-                     case next' of -- Is queue empty?
-                      Null -> (# st, Nothing #) -- Queue is empty, couldn't dequeue
-                      Cons _ _ -> 
-                        -- Tail is falling behind.  Try to advance it:
-                        case casMutVar# tailPtr tail next' st of
-                          (# st, _, _ #) -> loop (tries+1) st
-                   else -- head /= tail
-                    -- No need to deal with Tail.  Read value before CAS.
-                    -- Otherwise, another dequeue might free the next node
-                    case next' of 
-                      Null -> error "tryPop: Internal error.  Next should not be null if head/=tail."
-                      Cons value _ ->
-                        -- Try to swing Head to the next node:
-                        case casMutVar# headPtr head next' st of
-                          (# st, b, _ #) -> 
-                           if b ==# 0#
-                           then (# st, Just value #) -- Dequeue done; exit loop.
-                           else loop (tries+1) st
+	  -- Is queue empty or tail falling behind?:
+          if pairEq head tail then do 
+          -- if ptrEq head tail then do 
+	    case next' of -- Is queue empty?
+              Null -> return Nothing -- Queue is empty, couldn't dequeue
+	      Cons _ _ -> do
+  	        -- Tail is falling behind.  Try to advance it:
+	        casIORef tailPtr tail next'
+		loop (tries+1)
+           
+	   else do -- head /= tail
+	      -- No need to deal with Tail.  Read value before CAS.
+	      -- Otherwise, another dequeue might free the next node
+	      case next' of 
+	        Null -> error "tryPop: Internal error.  Next should not be null if head/=tail."
+--	        Null -> loop (tries+1)
+		Cons value _ -> do 
+                  -- Try to swing Head to the next node
+		  (b,_) <- casIORef headPtr head next' -- ANDREAS: FOUND CONDITION VIOLATED AFTER HERE
+		  if b then return (Just value) -- Dequeue done; exit loop.
+		       else loop (tries+1) -- ANDREAS: observed this loop being taken >1M times
 
+-}
 
 -- | Create a new queue.
 newQ :: IO (LinkedQueue a)
