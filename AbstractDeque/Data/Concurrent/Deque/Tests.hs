@@ -14,7 +14,10 @@ module Data.Concurrent.Deque.Tests
    test_ws_triv1, test_ws_triv2, test_wsqueue,
 
    -- * All deque tests, aggregated.
-   test_all
+   test_all,
+
+   -- * Testing parameters
+   numElems, numAgents, producerRatio
  )
  where 
 

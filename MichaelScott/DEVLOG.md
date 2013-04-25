@@ -259,6 +259,7 @@ YES.  It's written horribly.
 Fix #1: change the for loops.  This drops us to 554.97 Mb allocation.
 
 
+Quick check on my laptop:
 -----------------------
 
 IORef (UNPACK) again, the old 500K one is too small:
@@ -266,7 +267,6 @@ IORef (UNPACK) again, the old 500K one is too small:
     -N4: REALTIME 0.07 0.07 0.08
          PRODUCTIVITY 85.714 87.500 87.500
 	 
-
     -N4 4M elems: 
 	 REALTIME 0.57 0.58 0.66
 	 PRODUCTIVITY 92.982 93.103 78.787    

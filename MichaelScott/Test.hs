@@ -8,4 +8,4 @@ import Test.Framework.Providers.HUnit     (hUnitTestToTests)
 import Data.Concurrent.Deque.Tests        (test_fifo)
 import Data.Concurrent.Queue.MichaelScott (newQ)
 
-main = defaultMain$ hUnitTestToTests$ test_fifo newQ 
+main = defaultMain$ hUnitTestToTests$ test_fifo newQ
