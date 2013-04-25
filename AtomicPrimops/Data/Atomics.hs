@@ -61,9 +61,11 @@ casArrayST (MutableArray arr#) (I# i#) old new = ST$ \s1# ->
 
 --------------------------------------------------------------------------------
 
+{-# INLINE readForCAS #-}
 readForCAS :: IORef a -> IO ( Ticket, a )
 readForCAS (IORef (STRef mv)) = readMutVarForCAS mv
 
+{-# INLINE casIORef #-}
 -- | Performs a machine-level compare and swap operation on an
 -- 'IORef'. Returns a tuple containing a 'Bool' which is 'True' when a
 -- swap is performed, along with the 'current' value from the 'IORef'.
@@ -103,7 +105,7 @@ casIORef (IORef (STRef var)) old new = casMutVar var old new
       
 --------------------------------------------------------------------------------
 
-{-# INLINE readForCAS #-}
+{-# INLINE readMutVarForCAS #-}
 readMutVarForCAS :: MutVar# RealWorld a -> IO ( Ticket, a )
 readMutVarForCAS mv = IO$ \ st -> 
   case readForCAS# mv st of 
