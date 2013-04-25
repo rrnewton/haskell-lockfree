@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, CPP #-}
+{-# LANGUAGE BangPatterns, CPP, MagicHash, UnboxedTuples, ScopedTypeVariables #-}
 -- TypeFamilies, FlexibleInstances
 
 -- | Michael and Scott lock-free, single-ended queues.
@@ -19,79 +19,86 @@ module Data.Concurrent.Queue.MichaelScott
  )
   where
 
-import Data.IORef (readIORef, IORef, newIORef)
+import Data.IORef (readIORef, newIORef)
 import System.IO (stderr)
 import Data.ByteString.Char8 (hPutStrLn, pack)
 
+-- import GHC.Types (Word(W#))
+import GHC.Prim (sameMutVar#)
+import GHC.IORef(IORef(IORef))
+import GHC.STRef(STRef(STRef))
+
 import qualified Data.Concurrent.Deque.Class as C
--- NOTE: you can switch which CAS implementation is used here:
---------------------------------------------------------------
-import Data.CAS (casIORef, ptrEq)
--- import Data.CAS.Internal.Fake (casIORef, ptrEq)
--- #warning "Using fake CAS"
--- import Data.CAS.Internal.Native (casIORef, ptrEq)
--- #warning "Using NATIVE CAS"
---------------------------------------------------------------
+import Data.Atomics (readForCAS, casIORef, Ticket, CASResult(..))
+import Data.Atomics.Internal (Ticket#)
 
 -- Considering using the Queue class definition:
 -- import Data.MQueue.Class
 
 data LinkedQueue a = LQ 
-    { head :: IORef (Pair a)
-    , tail :: IORef (Pair a)
+    { head :: {-# UNPACK #-} !(IORef (Pair a))
+    , tail :: {-# UNPACK #-} !(IORef (Pair a))
     }
 
-data Pair a = Null | Cons a (IORef (Pair a))
+data Pair a = Null | Cons a {-# UNPACK #-}!(IORef (Pair a))
 
--- Only checks that the node type is the same and in the case of a Cons Pair checks that
--- the IORefs are pointer-equal. This suffices to check equality since IORefs are never used in different 
--- Pair values.
+{-# INLINE pairEq #-}
+-- | This only checks that the node type is the same and in the case of a Cons Pair
+-- checks that the underlying MutVar#s are pointer-equal. This suffices to check
+-- equality since each IORef is never used in multiple Pair values.
 pairEq :: Pair a -> Pair a -> Bool
 pairEq Null       Null        = True
-pairEq (Cons _ r) (Cons _ r') = ptrEq r r'
+pairEq (Cons _ (IORef (STRef mv1)))
+       (Cons _ (IORef (STRef mv2))) = sameMutVar# mv1 mv2
 pairEq _          _           = False
 
 -- | Push a new element onto the queue.  Because the queue can grow,
 --   this always succeeds.
-pushL :: LinkedQueue a -> a  -> IO ()
+pushL :: forall a . LinkedQueue a -> a  -> IO ()
 pushL q@(LQ headPtr tailPtr) val = do
    r <- newIORef Null
    let newp = Cons val r   -- Create the new cell that stores val.
-   tail <- loop newp
-   -- After the loop, enqueue is done.  Try to swing the tail.
-   -- If we fail, that is ok.  Whoever came in after us deserves it.
-   casIORef tailPtr tail newp
-   return ()
- where 
-  loop newp = do 
-   tail <- readIORef tailPtr -- [Re]read the tailptr from the queue structure.
-   case tail of
-     -- The head and tail pointers should never themselves be NULL:
-     Null -> error "push: LinkedQueue invariants broken.  Internal error."
-     Cons _ nextPtr -> do
-	next <- readIORef nextPtr
+       -- Enqueue loop: repeatedly read the tail pointer and attempt to extend the last pair.
+       loop :: IO ()
+       loop = do 
+        (tailTicket, tail) <- readForCAS tailPtr -- [Re]read the tailptr from the queue structure.
+        case tail of
+          -- The head and tail pointers should never themselves be NULL:
+          Null -> error "push: LinkedQueue invariants broken.  Internal error."
+          Cons _ nextPtr -> do
+             (nextTicket, next) <- readForCAS nextPtr
 
--- Optimization: The algorithm can reread tailPtr here to make sure it is still good:
+     -- The algorithm can reread tailPtr here to make sure it is still good:
+     -- [UPDATE: This is actually a necessary part of the algorithm's "hand-over-hand"
+     --  locking, NOT an optimization.]
 #ifdef RECHECK_ASSUMPTIONS
- -- There's a possibility for an infinite loop here with StableName based ptrEq.
- -- (And at one point I observed such an infinite loop.)
- -- But with one based on reallyUnsafePtrEquality# we should be ok.
-	tail' <- readIORef tailPtr   -- ANDREAS: used atomicModifyIORef here
-        if not (pairEq tail tail') then loop newp 
-         else case next of 
+      -- There's a possibility for an infinite loop here with StableName based ptrEq.
+      -- (And at one point I observed such an infinite loop.)
+      -- But with one based on reallyUnsafePtrEquality# we should be ok.
+             (tailTicket', tail') <- readForCAS tailPtr   -- ANDREAS: used atomicModifyIORef here
+             if not (pairEq tail tail') then loop
+              else case next of 
 #else
-	case next of 
+             case next of 
 #endif
-          -- Here tail points (or pointed!) to the last node.  Try to link our new node.
-          Null -> do (b,newtail) <- casIORef nextPtr next newp
-		     if b then return tail
-                          else loop newp
-          Cons _ _ -> do 
-             -- Someone has beat us by extending the tail.  Here we
-             -- might have to do some community service by updating the tail ptr.
-             casIORef tailPtr tail next
-             loop newp
+               -- Here tail points (or pointed!) to the last node.  Try to link our new node.
+               Null -> do res <- casIORef nextPtr nextTicket newp
+                          case res of 
+                            Succeed _newtick -> do 
+                              --------------------Exit Loop------------------
+                              -- After the loop, enqueue is done.  Try to swing the tail.
+                              -- If we fail, that is ok.  Whoever came in after us deserves it.
+                              _ <- casIORef tailPtr tailTicket newp
+                              return ()
+                              -----------------------------------------------
+                            Fail _ _        -> loop 
+               Cons _ _ -> do 
+                  -- Someone has beat us by extending the tail.  Here we
+                  -- might have to do some community service by updating the tail ptr.
+                  _ <- casIORef tailPtr tailTicket next
+                  loop 
 
+   loop -- Start the loop.
 
 -- Andreas's checked this invariant in several places
 -- Check for: head /= tail, and head->next == NULL
@@ -112,12 +119,13 @@ checkInvariant s (LQ headPtr tailPtr) =
 -- | Attempt to pop an element from the queue if one is available.
 --   tryPop will return semi-promptly (depending on contention), but
 --   will return 'Nothing' if the queue is empty.
-tryPopR ::  LinkedQueue a -> IO (Maybe a)
+tryPopR :: forall a . LinkedQueue a -> IO (Maybe a)
 -- FIXME -- this version
 -- TODO -- add some kind of backoff.  This should probably at least
 -- yield after a certain number of failures.
-tryPopR q@(LQ headPtr tailPtr) = loop (0::Int) 
- where 
+tryPopR q@(LQ headPtr tailPtr) = loop 0
+ where
+  loop :: Int -> IO (Maybe a)
 #ifdef DEBUG
    --  loop 10 = do hPutStrLn stderr (pack "tryPopR: tried ~10 times!!");  loop 11 -- This one happens a lot on -N32
   loop 25   = do hPutStrLn stderr (pack "tryPopR: tried ~25 times!!");   loop 26
@@ -126,12 +134,12 @@ tryPopR q@(LQ headPtr tailPtr) = loop (0::Int)
   loop 1000 = do hPutStrLn stderr (pack "tryPopR: tried ~1000 times!!"); loop 1001
 #endif
   loop !tries = do 
-    head <- readIORef headPtr
-    tail <- readIORef tailPtr
+    (headTicket, head) <- readForCAS headPtr
+    (tailTicket, tail) <- readForCAS tailPtr
     case head of 
       Null -> error "tryPopR: LinkedQueue invariants broken.  Internal error."
       Cons _ next -> do
-        next' <- readIORef next
+        (nextTicket', next') <- readForCAS next
 #ifdef RECHECK_ASSUMPTIONS
         -- As with push, double-check our information is up-to-date. (head,tail,next consistent)
         head' <- readIORef headPtr -- ANDREAS: used atomicModifyIORef headPtr (\x -> (x,x))
@@ -147,7 +155,7 @@ tryPopR q@(LQ headPtr tailPtr) = loop (0::Int)
               Null -> return Nothing -- Queue is empty, couldn't dequeue
 	      Cons _ _ -> do
   	        -- Tail is falling behind.  Try to advance it:
-	        casIORef tailPtr tail next'
+	        casIORef tailPtr tailTicket next'
 		loop (tries+1)
            
 	   else do -- head /= tail
@@ -158,9 +166,11 @@ tryPopR q@(LQ headPtr tailPtr) = loop (0::Int)
 --	        Null -> loop (tries+1)
 		Cons value _ -> do 
                   -- Try to swing Head to the next node
-		  (b,_) <- casIORef headPtr head next' -- ANDREAS: FOUND CONDITION VIOLATED AFTER HERE
-		  if b then return (Just value) -- Dequeue done; exit loop.
-		       else loop (tries+1) -- ANDREAS: observed this loop being taken >1M times
+		  res <- casIORef headPtr headTicket next'
+                  case res of
+                    -- [2013.04.24] Looking at the STG, I can't see a way to get rid of the allocation on this Just:
+                    Succeed _ -> return (Just value) -- Dequeue done; exit loop.
+                    Fail _ _  -> loop (tries+1) -- ANDREAS: observed this loop being taken >1M times
           
 -- | Create a new queue.
 newQ :: IO (LinkedQueue a)

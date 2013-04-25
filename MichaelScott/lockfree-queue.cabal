@@ -34,7 +34,8 @@ Library
   exposed-modules:   Data.Concurrent.Queue.MichaelScott,
                      Data.Concurrent.Queue.MichaelScott.DequeInstance
   build-depends:     base >= 4.4.0.0 && < 5,
-                     ghc-prim, IORefCAS >= 0.2, abstract-deque, bytestring
+                     ghc-prim, IORefCAS >= 0.2, abstract-deque, bytestring,
+                     atomic-primops
   -- Build failure on GHC 7.2:
   --                     queuelike
   ghc-options: -O2
@@ -49,6 +50,21 @@ Test-Suite test-lockfree-queue
     main-is:    Test.hs
     build-depends: base >= 4.4.0.0 && < 5, IORefCAS >= 0.2, abstract-deque, bytestring,
                    HUnit, test-framework, test-framework-hunit,
-                   ghc-prim
-    ghc-options: -O2 -threaded -rtsopts 
+                   ghc-prim, atomic-primops
 
+    ghc-options: -O2 -threaded -rtsopts 
+    -- Debugging generated code:
+    ghc-options: -keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint
+    ghc-options: -ddump-ds -ddump-simpl -ddump-stg -ddump-asm -ddump-bcos -ddump-cmm -ddump-opt-cmm -ddump-inlinings
+
+
+
+-- Executable benchmark-lockfree-queue
+--     main-is:    Benchmark.hs
+--     build-depends: base >= 4.4.0.0 && < 5, IORefCAS >= 0.2, abstract-deque, bytestring,
+--                    HUnit, test-framework, test-framework-hunit,
+--                    ghc-prim, atomic-primops
+--     ghc-options: -O2 -threaded -rtsopts 
+--     -- Debugging generated code:
+--     ghc-options: -keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint
+--     ghc-options: -ddump-ds -ddump-simpl -ddump-stg -ddump-asm -ddump-bcos -ddump-cmm -ddump-opt-cmm -ddump-inlinings
