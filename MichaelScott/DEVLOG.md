@@ -277,3 +277,13 @@ IORef (UNPACK) again, the old 500K one is too small:
     -N4 4M elems: 
 	 REALTIME 0.57 0.58 0.66
 	 PRODUCTIVITY 92.982 93.103 78.787    
+
+Next, do the merge back with the master branch... done.  (Hmm... at
+this particular moment I seem to get more stable numbers out of the
+Benchmark.hs I added, rather than the Test.Framework based
+MichaelScott/Test.hs.)  On my laptop:
+
+    REALTIME 0.58 0.60 0.75
+    PRODUCTIVITY 96.551 93.442 70.666
+
+

@@ -162,7 +162,7 @@ test_fifo_OneBottleneck doBackoff total q =
        error$ "The aggressively busy-waiting version of the test can only run with the right thread settings."
      
      printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
-     printf "Forking %d consumer threads, each consuming %d elements.\n" producers perthread2
+     printf "Forking %d consumer threads, each consuming %d elements.\n" consumers perthread2
     
      forM_ [0..producers-1] $ \ id -> 
  	myfork "producer thread" $
@@ -195,8 +195,57 @@ test_fifo_OneBottleneck doBackoff total q =
 
 -- | This test uses a separate queue per consumer thread.  The queues
 -- are used in a single-writer multiple-reader fashion (mailboxes).
+test_contention_free_parallel :: DequeClass d => Bool -> Int -> IO (d Int) -> IO ()
+test_contention_free_parallel doBackoff total newqueue = 
+  do -- q <- newQ
+     putStrLn$ "\nTest FIFO queue: producers & consumers thru 1 queue"
+               ++(if doBackoff then " (with backoff)" else "(hard busy wait)")
+     putStrLn "======================================================"       
+     mv <- newEmptyMVar
           
--- test_fifo_mailboxes
+     let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
+	 consumers = producers -- max 1 (numAgents - producers)
+	 perthread  = total `quot` producers
+         perthread2 = total `quot` consumers
+
+     qs <- sequence (replicate consumers newqueue)
+     
+     when (not doBackoff && (numCapabilities == 1 || numCapabilities < producers + consumers)) $ 
+       error$ "The aggressively busy-waiting version of the test can only run with the right thread settings."
+     
+     printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
+     printf "Forking %d consumer threads, each consuming %d elements.\n" consumers perthread2
+    
+     forM_ (zip [0..producers-1] qs) $ \ (id, q) -> 
+ 	myfork "producer thread" $
+          let start = id*perthread in
+          for_ start (start+perthread) $ \ i -> do 
+	     pushL q i
+             when (i - id*producers < 10) $ printf " [%d] pushed %d \n" id i
+
+     forM_ (zip [0..consumers-1] qs) $ \ (id, q) -> 
+ 	myfork "consumer thread" $ do 
+          let consume_loop sum maxiters 0 = return (sum, maxiters)
+              consume_loop !sum !maxiters i = do
+                (x,iters) <- if doBackoff then spinPopBkoff q 
+                                          else spinPopHard  q
+                when (i < 10) $ printf " [%d] popped %d \n" id i
+                consume_loop (sum+x) (max maxiters iters) (i-1)
+          pr <- consume_loop 0 0 perthread
+--          pr <- foldM fn (0,0) (take perthread [id * producers .. ])
+	  putMVar mv pr
+
+     printf "Reading sums from MVar...\n" 
+     ls <- mapM (\_ -> takeMVar mv) [1..consumers]
+     let finalSum = Prelude.sum (map fst ls)
+     putStrLn$ "Consumers DONE.  Maximum retries for each consumer thread: "++ show (map snd ls)
+     putStrLn$ "Final sum: "++ show finalSum
+     putStrLn$ "Checking that queue is finally null..."
+     bs <- mapM nullQ qs
+     if all id bs
+       then putStrLn$ "Sum matched expected, test passed."
+       else assertFailure "Queue was not empty!!"
+
 
 ------------------------------------------------------------
 
@@ -209,6 +258,8 @@ test_fifo newq = TestList
   , TestLabel "test_fifo_OneBottleneck_backoff" (TestCase$ assert $ newq >>= test_fifo_OneBottleneck True  numElems)
 --  , TestLabel "test_fifo_OneBottleneck_aggressive" (TestCase$ assert $ newq >>= test_fifo_OneBottleneck False numElems)
 --  , TestLabel "test the tests" (TestCase$ assert $ assertFailure "This SHOULD fail.")
+
+  , TestLabel "test_contention_free_parallel" (TestCase$ assert $ test_contention_free_parallel True numElems newq)
   ]
 
 
