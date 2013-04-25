@@ -28,17 +28,7 @@ import GHC.IORef(IORef(IORef))
 import GHC.STRef(STRef(STRef))
 
 import qualified Data.Concurrent.Deque.Class as C
--- NOTE: you can switch which CAS implementation is used here:
---------------------------------------------------------------
-import qualified Data.CAS as Old 
--- import Data.CAS.Internal.Fake (casIORef, ptrEq)
--- #warning "Using fake CAS"
--- import Data.CAS.Internal.Native (casIORef, ptrEq)
--- #warning "Using NATIVE CAS"
---------------------------------------------------------------
-
-import Data.Atomics as A -- (readForCAS, casIORef)
--- import Data.Atomics (readForCAS, Ticket)
+import Data.Atomics as A (readForCAS, casIORef, Ticket, CASResult(..))
 
 -- Considering using the Queue class definition:
 -- import Data.MQueue.Class
@@ -140,12 +130,12 @@ tryPopR q@(LQ headPtr tailPtr) = loop (0::Int)
   loop 1000 = do hPutStrLn stderr (pack "tryPopR: tried ~1000 times!!"); loop 1001
 #endif
   loop !tries = do 
-    head <- readIORef headPtr
-    tail <- readIORef tailPtr
+    (headTicket, head) <- readForCAS headPtr
+    (tailTicket, tail) <- readForCAS tailPtr
     case head of 
       Null -> error "tryPopR: LinkedQueue invariants broken.  Internal error."
       Cons _ next -> do
-        next' <- readIORef next
+        (nextTicket', next') <- readForCAS next
 #ifdef RECHECK_ASSUMPTIONS
         -- As with push, double-check our information is up-to-date. (head,tail,next consistent)
         head' <- readIORef headPtr -- ANDREAS: used atomicModifyIORef headPtr (\x -> (x,x))
@@ -161,7 +151,7 @@ tryPopR q@(LQ headPtr tailPtr) = loop (0::Int)
               Null -> return Nothing -- Queue is empty, couldn't dequeue
 	      Cons _ _ -> do
   	        -- Tail is falling behind.  Try to advance it:
-	        Old.casIORef tailPtr tail next'
+	        casIORef tailPtr tailTicket next'
 		loop (tries+1)
            
 	   else do -- head /= tail
@@ -172,9 +162,10 @@ tryPopR q@(LQ headPtr tailPtr) = loop (0::Int)
 --	        Null -> loop (tries+1)
 		Cons value _ -> do 
                   -- Try to swing Head to the next node
-		  (b,_) <- Old.casIORef headPtr head next' -- ANDREAS: FOUND CONDITION VIOLATED AFTER HERE
-		  if b then return (Just value) -- Dequeue done; exit loop.
-		       else loop (tries+1) -- ANDREAS: observed this loop being taken >1M times
+		  res <- casIORef headPtr headTicket next' -- ANDREAS: FOUND CONDITION VIOLATED AFTER HERE
+                  case res of
+                    Succeed _ -> return (Just value) -- Dequeue done; exit loop.
+                    Fail _ _  -> loop (tries+1) -- ANDREAS: observed this loop being taken >1M times
           
 -- | Create a new queue.
 newQ :: IO (LinkedQueue a)
