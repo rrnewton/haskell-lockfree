@@ -219,27 +219,27 @@ test_contention_free_parallel doBackoff total newqueue =
      forM_ (zip [0..producers-1] qs) $ \ (id, q) -> 
  	myfork "producer thread" $
           let start = id*perthread in
-          for_ start (start+perthread) $ \ i -> do 
+          for_ 0 perthread $ \ i -> do 
 	     pushL q i
              when (i - id*producers < 10) $ printf " [%d] pushed %d \n" id i
 
      forM_ (zip [0..consumers-1] qs) $ \ (id, q) -> 
  	myfork "consumer thread" $ do 
-          let consume_loop sum maxiters 0 = return (sum, maxiters)
+          let consume_loop sum maxiters i | i == perthread = return (sum, maxiters)
               consume_loop !sum !maxiters i = do
                 (x,iters) <- if doBackoff then spinPopBkoff q 
                                           else spinPopHard  q
                 when (i < 10) $ printf " [%d] popped %d \n" id i
-                consume_loop (sum+x) (max maxiters iters) (i-1)
-          pr <- consume_loop 0 0 perthread
---          pr <- foldM fn (0,0) (take perthread [id * producers .. ])
+                unless (x == i) $ error $ "Message out of order! Expected "++show i++" recevied "++show x
+                consume_loop (sum+x) (max maxiters iters) (i+1)
+          pr <- consume_loop 0 0 0
 	  putMVar mv pr
 
      printf "Reading sums from MVar...\n" 
      ls <- mapM (\_ -> takeMVar mv) [1..consumers]
      let finalSum = Prelude.sum (map fst ls)
      putStrLn$ "Consumers DONE.  Maximum retries for each consumer thread: "++ show (map snd ls)
-     putStrLn$ "Final sum: "++ show finalSum
+     putStrLn$ "All messages received in order.  Final sum: "++ show finalSum
      putStrLn$ "Checking that queue is finally null..."
      bs <- mapM nullQ qs
      if all id bs
