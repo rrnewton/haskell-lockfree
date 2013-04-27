@@ -47,8 +47,10 @@ stg_casArrayzh
 }
 
 
+// One difference from casMutVar# is that this version returns the NEW
+// pointer in the case of success, NOT the old one.
 stg_casMutVar2zh
- /* MutVar# s a -> Word# -> a -> State# s -> (# State#, Int#, Word#, a #) */
+ /* MutVar# s a -> Word# -> a -> State# s -> (# State#, Int#, a #) */
 {
     W_ mv, old, new, h;
     // Calling convention: Up to 8 registers contain arguments.
@@ -63,14 +65,14 @@ stg_casMutVar2zh
                           old, new) [];
     if (h != old) {
         // Failure:
-        RET_NNP(1,h,h);
+        RET_NP(1,h);
     } else {
         // Success means a mutation and thus GC write barrier:
         if (GET_INFO(mv) == stg_MUT_VAR_CLEAN_info) {
            foreign "C" dirty_MUT_VAR(BaseReg "ptr", mv "ptr") [];
         }
 	// Return the NEW value as the ticket for next time.
-        RET_NNP(0,new,new);
+        RET_NP(0,new);
     }
 }
 

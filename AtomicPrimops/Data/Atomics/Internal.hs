@@ -59,8 +59,8 @@ readForCAS# = unsafeCoerce# readMutVar#
 {-# INLINE casMutVarTicketed# #-}
 casMutVarTicketed# :: MutVar# RealWorld a -> Ticket a -> a ->
                State# RealWorld -> (# State# RealWorld, Int#, Ticket a #)
--- casMutVarTicketed# = unsafeCoerce# casMutVar_TypeErased#
-casMutVarTicketed# = unsafeCoerce# casMutVar#
+casMutVarTicketed# = unsafeCoerce# casMutVar_TypeErased#
+-- casMutVarTicketed# = unsafeCoerce# casMutVar#
 
 --------------------------------------------------------------------------------
 -- Type-erased versions that call the raw foreign primops:
@@ -77,9 +77,9 @@ foreign import prim "stg_casArrayzh" casArrayTypeErased#
 
 -- | This alternate version of casMutVar returns a numeric "ticket" for
 --   future CAS operations.
--- foreign import prim "stg_casMutVar2zh" casMutVar_TypeErased#
---   :: MutVar# RealWorld () -> Any () -> TheValType ->
---      State# RealWorld -> (# State# RealWorld, Int#, Any () #)
+foreign import prim "stg_casMutVar2zh" casMutVar_TypeErased#
+  :: MutVar# RealWorld () -> Any () -> Any () ->
+     State# RealWorld -> (# State# RealWorld, Int#, Any () #)
 
 -- foreign import prim "stg_readMutVar2zh" readMutVar_TypeErased#
 --   :: MutVar# RealWorld () -> 

@@ -31,19 +31,30 @@ import Test.HUnit (Assertion, assertEqual, assertBool)
 import Test.Framework  (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 
+-- import Text.Printf(fprintf)
+
 import GHC.IO (unsafePerformIO)
 import System.Mem (performGC)
 import System.Mem.StableName (makeStableName, hashStableName)
 import System.Environment (getEnvironment)
-import System.IO        (stdout, hFlush)
+import System.IO        (stdout, stderr, hPutStrLn, hFlush)
 import Debug.Trace      (trace)
 
 -- import Test.Framework.TH (defaultMainGenerator)
 
 ------------------------------------------------------------------------
 
+expect_false_positive_on_GC :: Bool
+expect_false_positive_on_GC = False
+
+getGCCount :: IO Int64 
+getGCCount | expect_false_positive_on_GC = 
+               do GCStats{numGcs} <- getGCStats
+                  return numGcs
+           | otherwise = return 0
 #if 1
 -- main = $(defaultMainGenerator)
+main :: IO ()
 main =        
        defaultMain $ 
          [ testCase "casTicket1"              case_casTicket1
@@ -203,7 +214,7 @@ test_succeed_once n =
      performGC -- We *ASSUME* GC does not happen below.
      performGC -- We *ASSUME* GC does not happen below.
      checkGCStats
-     GCStats{numGcs=gc1} <- getGCStats
+     gc1 <- getGCCount 
      r <- newIORef n
      bitls <- newIORef []
      tick1 <- A.readForCAS r
@@ -227,7 +238,7 @@ test_succeed_once n =
          tickets = map snd rev
          (hd:tl) = map fst rev
 
-     GCStats{numGcs=gc2} <- getGCStats
+     gc2 <- getGCCount
      if gc1 /= gc2
        then putStrLn " [skipped] test couldn't be assessed properly due to GC."
        else do      
@@ -270,7 +281,8 @@ test_all_hammer_one threads iters seed = do
                 let v = peekTicket tick
                 when (iters < 30) $
                   dbgPrint 1 $ 
-                            "  Fizzled CAS with ticket: "++show ticket ++", expected: "++ show expected ++
+                            "  Fizzled CAS with ticket: "++show ticket ++" containing "++show v++
+                            ", expected: "++ show expected ++
                             " (#"++show (unsafeName expected)++"): " 
                             ++ " found " ++ show v ++ " (#"++show (unsafeName v)++", ticket "++show tick++")"
                 loop (n-1) tick v      (False:acc)
@@ -278,7 +290,7 @@ test_all_hammer_one threads iters seed = do
        tick0 <- readForCAS ref
        loop iters tick0 (peekTicket tick0) []
 
-  GCStats{numGcs} <- getGCStats
+  numGcs <- getGCCount
   let successes = map (length . filter id) logs
       total_success = sum successes
       bool2char True  = '1'
@@ -476,6 +488,6 @@ unsafeEnv = unsafePerformIO getEnvironment
 -- | Print if the debug level is at or above a threshold.
 dbgPrint :: Int -> String -> IO ()
 dbgPrint lvl str = if dbg < lvl then return () else do
-    putStrLn str
-    hFlush stdout
+    hPutStrLn stderr str
+    hFlush stderr
 
