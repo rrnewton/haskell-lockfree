@@ -3,7 +3,7 @@
 module Data.Atomics 
  (
    -- * Types for atomic operations
-   Ticket, CASResult(..),
+   Ticket, peekTicket, -- CASResult(..),
 
    -- * Atomic operations on mutable arrays
    casArrayElem,
@@ -39,9 +39,13 @@ import GHC.Word (Word(W#))
 -- | A compare and swap operation may fail.  If so, it returns an
 --   observation of the current value.  Also, it always returns a
 --   ticket for future operations on the same location.
-data CASResult a = Fail    {-# UNPACK #-} !Ticket !a
-                 | Succeed {-# UNPACK #-} !Ticket
-  deriving (Show, Eq, Read, Ord)
+-- data CASResult a = Fail    {-# UNPACK #-} !Ticket !a
+--                  | Succeed {-# UNPACK #-} !Ticket
+--   deriving (Show, Eq, Read, Ord)
+
+data CASResult a = Succeed !(Ticket a)
+                 | Fail    !(Ticket a)
+--   deriving (Show, Eq, Read, Ord)
 
 
 --------------------------------------------------------------------------------
@@ -62,7 +66,7 @@ casArrayST (MutableArray arr#) (I# i#) old new = ST$ \s1# ->
 --------------------------------------------------------------------------------
 
 {-# INLINE readForCAS #-}
-readForCAS :: IORef a -> IO ( Ticket, a )
+readForCAS :: IORef a -> IO ( Ticket a )
 readForCAS (IORef (STRef mv)) = readMutVarForCAS mv
 
 {-# INLINE casIORef #-}
@@ -72,53 +76,33 @@ readForCAS (IORef (STRef mv)) = readMutVarForCAS mv
 -- 
 -- Note \"compare\" here means pointer equality in the sense of
 -- 'GHC.Prim.reallyUnsafePtrEquality#'.
-casIORef :: IORef a -- ^ The 'IORef' containing a value 'current'
-         -> Ticket  -- ^ A ticket for the 'old' value
-         -> a       -- ^ The 'new' value to replace 'current' if @old == current@
-         -> IO (CASResult a)
-casIORef (IORef (STRef var)) old new = casMutVar var old new
+casIORef :: IORef a  -- ^ The 'IORef' containing a value 'current'
+         -> Ticket a -- ^ A ticket for the 'old' value
+         -> a        -- ^ The 'new' value to replace 'current' if @old == current@
+--         -> IO (CASResult a)         
+         -> IO (Bool, Ticket a)
+casIORef (IORef (STRef var)) old new = casMutVar var old new 
+
 
 --------------------------------------------------------------------------------
 
--- readSTRefForCAS = undefined
-
--- | Performs a machine-level compare and swap operation on an
--- 'STRef'. Returns a tuple containing a 'Bool' which is 'True' when a
--- swap is performed, along with the 'current' value from the 'STRef'.
--- 
--- Note \"compare\" here means pointer equality in the sense of
--- 'GHC.Prim.reallyUnsafePtrEquality#'.
-
-
--- casSTRef :: STRef s a -- ^ The 'STRef' containing a value 'current'
---          -> Ticket -- ^ A ticket for the 'old' value
---          -> a      -- ^ The 'new' value to replace 'current' if @old == current@
---          -> ST s (CASResult a)
--- casSTRef (STRef var#) old new = casMutVar var# old new
-
---  ST $ \s1# ->  
-   -- -- The primop treats the boolean as a sort of error code.
-   -- -- Zero means the CAS worked, one that it didn't.
-   -- -- We flip that here:
---    case casMutVar# var# old new s1# of
---      (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, res) #)
-      
---------------------------------------------------------------------------------
+peekTicket :: Ticket a -> a 
+peekTicket = unsafeCoerce#
 
 {-# INLINE readMutVarForCAS #-}
-readMutVarForCAS :: MutVar# RealWorld a -> IO ( Ticket, a )
-readMutVarForCAS mv = IO$ \ st -> 
-  case readForCAS# mv st of 
-   (# st, tick, val #) -> (# st, (W# tick, val) #)
-
+readMutVarForCAS :: MutVar# RealWorld a -> IO ( Ticket a )
+readMutVarForCAS !mv = IO$ \ st -> readForCAS# mv st
 
 {-# INLINE casMutVar #-}
-casMutVar :: MutVar# RealWorld a -> Ticket -> a -> IO (CASResult a)
-casMutVar mv (W# tick#) new = IO$ \st -> 
-  case casMutVarTicketed# mv tick# new st of 
-    (# st, flag, tick', val #) -> 
-      if flag ==# 0# 
-      then (# st, Succeed (W# tick') #)
-      else (# st, Fail (W# tick') val #)
+-- | MutVar counterpart of `casIORef`.
+-- 
+casMutVar :: MutVar# RealWorld a -> Ticket a -> a -> IO (Bool, Ticket a)
+-- casMutVar :: MutVar# RealWorld a -> Ticket a -> a -> IO (CASResult a)
+casMutVar !mv !tick !new = IO$ \st -> 
+  case casMutVarTicketed# mv tick new st of 
+    (# st, flag, tick' #) ->
+      (# st, (if flag ==# 0# then True else False, tick') #)
+--      (# st, if flag ==# 0# then Succeed tick' else Fail tick' #)
+--      if flag ==# 0#    then       else (# st, Fail (W# tick')  #)
 
 
