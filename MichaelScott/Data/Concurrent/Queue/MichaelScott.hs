@@ -29,8 +29,7 @@ import GHC.IORef(IORef(IORef))
 import GHC.STRef(STRef(STRef))
 
 import qualified Data.Concurrent.Deque.Class as C
-import Data.Atomics (readForCAS, casIORef, Ticket, CASResult(..))
-import Data.Atomics.Internal (Ticket#)
+import Data.Atomics (readForCAS, casIORef, Ticket, peekTicket)
 
 -- Considering using the Queue class definition:
 -- import Data.MQueue.Class
@@ -61,12 +60,12 @@ pushL q@(LQ headPtr tailPtr) val = do
        -- Enqueue loop: repeatedly read the tail pointer and attempt to extend the last pair.
        loop :: IO ()
        loop = do 
-        (tailTicket, tail) <- readForCAS tailPtr -- [Re]read the tailptr from the queue structure.
-        case tail of
+        tailTicket <- readForCAS tailPtr -- [Re]read the tailptr from the queue structure.
+        case peekTicket tailTicket of
           -- The head and tail pointers should never themselves be NULL:
           Null -> error "push: LinkedQueue invariants broken.  Internal error."
           Cons _ nextPtr -> do
-             (nextTicket, next) <- readForCAS nextPtr
+             nextTicket <- readForCAS nextPtr
 
      -- The algorithm can reread tailPtr here to make sure it is still good:
      -- [UPDATE: This is actually a necessary part of the algorithm's "hand-over-hand"
@@ -79,23 +78,23 @@ pushL q@(LQ headPtr tailPtr) val = do
              if not (pairEq tail tail') then loop
               else case next of 
 #else
-             case next of 
+             case peekTicket nextTicket of 
 #endif
                -- Here tail points (or pointed!) to the last node.  Try to link our new node.
-               Null -> do res <- casIORef nextPtr nextTicket newp
-                          case res of 
-                            Succeed _newtick -> do 
+               Null -> do (b,newtick) <- casIORef nextPtr nextTicket newp
+                          case b of 
+                            True -> do 
                               --------------------Exit Loop------------------
                               -- After the loop, enqueue is done.  Try to swing the tail.
                               -- If we fail, that is ok.  Whoever came in after us deserves it.
                               _ <- casIORef tailPtr tailTicket newp
                               return ()
                               -----------------------------------------------
-                            Fail _ _        -> loop 
-               Cons _ _ -> do 
+                            False -> loop 
+               nxt@(Cons _ _) -> do 
                   -- Someone has beat us by extending the tail.  Here we
                   -- might have to do some community service by updating the tail ptr.
-                  _ <- casIORef tailPtr tailTicket next
+                  _ <- casIORef tailPtr tailTicket nxt
                   loop 
 
    loop -- Start the loop.
@@ -134,12 +133,12 @@ tryPopR q@(LQ headPtr tailPtr) = loop 0
   loop 1000 = do hPutStrLn stderr (pack "tryPopR: tried ~1000 times!!"); loop 1001
 #endif
   loop !tries = do 
-    (headTicket, head) <- readForCAS headPtr
-    (tailTicket, tail) <- readForCAS tailPtr
-    case head of 
+    headTicket <- readForCAS headPtr
+    tailTicket <- readForCAS tailPtr
+    case peekTicket headTicket of 
       Null -> error "tryPopR: LinkedQueue invariants broken.  Internal error."
-      Cons _ next -> do
-        (nextTicket', next') <- readForCAS next
+      head@(Cons _ next) -> do
+        nextTicket' <- readForCAS next
 #ifdef RECHECK_ASSUMPTIONS
         -- As with push, double-check our information is up-to-date. (head,tail,next consistent)
         head' <- readIORef headPtr -- ANDREAS: used atomicModifyIORef headPtr (\x -> (x,x))
@@ -149,11 +148,11 @@ tryPopR q@(LQ headPtr tailPtr) = loop 0
         do 
 #endif                 
 	  -- Is queue empty or tail falling behind?:
-          if pairEq head tail then do 
+          if pairEq head (peekTicket tailTicket) then do 
           -- if ptrEq head tail then do 
-	    case next' of -- Is queue empty?
+	    case peekTicket nextTicket' of -- Is queue empty?
               Null -> return Nothing -- Queue is empty, couldn't dequeue
-	      Cons _ _ -> do
+	      next'@(Cons _ _) -> do
   	        -- Tail is falling behind.  Try to advance it:
 	        casIORef tailPtr tailTicket next'
 		loop (tries+1)
@@ -161,16 +160,16 @@ tryPopR q@(LQ headPtr tailPtr) = loop 0
 	   else do -- head /= tail
 	      -- No need to deal with Tail.  Read value before CAS.
 	      -- Otherwise, another dequeue might free the next node
-	      case next' of 
+	      case peekTicket nextTicket' of 
 	        Null -> error "tryPop: Internal error.  Next should not be null if head/=tail."
 --	        Null -> loop (tries+1)
-		Cons value _ -> do 
+		next'@(Cons value _) -> do 
                   -- Try to swing Head to the next node
-		  res <- casIORef headPtr headTicket next'
-                  case res of
+		  (b,_) <- casIORef headPtr headTicket next'
+                  case b of
                     -- [2013.04.24] Looking at the STG, I can't see a way to get rid of the allocation on this Just:
-                    Succeed _ -> return (Just value) -- Dequeue done; exit loop.
-                    Fail _ _  -> loop (tries+1) -- ANDREAS: observed this loop being taken >1M times
+                    True  -> return (Just value) -- Dequeue done; exit loop.
+                    False -> loop (tries+1) -- ANDREAS: observed this loop being taken >1M times
           
 -- | Create a new queue.
 newQ :: IO (LinkedQueue a)
