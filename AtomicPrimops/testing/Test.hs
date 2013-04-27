@@ -31,19 +31,30 @@ import Test.HUnit (Assertion, assertEqual, assertBool)
 import Test.Framework  (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 
+-- import Text.Printf(fprintf)
+
 import GHC.IO (unsafePerformIO)
 import System.Mem (performGC)
 import System.Mem.StableName (makeStableName, hashStableName)
 import System.Environment (getEnvironment)
-import System.IO        (stdout, hFlush)
+import System.IO        (stdout, stderr, hPutStrLn, hFlush)
 import Debug.Trace      (trace)
 
 -- import Test.Framework.TH (defaultMainGenerator)
 
 ------------------------------------------------------------------------
 
+expect_false_positive_on_GC :: Bool
+expect_false_positive_on_GC = False
+
+getGCCount :: IO Int64 
+getGCCount | expect_false_positive_on_GC = 
+               do GCStats{numGcs} <- getGCStats
+                  return numGcs
+           | otherwise = return 0
 #if 1
 -- main = $(defaultMainGenerator)
+main :: IO ()
 main =        
        defaultMain $ 
          [ testCase "casTicket1"              case_casTicket1
@@ -127,15 +138,13 @@ case_casTicket1 = do
   dbgPrint 1 "\nUsing new 'ticket' based compare and swap:"
 
   IORef (STRef mutvar) <- newIORef (3::Int)  
-  (tick,val) <- A.readMutVarForCAS mutvar
+  tick <- A.readMutVarForCAS mutvar
   dbgPrint 1$"YAY, read the IORef, ticket "++show tick
-  dbgPrint 1$"     and the value was:  "++show val
+  dbgPrint 1$"     and the value was:  "++show (peekTicket tick)
 
-  res <- A.casMutVar mutvar tick 99 
+  (True,tick2) <- A.casMutVar mutvar tick 99 
   dbgPrint 1$"Hoorah!  Attempted compare and swap..."
-  dbgPrint 1$"         Result was: "++show res
-  let tick2 = case res of 
-               A.Succeed tick2 -> tick2
+--  dbgPrint 1$"         Result was: "++show (True,tick2)
 
   dbgPrint 1$"Ok, next take a look at a SECOND CAS attempt, to see if the ticket from the first works..."
   res2 <- A.casMutVar mutvar tick2 12345678
@@ -160,7 +169,7 @@ case_create_and_mutate :: Assertion
 case_create_and_mutate = do
   dbgPrint 1$ "   Creating a single 'ticket' based variable to use and mutating it once."
   x <- newIORef (5::Int)
-  (tick,val) <- A.readForCAS(x)
+  tick <- A.readForCAS(x)
   res <- A.casIORef x tick 120
   dbgPrint 1$ "  Did setting it to 120 work?"
   dbgPrint 1$ "  Result was: " ++ show res
@@ -171,12 +180,12 @@ case_create_and_mutate_twice :: Assertion
 case_create_and_mutate_twice = do
   dbgPrint 1$ "  Creating a single 'ticket' based variable to mutate twice."
   x <- newIORef (0::Int)
-  (tick1,val1) <- A.readForCAS(x)
+  tick1 <- A.readForCAS(x)
   res1 <- A.casIORef x tick1 5
-  (tick2,val2) <- A.readForCAS(x)
+  tick2 <- A.readForCAS(x)
   res2 <- A.casIORef x tick2 120
   valf <- readIORef x
-  assertBool "Does the value after the first mutate equal 5?" (val2 == 5)
+  assertBool "Does the value after the first mutate equal 5?" (peekTicket tick2 == 5)
   assertBool "Does the value after the second mutate equal 120?" (valf == 120)
 
 case_n_threads_mutate :: Assertion
@@ -185,11 +194,9 @@ case_n_threads_mutate = do
   counter <- newIORef (0::Int)
   let work :: IORef Int -> IO ()
       work = (\counter -> do
-                        (tick,val) <- A.readForCAS(counter)
-                        res <- A.casIORef counter tick (val + 1)
-                        case res of
-                          A.Fail _ _ -> work counter
-                          A.Succeed _ -> return ())
+                        tick <- A.readForCAS(counter)
+                        (b,_) <- A.casIORef counter tick (peekTicket tick + 1)
+                        unless b $ work counter)
   arr <- forkJoin 120 (work counter) 
   ans <- readIORef counter
   assertBool "Did the sum end up equal to 120?" (ans == 120)
@@ -207,10 +214,10 @@ test_succeed_once n =
      performGC -- We *ASSUME* GC does not happen below.
      performGC -- We *ASSUME* GC does not happen below.
      checkGCStats
-     GCStats{numGcs=gc1} <- getGCStats
+     gc1 <- getGCCount 
      r <- newIORef n
      bitls <- newIORef []
-     (tick1,zer2) <- A.readForCAS r
+     tick1 <- A.readForCAS r
      let loop 0 = return ()
 	 loop n = do
           res <- A.casIORef r tick1 100
@@ -228,16 +235,10 @@ test_succeed_once n =
 
      ls <- readIORef bitls
      let rev = (reverse ls)
-         scrubbed = map fn rev
-         tickets = map fn2 rev
-         fn (Fail _ n)  = Fail 0 n
-         fn (Succeed _) = Succeed 0
-         fn2 (Succeed tic) = tic
-         fn2 (Fail tic _) = tic
+         tickets = map snd rev
+         (hd:tl) = map fst rev
 
-         (hd:tl) = scrubbed
-
-     GCStats{numGcs=gc2} <- getGCStats
+     gc2 <- getGCCount
      if gc1 /= gc2
        then putStrLn " [skipped] test couldn't be assessed properly due to GC."
        else do      
@@ -245,8 +246,8 @@ test_succeed_once n =
        assertBool "Only first succeeds" (all (/= hd) tl)
        assertBool "All but first fail" (all (== head tl) (tail tl))
        assertEqual "First should succeed, rest fail"
-                   scrubbed
-                   (Succeed 0 : replicate 9 (Fail 0 100))
+                   (hd : tl)
+                   (True : replicate 9 False)
 
 
 -- | This version hammers on CASref from all threads, then checks to see
@@ -270,24 +271,26 @@ test_all_hammer_one threads iters seed = do
             -- This line will result in boxing/unboxing and using extra memory locations:
 --            let bumped = expected + 1 
             bumped <- evaluate$ expected + 1
-	    res <- casIORef ref ticket bumped
+	    (res,tick) <- casIORef ref ticket bumped
 	    case res of
-              Succeed tick -> do
+              True -> do
                 when (iters < 30) $
                   dbgPrint 1$ "  Succeed CAS, old tick "++show ticket++" new "++show tick++", wrote "++show bumped
                 loop (n-1) tick bumped (True:acc)
-              Fail tick v  -> do
+              False -> do
+                let v = peekTicket tick
                 when (iters < 30) $
                   dbgPrint 1 $ 
-                            "  Fizzled CAS with ticket: "++show ticket ++", expected: "++ show expected ++
+                            "  Fizzled CAS with ticket: "++show ticket ++" containing "++show v++
+                            ", expected: "++ show expected ++
                             " (#"++show (unsafeName expected)++"): " 
                             ++ " found " ++ show v ++ " (#"++show (unsafeName v)++", ticket "++show tick++")"
                 loop (n-1) tick v      (False:acc)
 
-       (tick0,val) <- readForCAS ref
-       loop iters tick0 val []
+       tick0 <- readForCAS ref
+       loop iters tick0 (peekTicket tick0) []
 
-  GCStats{numGcs} <- getGCStats
+  numGcs <- getGCCount
   let successes = map (length . filter id) logs
       total_success = sum successes
       bool2char True  = '1'
@@ -485,6 +488,6 @@ unsafeEnv = unsafePerformIO getEnvironment
 -- | Print if the debug level is at or above a threshold.
 dbgPrint :: Int -> String -> IO ()
 dbgPrint lvl str = if dbg < lvl then return () else do
-    putStrLn str
-    hFlush stdout
+    hPutStrLn stderr str
+    hFlush stderr
 
