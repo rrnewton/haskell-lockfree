@@ -105,23 +105,23 @@ case_casmutarray1 = do
  arr <- newArray 5 mynum
 
  writeArray arr 4 33
- x <- readArray arr 4 
- putStrLn$ "(Poking at array was ok: "++show x++")"
+ putStrLn "Wrote array elements..."
+ 
+ tick <- readArrayElem arr 4
+ putStrLn$ "(Peeking at array gave: "++show (peekTicket tick)++")"
 
- res  <- casArrayElem arr 3 mynum 44
- res2 <- casArrayElem arr 3 mynum 44
+ (res1,tick2) <- casArrayElem arr 3 tick 44
+ (res2,_)     <- casArrayElem arr 3 tick 44
 -- res  <- stToIO$ casArrayST arr 3 mynum 44
 -- res2 <- stToIO$ casArrayST arr 3 mynum 44 
- 
- putStrLn$ "  1st try should succeed: "++show res
- putStrLn$ "2nd should fail: "++show res2
 
  putStrLn "Printing array:"
  forM_ [0..4] $ \ i -> do
    x <- readArray arr i 
    putStr ("  "++show x)
- putStrLn ""
- putStrLn "Done."
+
+ assertBool "1st try should succeed: " res1
+ assertBool "2nd should fail: " (not res2)
   
 ----------------------------------------------------------------------------------------------------
 -- Simple, non-parameterized tests
