@@ -1,5 +1,14 @@
 {-# LANGUAGE  MagicHash, UnboxedTuples, BangPatterns, ScopedTypeVariables #-}
 
+-- | Provides atomic memory operations on IORefs and Mutable Arrays.
+--
+--   Pointer equality need not be maintained by a Haskell compiler.  For example, Int
+--   values will frequently be boxed and unboxed, changing the pointer identity of
+--   the thunk.  To deal with this, the compare-and-swap (CAS) approach used in this
+--   module is uses a /sealed/ representation of pointers into the Haskell heap
+--   (`Tickets`).  Currently, the user cannot coin new tickets, rather a `Ticket`
+--   provides evidence of a past observation, and grants permission to make a future
+--   change.
 module Data.Atomics 
  (
    -- * Types for atomic operations

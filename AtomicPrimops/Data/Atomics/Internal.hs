@@ -1,6 +1,8 @@
 {-# LANGUAGE CPP, TypeSynonymInstances, BangPatterns #-}
 {-# LANGUAGE ForeignFunctionInterface, GHCForeignImportPrim, MagicHash, UnboxedTuples, UnliftedFFITypes #-}
 
+-- | This module provides only the raw primops (and necessary types) for atomic
+-- operations.  
 module Data.Atomics.Internal 
    (casArray#, 
     readForCAS#, casMutVarTicketed#, 
@@ -36,8 +38,6 @@ casArray# = unsafeCoerce# casArrayTypeErased#
 type Ticket a = Any a
 -- If we allow tickets to be a pointer type, then the garbage collector will update
 -- the pointer when the object moves.
-
-type Ticket# = Word# 
 
 #if 0
 -- This technique is UNSAFE.  False negatives are tolerable, but it may also
