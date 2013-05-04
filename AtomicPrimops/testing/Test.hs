@@ -9,7 +9,7 @@ import Control.Monad
 import Control.Exception (evaluate)
 import Control.Concurrent.MVar
 import GHC.Conc
--- import Data.IORef
+import Data.IORef (modifyIORef')
 import Data.Int
 import Data.Time.Clock
 -- import System.Mem.StableName
@@ -23,9 +23,11 @@ import GHC.Stats (getGCStats, GCStats(..))
 import Data.Primitive.Array
 -- import Control.Monad
 import Data.Word
+import qualified Data.Set as S
+import System.Random (randomIO, randomRIO)
 
 import Data.Atomics as A
-import Data.Atomics (casArrayElem)
+import Data.Atomics (casArrayElem, readArrayElem)
 
 import Test.HUnit (Assertion, assertEqual, assertBool)
 import Test.Framework  (Test, defaultMain, testGroup)
@@ -58,7 +60,6 @@ main :: IO ()
 main =        
        defaultMain $ 
          [ testCase "casTicket1"              case_casTicket1
-         , testCase "casmutarray1"            case_casmutarray1
          , testCase "create_and_read"         case_create_and_read
          , testCase "create_and_mutate"       case_create_and_mutate
          , testCase "create_and_mutate_twice" case_create_and_mutate_twice
@@ -78,7 +79,17 @@ main =
          | threads <- [1 .. 2*numCapabilities]
          , iters   <- [1, 10, 100, 1000, 10000, 100000, 500000]] ++
          [ testCase ("test_hammer_many_threads_1000_10000:")
-                    (test_all_hammer_one 1000 10000 (0::Int)) ]
+                    (test_all_hammer_one 1000 10000 (0::Int)) ]  ++
+
+         [ testCase "casmutarray1"            case_casmutarray1] ++
+         [ testCase ("test_random_array_comm_"++show threads++"_"++show size++"_"++show iters ++":")
+                    (test_random_array_comm threads size iters)
+         | threads <- filter (>0) $ setify $
+                      [1, numCapabilities `quot` 2, numCapabilities, 2*numCapabilities]
+         , size    <- [1, 10, 100]
+         , iters   <- [10000]]
+         
+setify = S.toList . S.fromList
 
 #else
 main = do
@@ -122,7 +133,53 @@ case_casmutarray1 = do
 
  assertBool "1st try should succeed: " res1
  assertBool "2nd should fail: " (not res2)
+
+
+-- | This test uses a number of producer and consumer threads which push and pop
+-- elements from random positions in an array.
+test_random_array_comm :: Int -> Int -> Int -> IO ()
+test_random_array_comm threads size iters = do 
+  arr <- newArray size Nothing
+  tick0 <- readArrayElem arr 0
+  for_ 1 size $ \ i -> do
+    t2 <- readArrayElem arr i
+    assertEqual "All initial Nothings in the array should be ticket-equal:" tick0 t2
+
+  ls <- forkJoin threads $ \tid -> do 
+    localAcc <- newIORef 0
+    for_ 0 iters $ \iter -> do
+      -- Randomly pick a position:
+      ix <- randomRIO (0,size-1) :: IO Int
+      -- Randomly either produce or consume:
+      b <- randomIO :: IO Bool
+      if b then do 
+        (b,newtick) <- casArrayElem arr ix tick0 (Just iter)
+        return ()
+       else do -- Consume:
+        tick <- readArrayElem arr ix
+        case peekTicket tick of
+          Just _  -> do (b,x) <- casArrayElem arr ix tick (peekTicket tick0) -- Set back to Nothing.
+                        when b $ modifyIORef' localAcc (+1)
+--                        print (peekTicket x)
+          Nothing -> return ()
+        return ()
+    readIORef localAcc
+    
+  let successes = sum ls
+      -- Pidgeonhole principle.
+      -- min_success =
+  printf "Communication through random array positions (threads/size/iters %s).\n" (show (threads,size,iters))
+  printf "Successes: %d (expected 1/4 of total iterations on all threads)\n" successes
+  printf "Per-thread successes: %s\n" (show ls)
+  assertBool "Number of successes: " (successes <= (threads * iters) `quot` 2 && successes >= 0)
+  for_ 0 size $ \ i -> do
+    x <- readArray arr i
+--    putStr (show x ++ " ")
+    return ()
+  putStrLn ""
+  return ()
   
+   
 ----------------------------------------------------------------------------------------------------
 -- Simple, non-parameterized tests
  ----------------------------------------------------------------------------------------------------
@@ -197,7 +254,7 @@ case_n_threads_mutate = do
                         tick <- A.readForCAS(counter)
                         (b,_) <- A.casIORef counter tick (peekTicket tick + 1)
                         unless b $ work counter)
-  arr <- forkJoin 120 (work counter) 
+  arr <- forkJoin 120 (\_ -> work counter) 
   ans <- readIORef counter
   assertBool "Did the sum end up equal to 120?" (ans == 120)
 
@@ -264,7 +321,7 @@ test_succeed_once n =
 test_all_hammer_one :: (Show a, Num a, Eq a) => Int -> Int -> a -> Assertion
 test_all_hammer_one threads iters seed = do
   ref <- newIORef seed
-  logs::[[Bool]] <- forkJoin threads $ 
+  logs::[[Bool]] <- forkJoin threads $ \_ -> 
     do checkGCStats
        let loop 0 _ _ !acc = return (reverse acc)
 	   loop n !ticket !expected !acc = do
@@ -324,14 +381,14 @@ printBits = print . map pb
  where pb True  = '1' 
        pb False = '0'
 
-forkJoin :: Int -> (IO b) -> IO [b]
+forkJoin :: Int -> (Int -> IO b) -> IO [b]
 forkJoin numthreads action = 
   do
      answers <- sequence (replicate numthreads newEmptyMVar) -- padding?
      dbgPrint 1 $ printf "Forking %d threads.\n" numthreads
     
-     forM_ answers $ \ mv -> 
- 	forkIO (action >>= putMVar mv)
+     forM_ (zip [0..] answers) $ \ (ix,mv) -> 
+ 	forkIO (action ix >>= putMVar mv)
 
      -- Reading answers:
      ls <- mapM readMVar answers
@@ -491,3 +548,12 @@ dbgPrint lvl str = if dbg < lvl then return () else do
     hPutStrLn stderr str
     hFlush stderr
 
+-- My own forM for numeric ranges (not requiring deforestation optimizations).
+-- Inclusive start, exclusive end.
+{-# INLINE for_ #-}
+for_ :: Monad m => Int -> Int -> (Int -> m ()) -> m ()
+for_ start end _fn | start > end = error "for_: start is greater than end"
+for_ start end fn = loop start
+  where
+   loop !i | i == end  = return ()
+	   | otherwise = do fn i; loop (i+1)

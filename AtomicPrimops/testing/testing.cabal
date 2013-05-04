@@ -10,7 +10,7 @@ Executable test-atomic-primops
     main-is:    Test.hs
     ghc-options: -O2 -threaded -rtsopts
 
-    build-depends: base, ghc-prim, primitive, 
+    build-depends: base, ghc-prim, primitive, containers, random,
     -- For Testing:
                    atomic-primops,
                    time, HUnit, test-framework, test-framework-hunit

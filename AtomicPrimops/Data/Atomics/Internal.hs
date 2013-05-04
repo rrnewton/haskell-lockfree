@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, TypeSynonymInstances #-}
+{-# LANGUAGE CPP, TypeSynonymInstances, BangPatterns #-}
 {-# LANGUAGE ForeignFunctionInterface, GHCForeignImportPrim, MagicHash, UnboxedTuples, UnliftedFFITypes #-}
 
 module Data.Atomics.Internal 
@@ -9,7 +9,7 @@ module Data.Atomics.Internal
 
 import GHC.Base (Int(I#))
 import GHC.Word (Word(W#))
-import GHC.Prim (RealWorld, Int#, Word#, State#, MutableArray#, unsafeCoerce#, MutVar#) 
+import GHC.Prim (RealWorld, Int#, Word#, State#, MutableArray#, unsafeCoerce#, MutVar#, reallyUnsafePtrEquality#) 
 #if MIN_VERSION_base(4,6,0)
 -- Any is only in GHC 7.6!!!  We want 7.4 support.
 import GHC.Prim (readMutVar#, casMutVar#, Any)
@@ -48,6 +48,16 @@ type Ticket# = Word#
 
 instance Show (Ticket a) where
   show _ = "<CAS_ticket>"
+
+
+{-# NOINLINE ptrEq #-}
+ptrEq :: a -> a -> Bool
+ptrEq !x !y = I# (reallyUnsafePtrEquality# x y) == 1
+
+instance Eq (Ticket a) where
+  (==) = ptrEq
+
+--------------------------------------------------------------------------------
 
 
 {-# INLINE readForCAS# #-}
