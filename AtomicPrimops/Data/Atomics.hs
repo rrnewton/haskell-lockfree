@@ -15,16 +15,13 @@ module Data.Atomics
    Ticket, peekTicket, -- CASResult(..),
 
    -- * Atomic operations on mutable arrays
-   casArrayElem, readArrayElem, 
+   casArrayElem, casArrayElem2, readArrayElem, 
 
    -- * Atomic operations on IORefs
    readForCAS, casIORef,
-
-   -- * Atomic operations on STRefs
---   readSTRefForCAS, casSTRef,
    
    -- * Atomic operations on raw MutVars
-   readMutVarForCAS, casMutVar
+   readMutVarForCAS, casMutVar, casMutVar2
       
  ) where
 
@@ -46,9 +43,18 @@ import GHC.Word (Word(W#))
 --------------------------------------------------------------------------------
 
 {-# INLINE casArrayElem #-}
+-- | Compare-and-swap 
 casArrayElem :: MutableArray RealWorld a -> Int -> Ticket a -> a -> IO (Bool, Ticket a)
--- casArrayElem arr i old new = stToIO (casArrayST arr i old new)
-casArrayElem (MutableArray arr#) (I# i#) old new = IO$ \s1# ->
+-- casArrayElem (MutableArray arr#) (I# i#) old new = IO$ \s1# ->
+--  case casArray# arr# i# old new s1# of 
+--    (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, res) #)
+casArrayElem arr i old new = casArrayElem2 arr i old (seal new)
+
+{-# INLINE casArrayElem2 #-}   
+-- | This variant takes two tickets: the 'new' value is a ticket rather than an
+-- arbitrary, lifted, Haskell value.
+casArrayElem2 :: MutableArray RealWorld a -> Int -> Ticket a -> Ticket a -> IO (Bool, Ticket a)
+casArrayElem2 (MutableArray arr#) (I# i#) old new = IO$ \s1# ->
  case casArray# arr# i# old new s1# of 
    (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, res) #)
 
@@ -60,14 +66,6 @@ readArrayElem (MutableArray arr#) (I# i#) = IO $ \ st -> unsafeCoerce# (fn st)
   where
     fn :: State# RealWorld -> (# State# RealWorld, a #)
     fn = readArray# arr# i#
-
-{-# INLINE casArrayST #-}
--- -- | Write a value to the array at the given index:
--- casArrayST :: MutableArray s a -> Int -> a -> a -> ST s (Bool, a)
-casArrayST :: MutableArray RealWorld a -> Int -> Ticket a -> a -> ST RealWorld (Bool, Ticket a)
-casArrayST (MutableArray arr#) (I# i#) old new = ST$ \s1# ->
- case casArray# arr# i# old new s1# of 
-   (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, res) #)
 
 
 --------------------------------------------------------------------------------
@@ -97,22 +95,34 @@ casIORef (IORef (STRef var)) old new = casMutVar var old new
 peekTicket :: Ticket a -> a 
 peekTicket = unsafeCoerce#
 
+-- Not exposing this for now.  Presently the idea is that you must read from the
+-- mutable data structure itself to get a ticket.
+seal :: a -> Ticket a 
+seal = unsafeCoerce#
 
 
 {-# INLINE readMutVarForCAS #-}
 readMutVarForCAS :: MutVar# RealWorld a -> IO ( Ticket a )
 readMutVarForCAS !mv = IO$ \ st -> readForCAS# mv st
 
-{-# INLINE casMutVar #-}
+
 -- | MutVar counterpart of `casIORef`.
--- 
+--
 casMutVar :: MutVar# RealWorld a -> Ticket a -> a -> IO (Bool, Ticket a)
--- casMutVar :: MutVar# RealWorld a -> Ticket a -> a -> IO (CASResult a)
-casMutVar !mv !tick !new = IO$ \st -> 
+casMutVar !mv !tick !new = casMutVar2 mv tick (seal new)
+{-# INLINE casMutVar #-}
+
+
+-- | This variant takes two tickets, i.e. the 'new' value is a ticket rather than an
+-- arbitrary, lifted, Haskell value.
+casMutVar2 :: MutVar# RealWorld a -> Ticket a -> Ticket a -> IO (Bool, Ticket a)
+casMutVar2 !mv !tick !new = IO$ \st -> 
   case casMutVarTicketed# mv tick new st of 
     (# st, flag, tick' #) ->
       (# st, (flag ==# 0#, tick') #)
 --      (# st, if flag ==# 0# then Succeed tick' else Fail tick' #)
 --      if flag ==# 0#    then       else (# st, Fail (W# tick')  #)
+{-# INLINE casMutVar2 #-}
+
 
 

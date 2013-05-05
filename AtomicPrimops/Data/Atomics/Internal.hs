@@ -26,7 +26,7 @@ import GHC.Prim (readMutVar#, casMutVar#, Any)
 
 {-# INLINE casArray# #-}
 -- | Unsafe, machine-level atomic compare and swap on an element within an Array.  
-casArray# :: MutableArray# RealWorld a -> Int# -> Ticket a -> a 
+casArray# :: MutableArray# RealWorld a -> Int# -> Ticket a -> Ticket a 
           -> State# RealWorld -> (# State# RealWorld, Int#, Ticket a #)
 casArray# = unsafeCoerce# casArrayTypeErased#
 
@@ -67,7 +67,7 @@ readForCAS# = unsafeCoerce# readMutVar#
 -- readForCAS# = unsafeCoerce# readMutVar_TypeErased#
 
 {-# INLINE casMutVarTicketed# #-}
-casMutVarTicketed# :: MutVar# RealWorld a -> Ticket a -> a ->
+casMutVarTicketed# :: MutVar# RealWorld a -> Ticket a -> Ticket a ->
                State# RealWorld -> (# State# RealWorld, Int#, Ticket a #)
 casMutVarTicketed# = unsafeCoerce# casMutVar_TypeErased#
 -- casMutVarTicketed# = unsafeCoerce# casMutVar#
