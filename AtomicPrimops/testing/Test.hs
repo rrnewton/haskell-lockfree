@@ -264,7 +264,7 @@ case_n_threads_mutate = do
 -- Adapted Old tests from original CAS library:  
 
 
--- First test: Run a simple CAS a small number of times.
+-- | First test: Run a simple CAS a small number of times.
 test_succeed_once :: (Show a, Num a, Eq a) => a -> Assertion
 test_succeed_once n = 
   do
@@ -377,6 +377,7 @@ dotdot len chars =
   then take len chars ++ "..."
   else chars
 
+printBits :: [Bool] -> IO ()
 printBits = print . map pb
  where pb True  = '1' 
        pb False = '0'
@@ -395,7 +396,8 @@ forkJoin numthreads action =
      dbgPrint 1 $ printf "All %d thread(s) completed\n" numthreads
      return ls
 
--- Describe a structure of forking and joining threads for tests:
+-- TODO: Here's an idea.  Describe a structure of forking and joining threads for
+-- tests, then we can stress test it by running different interleavings explicitly.
 data Forkable a = Fork Int (IO a)
                 | Parallel (Forkable a) (Forkable a) -- Parallel composition
                 | Sequence (Forkable a) (Forkable a) -- Sequential compositon, with barrier
