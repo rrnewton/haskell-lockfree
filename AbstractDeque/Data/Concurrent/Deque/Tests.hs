@@ -136,42 +136,41 @@ test_fifo_OneBottleneck doBackoff total q =
                ++(if doBackoff then " (with backoff)" else "(hard busy wait)")
      putStrLn "======================================================"       
 
-     x <- nullQ q
-     putStrLn$ "Check that queue is initially null: "++show x
+     bl <- nullQ q
+     putStrLn$ "Check that queue is initially null: "++show bl
      let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
 	 consumers = max 1 (numAgents - producers)
 	 perthread  = total `quot` producers
-         perthread2 = total `quot` consumers
-     assertEqual "Producers divides work cleanly." total (producers * perthread)
-     assertEqual "Consumers divides work cleanly." total (consumers * perthread2)
+         (perthread2,remain) = total `quotRem` consumers
      
      when (not doBackoff && (numCapabilities == 1 || numCapabilities < producers + consumers)) $ 
        error$ "The aggressively busy-waiting version of the test can only run with the right thread settings."
      
      printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
-     printf "Forking %d consumer threads, each consuming %d elements.\n" consumers perthread2
+     printf "Forking %d consumer threads, each consuming ~%d elements.\n" consumers perthread2
     
-     forM_ [0..producers-1] $ \ id -> 
+     forM_ [0..producers-1] $ \ ind -> 
  	myfork "producer thread" $ do
-          let start = id*perthread 
-          printf "  * Producer thread %d pushing ints from %d to %d \n" id start (start+perthread - 1)
+          let start = ind * perthread 
+          printf "  * Producer thread %d pushing ints from %d to %d \n" ind start (start+perthread - 1)
           for_ start (start+perthread) $ \ i -> do 
 	     pushL q i
-             when (i < start + 10) $ printf " [p%d] pushed %d \n" id i
+             when (i < start + 10) $ printf " [p%d] pushed %d \n" ind i
 
-     ls <- forkJoin consumers $ \ id -> 
-          let consume_loop sum maxiters i | i == perthread2 = return (sum, maxiters)
-              consume_loop !sum !maxiters i = do
+     ls <- forkJoin consumers $ \ ind ->         
+          let mymax = if ind==0 then perthread2 + remain else perthread2
+              consume_loop summ maxiters i | i == mymax = return (summ, maxiters)
+              consume_loop !summ !maxiters i = do
                 (x,iters) <- if doBackoff then spinPopBkoff q 
                                           else spinPopHard  q
-                when (i >= perthread2 - 10) $ printf " [c%d] popped #%d = %d \n" id i x
-                consume_loop (sum+x) (max maxiters iters) (i+1)
+                when (i >= mymax - 10) $ printf " [c%d] popped #%d = %d \n" ind i x
+                consume_loop (summ+x) (max maxiters iters) (i+1)
           in consume_loop 0 0 0
 
      let finalSum = Prelude.sum (map fst ls)
      putStrLn$ "Consumers DONE.  Maximum retries for each consumer thread: "++ show (map snd ls)
      putStrLn$ "Final sum: "++ show finalSum
-     assertEqual "Correct final sum" (expectedSum total) finalSum
+     assertEqual "Correct final sum" (expectedSum (producers * perthread)) finalSum
      putStrLn$ "Checking that queue is finally null..."
      b <- nullQ q
      if b then putStrLn$ "Sum matched expected, test passed."
@@ -190,16 +189,13 @@ test_contention_free_parallel doBackoff total newqueue =
      let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
 	 consumers = producers -- Must be matched
 	 perthread  = total `quot` producers
-         perthread2 = total `quot` consumers
-     assertEqual "Producers divides work cleanly." total (producers * perthread)
-     assertEqual "Consumers divides work cleanly." total (consumers * perthread2)
      qs <- sequence (replicate consumers newqueue)
      
      when (not doBackoff && (numCapabilities == 1 || numCapabilities < producers + consumers)) $ 
        error$ "The aggressively busy-waiting version of the test can only run with the right thread settings."
      
      printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
-     printf "Forking %d consumer threads, each consuming %d elements.\n" consumers perthread2
+     printf "Forking %d consumer threads, each consuming %d elements.\n" consumers perthread
     
      forM_ (zip [0..producers-1] qs) $ \ (id, q) -> 
  	myfork "producer thread" $
@@ -252,35 +248,34 @@ test_random_array_comm size total newqueue | size > 0 = do
    let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
        consumers = max 1 (numAgents - producers)
        perthread  = total `quot` producers
-       perthread2 = total `quot` consumers
-   assertEqual "Producers divides work cleanly." total (producers * perthread)
-   assertEqual "Consumers divides work cleanly." total (consumers * perthread2)
+       (perthread2,remain) = total `quotRem` consumers
+   
    printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
-   printf "Forking %d consumer threads, each consuming %d elements.\n" consumers perthread2
+   printf "Forking %d consumer threads, each consuming ~%d elements.\n" consumers perthread2
 
-   forM_ [0..producers-1] $ \ id -> 
+   forM_ [0..producers-1] $ \ ind -> 
       myfork "producer thread" $
-        let start = id*perthread in
         for_ 0 perthread $ \ i -> do
            -- Randomly pick a position:
            ix <- randomRIO (0,size-1) :: IO Int
            pushL (arr ! ix) i
-           when (i - id*producers < 10) $ printf " [%d] pushed %d \n" id i
+           when (i - ind*producers < 10) $ printf " [%d] pushed %d \n" ind i
 
    -- Each consumer doesn't quit until it has popped "perthread":
-   sums <- forkJoin consumers $ \ id -> 
-        let consume_loop sum  i | i == perthread = return sum
-            consume_loop !sum i = do
+   sums <- forkJoin consumers $ \ ind ->
+        let mymax = if ind==0 then perthread2 + remain else perthread2
+            consume_loop summ  i | i == mymax = return summ
+            consume_loop !summ i = do
               -- Randomly pick a position:
               ix <- randomRIO (0,size-1) :: IO Int
               -- Try to pop something, but not too hard:
               m <- spinPopN 100 (tryPopR (arr ! ix))
               case m of
                 Just x -> do
-                  when (i < 10) $ printf " [%d] popped #%d = %d\n" id i x
-                  consume_loop (sum+x) (i+1)
+                  when (i < 10) $ printf " [%d] popped #%d = %d\n" ind i x
+                  consume_loop (summ+x) (i+1)
                 Nothing ->
-                  consume_loop sum i
+                  consume_loop summ i
         in consume_loop 0 0
 
    printf "Reading sums from MVar...\n" 
@@ -354,9 +349,8 @@ test_random_work_stealing total newqueue = do
    let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
        consumers = max 1 (numAgents - producers)
        perthread  = total `quot` producers
-       perthread2 = total `quot` consumers
-   assertEqual "Producers divides work cleanly." total (producers * perthread)
-   assertEqual "Consumers divides work cleanly." total (consumers * perthread2)
+       (perthread2,remain) = total `quotRem` consumers
+       
    qs <- sequence (replicate producers newqueue)   
    -- A work-stealing deque only has ONE threadsafe end:
    assertBool "test_random_array_comm requires thread safe right end" (rightThreadSafe (head qs))
@@ -366,10 +360,9 @@ test_random_work_stealing total newqueue = do
    printf "Forking %d consumer threads, each consuming %d elements.\n" consumers perthread2
    
    prod_results <- newEmptyMVar
-   forM_ (zip [0..producers-1] qs) $ \ (id,myQ) -> do 
+   forM_ (zip [0..producers-1] qs) $ \ (ind,myQ) -> do 
       myfork "producer thread" $
-        let start = id*perthread 
-            loop i !acc | i == perthread = putMVar prod_results acc
+        let loop i !acc | i == perthread = putMVar prod_results acc
             loop i !acc = 
               do -- Randomly push or pop:
                  b   <-  randomIO  :: IO Bool
@@ -380,24 +373,25 @@ test_random_work_stealing total newqueue = do
                      Just n  -> loop i (n+acc)
                    else do
                    pushL myQ i
-                   when (i - id*producers < 10) $ printf " [%d] pushed %d \n" id i
+                   when (i - ind*producers < 10) $ printf " [%d] pushed %d \n" ind i
                    loop (i+1) acc
         in loop 0 0
 
    -- Each consumer doesn't quit until it has popped "perthread":
-   consumer_sums <- forkJoin consumers $ \ id -> 
-        let consume_loop sum  i | i == perthread = return sum
-            consume_loop !sum i = do
+   consumer_sums <- forkJoin consumers $ \ ind ->
+        let mymax = if ind==0 then perthread2 + remain else perthread2     
+            consume_loop summ  i | i == mymax = return summ
+            consume_loop !summ i = do
               -- Randomly pick a position:
               ix <- randomRIO (0,producers - 1) :: IO Int
               -- Try to pop something, but not too hard:
               m <- spinPopN 100 (tryPopR (arr ! ix))
               case m of
                 Just x -> do
-                  when (i < 10) $ printf " [%d] popped #%d = %d\n" id i x
-                  consume_loop (sum+x) (i+1)
+                  when (i < 10) $ printf " [%d] popped #%d = %d\n" ind i x
+                  consume_loop (summ+x) (i+1)
                 Nothing ->
-                  consume_loop sum (i+1) -- Increment even if we don't get a result.
+                  consume_loop summ (i+1) -- Increment even if we don't get a result.
         in consume_loop 0 0
 
    printf "Reading sums from MVar...\n"
