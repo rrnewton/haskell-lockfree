@@ -25,11 +25,10 @@ Description:
   based on the concept of "Tickets".
  .
   Also, this library uses the "foreign primop" capability of GHC to
-  add access to other atomic processor instructions that may be of
-  interest.  For example, compare and swap inside an array, as well as
-  on a IORef or `MutVar#`.
- . 
-  For now it only supports the x86 instruction set.
+  add access to other variants that may be of
+  interest, specifically, compare and swap inside an array.
+-- . 
+--  For now it only supports the x86 instruction set.
 
 -- Extra-Source-Files:
 --                     Makefile, Test.hs, README.md
@@ -37,8 +36,8 @@ Description:
 Library
   exposed-modules:   Data.Atomics
                      Data.Atomics.Internal
-  ghc-options: -O2 -threaded 
-  
+  ghc-options: -O2 -threaded -funbox-strict-fields
+
   -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
   -- (base 4.5 or greater).
   build-depends:     base >= 4.5.0.0, ghc-prim, primitive
@@ -51,6 +50,7 @@ Library
 
   Include-Dirs:     cbits
   C-Sources:        cbits/primops.cmm
+  CC-Options:       -Wall
 
 -- -- [2013.04.08] This isn't working presently:
 -- -- I'm having problems with building it along with the library; see DEVLOG.
