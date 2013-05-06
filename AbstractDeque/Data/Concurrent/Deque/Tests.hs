@@ -36,9 +36,9 @@ import Control.Concurrent.MVar
 import Control.Concurrent (yield, forkOS, forkIO, ThreadId)
 import Control.Exception (catch, SomeException, fromException, AsyncException(ThreadKilled))
 import System.Environment (getEnvironment)
-import System.IO (hPutStrLn, stderr)
+import System.IO (hPutStrLn, stderr, hFlush)
 import System.IO.Unsafe (unsafePerformIO)
-import System.Random (randomRIO)
+import System.Random (randomIO, randomRIO)
 import Test.HUnit
 
 import Debug.Trace (trace)
@@ -142,7 +142,9 @@ test_fifo_OneBottleneck doBackoff total q =
 	 consumers = max 1 (numAgents - producers)
 	 perthread  = total `quot` producers
          perthread2 = total `quot` consumers
-
+     assertEqual "Producers divides work cleanly." total (producers * perthread)
+     assertEqual "Consumers divides work cleanly." total (consumers * perthread2)
+     
      when (not doBackoff && (numCapabilities == 1 || numCapabilities < producers + consumers)) $ 
        error$ "The aggressively busy-waiting version of the test can only run with the right thread settings."
      
@@ -186,10 +188,11 @@ test_contention_free_parallel doBackoff total newqueue =
      mv <- newEmptyMVar
           
      let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
-	 consumers = producers -- max 1 (numAgents - producers)
+	 consumers = producers -- Must be matched
 	 perthread  = total `quot` producers
          perthread2 = total `quot` consumers
-
+     assertEqual "Producers divides work cleanly." total (producers * perthread)
+     assertEqual "Consumers divides work cleanly." total (consumers * perthread2)
      qs <- sequence (replicate consumers newqueue)
      
      when (not doBackoff && (numCapabilities == 1 || numCapabilities < producers + consumers)) $ 
@@ -247,12 +250,11 @@ test_random_array_comm size total newqueue | size > 0 = do
    putStrLn "======================================================"       
 
    let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
-       consumers = producers -- max 1 (numAgents - producers)
+       consumers = max 1 (numAgents - producers)
        perthread  = total `quot` producers
        perthread2 = total `quot` consumers
-
-   qs <- sequence (replicate consumers newqueue)
-
+   assertEqual "Producers divides work cleanly." total (producers * perthread)
+   assertEqual "Consumers divides work cleanly." total (consumers * perthread2)
    printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
    printf "Forking %d consumer threads, each consuming %d elements.\n" consumers perthread2
 
@@ -272,7 +274,7 @@ test_random_array_comm size total newqueue | size > 0 = do
               -- Randomly pick a position:
               ix <- randomRIO (0,size-1) :: IO Int
               -- Try to pop something, but not too hard:
-              m <- spinPopN 100 (arr ! ix)
+              m <- spinPopN 100 (tryPopR (arr ! ix))
               case m of
                 Just x -> do
                   when (i < 10) $ printf " [%d] popped #%d = %d\n" id i x
@@ -341,12 +343,92 @@ test_ws_triv2 q = do
     [Just "one",Just "two",Just "four",Just "three",Nothing,Nothing]
 
 
+-- | This test uses a number of producer and consumer threads which push and pop
+-- elements from random positions in an array of FIFOs.
+test_random_work_stealing :: (DequeClass d, PopL d) => Int -> IO (d Int) -> IO ()
+test_random_work_stealing total newqueue = do
+   
+   putStrLn$ "\nTest FIFO queue: producers & consumers select random queues"
+   putStrLn "======================================================"       
+
+   let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
+       consumers = max 1 (numAgents - producers)
+       perthread  = total `quot` producers
+       perthread2 = total `quot` consumers
+   assertEqual "Producers divides work cleanly." total (producers * perthread)
+   assertEqual "Consumers divides work cleanly." total (consumers * perthread2)
+   qs <- sequence (replicate producers newqueue)   
+   -- A work-stealing deque only has ONE threadsafe end:
+   assertBool "test_random_array_comm requires thread safe right end" (rightThreadSafe (head qs))
+   let arr = A.listArray (0,producers - 1) qs   
+
+   printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
+   printf "Forking %d consumer threads, each consuming %d elements.\n" consumers perthread2
+   
+   prod_results <- newEmptyMVar
+   forM_ (zip [0..producers-1] qs) $ \ (id,myQ) -> do 
+      myfork "producer thread" $
+        let start = id*perthread 
+            loop i !acc | i == perthread = putMVar prod_results acc
+            loop i !acc = 
+              do -- Randomly push or pop:
+                 b   <-  randomIO  :: IO Bool
+                 if b then do
+                   x <- spinPopN 100 (tryPopL myQ)
+                   case x of
+                     Nothing -> loop i acc
+                     Just n  -> loop i (n+acc)
+                   else do
+                   pushL myQ i
+                   when (i - id*producers < 10) $ printf " [%d] pushed %d \n" id i
+                   loop (i+1) acc
+        in loop 0 0
+
+   -- Each consumer doesn't quit until it has popped "perthread":
+   consumer_sums <- forkJoin consumers $ \ id -> 
+        let consume_loop sum  i | i == perthread = return sum
+            consume_loop !sum i = do
+              -- Randomly pick a position:
+              ix <- randomRIO (0,producers - 1) :: IO Int
+              -- Try to pop something, but not too hard:
+              m <- spinPopN 100 (tryPopR (arr ! ix))
+              case m of
+                Just x -> do
+                  when (i < 10) $ printf " [%d] popped #%d = %d\n" id i x
+                  consume_loop (sum+x) (i+1)
+                Nothing ->
+                  consume_loop sum (i+1) -- Increment even if we don't get a result.
+        in consume_loop 0 0
+
+   printf "Reading sums from MVar...\n"
+   prod_ls <- mapM (\_ -> takeMVar prod_results) [1..producers]
+
+   leftovers <- forM qs $ \ q ->
+     let loop !acc = do
+           x <- tryPopR q
+           case x of
+             Nothing -> return acc
+             Just n  -> loop (acc+n)
+     in loop 0
+        
+   let finalSum = Prelude.sum (consumer_sums ++ prod_ls ++ leftovers)
+   putStrLn$ "Final sum: "++ show finalSum ++ ", producer/consumer/leftover sums: "++show (prod_ls, consumer_sums, leftovers)
+   putStrLn$ "Checking that queue is finally null..."
+   assertEqual "Correct final sum" (producers * expectedSum perthread) finalSum
+   bs <- mapM nullQ qs
+   if all id bs
+     then putStrLn$ "Sum matched expected, test passed."
+     else assertFailure "Queue was not empty!!"
+
+
+
 -- | Aggregate tests for work stealing queues.
 test_wsqueue :: (PopL d) => (forall elt. IO (d elt)) -> Test
-test_wsqueue newq = TestList
+test_wsqueue newq = TestList $ 
  [
    TestLabel "test_ws_triv1"  (TestCase$ assert $ newq >>= test_ws_triv1)
  , TestLabel "test_ws_triv2"  (TestCase$ assert $ newq >>= test_ws_triv2)
+ , TestLabel "test_random_work_stealing" (TestCase$ assert $ test_random_work_stealing numElems newq)
  ]
 
 ----------------------------------------------------------------------------------------------------
@@ -434,12 +516,12 @@ spinPopHard q = loop 1
        Nothing -> do loop (n+1)
        Just x  -> return (x, n)
 
-spinPopN :: (DequeClass d) => Int -> d t -> IO (Maybe t)
-spinPopN 0 q = return Nothing
-spinPopN tries q = do
-   x <- tryPopR q 
+spinPopN :: Int -> IO (Maybe t) -> IO (Maybe t)
+spinPopN 0 _ = return Nothing
+spinPopN tries act = do
+   x <- act
    case x of 
-     Nothing      -> spinPopN (tries-1) q
+     Nothing      -> spinPopN (tries-1) act
      res@(Just _) -> return res
 
 -- My own forM for numeric ranges (not requiring deforestation optimizations).
@@ -451,7 +533,4 @@ for_ start end fn = loop start
   where
    loop !i | i == end  = return ()
 	   | otherwise = do fn i; loop (i+1)
-
-
-----------------------------------------------------------------------------------------------------
 
