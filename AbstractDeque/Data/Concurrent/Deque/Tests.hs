@@ -36,7 +36,7 @@ import Control.Concurrent.MVar
 import Control.Concurrent (yield, forkOS, forkIO, ThreadId)
 import Control.Exception (catch, SomeException, fromException, AsyncException(ThreadKilled))
 import System.Environment (getEnvironment)
-import System.IO (hPutStrLn, stderr, hFlush)
+import System.IO (hPutStrLn, stderr, hFlush, stdout)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Random (randomIO, randomRIO)
 import Test.HUnit
@@ -99,24 +99,24 @@ warnUsing str a = trace ("  [Warning]: Using environment variable "++str) a
 test_fifo_filldrain :: DequeClass d => d Int -> IO ()
 test_fifo_filldrain q = 
   do
-     putStrLn "\nTest FIFO queue: sequential fill and then drain"
-     putStrLn "==============================================="
+     dbgPrintLn 1 "\nTest FIFO queue: sequential fill and then drain"
+     dbgPrintLn 1 "==============================================="
 --     let n = 1000
      let n = numElems
-     putStrLn$ "Done creating queue.  Pushing elements:"
+     dbgPrintLn 1$ "Done creating queue.  Pushing elements:"
      forM_ [1..n] $ \i -> do 
        pushL q i
-       when (i < 200) $ printf " %d" i
-     putStrLn "\nDone filling queue with elements.  Now popping..."
+       when (i < 200) $ dbgPrint 1 $ printf " %d" i
+     dbgPrintLn 1 "\nDone filling queue with elements.  Now popping..."
      
      let loop 0 !sumR = return sumR
          loop i !sumR = do 
            (x,_) <- spinPopBkoff q 
-           when (i < 200) $ printf " %d" x
+           when (i < 200) $ dbgPrint 1 $ printf " %d" x
            loop (i-1) (sumR + x)
      s <- loop n 0
      let expected = sum [1..n] :: Int
-     printf "\nSum of popped vals: %d should be %d\n" s expected
+     dbgPrint 1 $ printf "\nSum of popped vals: %d should be %d\n" s expected
      when (s /= expected) (assertFailure "Incorrect sum!")
      return ()
 
@@ -132,12 +132,12 @@ test_fifo_OneBottleneck doBackoff total q =
      assertBool "test_fifo_OneBottleneck requires thread safe left end"  (leftThreadSafe q)
      assertBool "test_fifo_OneBottleneck requires thread safe right end" (rightThreadSafe q)
     
-     putStrLn$ "\nTest FIFO queue: producers & consumers thru 1 queue"
+     dbgPrintLn 1$ "\nTest FIFO queue: producers & consumers thru 1 queue"
                ++(if doBackoff then " (with backoff)" else "(hard busy wait)")
-     putStrLn "======================================================"       
+     dbgPrintLn 1 "======================================================"       
 
      bl <- nullQ q
-     putStrLn$ "Check that queue is initially null: "++show bl
+     dbgPrintLn 1$ "Check that queue is initially null: "++show bl
      let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
 	 consumers = max 1 (numAgents - producers)
 	 perthread  = total `quot` producers
@@ -146,16 +146,16 @@ test_fifo_OneBottleneck doBackoff total q =
      when (not doBackoff && (numCapabilities == 1 || numCapabilities < producers + consumers)) $ 
        error$ "The aggressively busy-waiting version of the test can only run with the right thread settings."
      
-     printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
-     printf "Forking %d consumer threads, each consuming ~%d elements.\n" consumers perthread2
+     dbgPrint 1 $ printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
+     dbgPrint 1 $ printf "Forking %d consumer threads, each consuming ~%d elements.\n" consumers perthread2
     
      forM_ [0..producers-1] $ \ ind -> 
  	myfork "producer thread" $ do
           let start = ind * perthread 
-          printf "  * Producer thread %d pushing ints from %d to %d \n" ind start (start+perthread - 1)
+          dbgPrint 1 $ printf "  * Producer thread %d pushing ints from %d to %d \n" ind start (start+perthread - 1)
           for_ start (start+perthread) $ \ i -> do 
 	     pushL q i
-             when (i < start + 10) $ printf " [p%d] pushed %d \n" ind i
+             when (i < start + 10) $ dbgPrint 1 $ printf " [p%d] pushed %d \n" ind i
 
      ls <- forkJoin consumers $ \ ind ->         
           let mymax = if ind==0 then perthread2 + remain else perthread2
@@ -163,17 +163,17 @@ test_fifo_OneBottleneck doBackoff total q =
               consume_loop !summ !maxiters i = do
                 (x,iters) <- if doBackoff then spinPopBkoff q 
                                           else spinPopHard  q
-                when (i >= mymax - 10) $ printf " [c%d] popped #%d = %d \n" ind i x
+                when (i >= mymax - 10) $ dbgPrint 1 $ printf " [c%d] popped #%d = %d \n" ind i x
                 consume_loop (summ+x) (max maxiters iters) (i+1)
           in consume_loop 0 0 0
 
      let finalSum = Prelude.sum (map fst ls)
-     putStrLn$ "Consumers DONE.  Maximum retries for each consumer thread: "++ show (map snd ls)
-     putStrLn$ "Final sum: "++ show finalSum
+     dbgPrintLn 1$ "Consumers DONE.  Maximum retries for each consumer thread: "++ show (map snd ls)
+     dbgPrintLn 1$ "Final sum: "++ show finalSum
      assertEqual "Correct final sum" (expectedSum (producers * perthread)) finalSum
-     putStrLn$ "Checking that queue is finally null..."
+     dbgPrintLn 1$ "Checking that queue is finally null..."
      b <- nullQ q
-     if b then putStrLn$ "Sum matched expected, test passed."
+     if b then dbgPrintLn 1$ "Sum matched expected, test passed."
           else assertFailure "Queue was not empty!!"
 
 -- | This test uses a separate queue per consumer thread.  The queues
@@ -181,9 +181,9 @@ test_fifo_OneBottleneck doBackoff total q =
 test_contention_free_parallel :: DequeClass d => Bool -> Int -> IO (d Int) -> IO ()
 test_contention_free_parallel doBackoff total newqueue = 
   do 
-     putStrLn$ "\nTest FIFO queue: producers & consumers thru N queues"
+     dbgPrintLn 1$ "\nTest FIFO queue: producers & consumers thru N queues"
                ++(if doBackoff then " (with backoff)" else "(hard busy wait)")
-     putStrLn "======================================================"       
+     dbgPrintLn 1 "======================================================"       
      mv <- newEmptyMVar
           
      let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
@@ -194,15 +194,15 @@ test_contention_free_parallel doBackoff total newqueue =
      when (not doBackoff && (numCapabilities == 1 || numCapabilities < producers + consumers)) $ 
        error$ "The aggressively busy-waiting version of the test can only run with the right thread settings."
      
-     printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
-     printf "Forking %d consumer threads, each consuming %d elements.\n" consumers perthread
+     dbgPrint 1 $ printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
+     dbgPrint 1 $ printf "Forking %d consumer threads, each consuming %d elements.\n" consumers perthread
     
      forM_ (zip [0..producers-1] qs) $ \ (id, q) -> 
  	myfork "producer thread" $
           let start = id*perthread in
           for_ 0 perthread $ \ i -> do 
 	     pushL q i
-             when (i - id*producers < 10) $ printf " [%d] pushed %d \n" id i
+             when (i - id*producers < 10) $ dbgPrint 1 $ printf " [%d] pushed %d \n" id i
 
      forM_ (zip [0..consumers-1] qs) $ \ (id, q) -> 
  	myfork "consumer thread" $ do 
@@ -210,22 +210,22 @@ test_contention_free_parallel doBackoff total newqueue =
               consume_loop !sum !maxiters i = do
                 (x,iters) <- if doBackoff then spinPopBkoff q 
                                           else spinPopHard  q
-                when (i < 10) $ printf " [%d] popped #%d = %d \n" id i x
+                when (i < 10) $ dbgPrint 1 $ printf " [%d] popped #%d = %d \n" id i x
                 unless (x == i) $ error $ "Message out of order! Expected "++show i++" recevied "++show x
                 consume_loop (sum+x) (max maxiters iters) (i+1)
           pr <- consume_loop 0 0 0
 	  putMVar mv pr
 
-     printf "Reading sums from MVar...\n" 
+     dbgPrint 1 $ printf "Reading sums from MVar...\n" 
      ls <- mapM (\_ -> takeMVar mv) [1..consumers]
      let finalSum = Prelude.sum (map fst ls)
-     putStrLn$ "Consumers DONE.  Maximum retries for each consumer thread: "++ show (map snd ls)
-     putStrLn$ "All messages received in order.  Final sum: "++ show finalSum
+     dbgPrintLn 1$ "Consumers DONE.  Maximum retries for each consumer thread: "++ show (map snd ls)
+     dbgPrintLn 1$ "All messages received in order.  Final sum: "++ show finalSum
      assertEqual "Correct final sum" (producers * expectedSum perthread) finalSum          
-     putStrLn$ "Checking that queue is finally null..."
+     dbgPrintLn 1$ "Checking that queue is finally null..."
      bs <- mapM nullQ qs
      if all id bs
-       then putStrLn$ "Sum matched expected, test passed."
+       then dbgPrintLn 1$ "Sum matched expected, test passed."
        else assertFailure "Queue was not empty!!"
 
 
@@ -242,16 +242,16 @@ test_random_array_comm size total newqueue | size > 0 = do
    assertBool "test_random_array_comm requires thread safe left end"  (leftThreadSafe (head qs))
    assertBool "test_random_array_comm requires thread safe right end" (rightThreadSafe (head qs))
    
-   putStrLn$ "\nTest FIFO queue: producers & consumers select random queues"
-   putStrLn "======================================================"       
+   dbgPrintLn 1$ "\nTest FIFO queue: producers & consumers select random queues"
+   dbgPrintLn 1 "======================================================"       
 
    let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
        consumers = max 1 (numAgents - producers)
        perthread  = total `quot` producers
        (perthread2,remain) = total `quotRem` consumers
    
-   printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
-   printf "Forking %d consumer threads, each consuming ~%d elements.\n" consumers perthread2
+   dbgPrintLn 1 $ printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
+   dbgPrintLn 1 $ printf "Forking %d consumer threads, each consuming ~%d elements.\n" consumers perthread2
 
    forM_ [0..producers-1] $ \ ind -> 
       myfork "producer thread" $
@@ -259,7 +259,7 @@ test_random_array_comm size total newqueue | size > 0 = do
            -- Randomly pick a position:
            ix <- randomRIO (0,size-1) :: IO Int
            pushL (arr ! ix) i
-           when (i - ind*producers < 10) $ printf " [%d] pushed %d \n" ind i
+           when (i - ind*producers < 10) $ dbgPrint 1 $ printf " [%d] pushed %d \n" ind i
 
    -- Each consumer doesn't quit until it has popped "perthread":
    sums <- forkJoin consumers $ \ ind ->
@@ -272,20 +272,20 @@ test_random_array_comm size total newqueue | size > 0 = do
               m <- spinPopN 100 (tryPopR (arr ! ix))
               case m of
                 Just x -> do
-                  when (i < 10) $ printf " [%d] popped #%d = %d\n" ind i x
+                  when (i < 10) $ dbgPrint 1 $ printf " [%d] popped #%d = %d\n" ind i x
                   consume_loop (summ+x) (i+1)
                 Nothing ->
                   consume_loop summ i
         in consume_loop 0 0
 
-   printf "Reading sums from MVar...\n" 
+   dbgPrintLn 1 "Reading sums from MVar..." 
    let finalSum = Prelude.sum sums
-   putStrLn$ "Final sum: "++ show finalSum ++ ", per-consumer sums: "++show sums
-   putStrLn$ "Checking that queue is finally null..."
+   dbgPrintLn 1$ "Final sum: "++ show finalSum ++ ", per-consumer sums: "++show sums
+   dbgPrintLn 1$ "Checking that queue is finally null..."
    assertEqual "Correct final sum" (producers * expectedSum perthread) finalSum
    bs <- mapM nullQ qs
    if all id bs
-     then putStrLn$ "Sum matched expected, test passed."
+     then dbgPrintLn 1$ "Sum matched expected, test passed."
      else assertFailure "Queue was not empty!!"
 
 -- Sum of first N numbers, starting with ZERO
@@ -343,8 +343,8 @@ test_ws_triv2 q = do
 test_random_work_stealing :: (DequeClass d, PopL d) => Int -> IO (d Int) -> IO ()
 test_random_work_stealing total newqueue = do
    
-   putStrLn$ "\nTest FIFO queue: producers & consumers select random queues"
-   putStrLn "======================================================"       
+   dbgPrintLn 1$ "\nTest FIFO queue: producers & consumers select random queues"
+   dbgPrintLn 1 "======================================================"       
 
    let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
        consumers = max 1 (numAgents - producers)
@@ -356,8 +356,8 @@ test_random_work_stealing total newqueue = do
    assertBool "test_random_array_comm requires thread safe right end" (rightThreadSafe (head qs))
    let arr = A.listArray (0,producers - 1) qs   
 
-   printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
-   printf "Forking %d consumer threads, each consuming %d elements.\n" consumers perthread2
+   dbgPrint 1 $ printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
+   dbgPrint 1 $ printf "Forking %d consumer threads, each consuming %d elements.\n" consumers perthread2
    
    prod_results <- newEmptyMVar
    forM_ (zip [0..producers-1] qs) $ \ (ind,myQ) -> do 
@@ -373,7 +373,7 @@ test_random_work_stealing total newqueue = do
                      Just n  -> loop i (n+acc)
                    else do
                    pushL myQ i
-                   when (i - ind*producers < 10) $ printf " [%d] pushed %d \n" ind i
+                   when (i - ind*producers < 10) $ dbgPrint 1 $ printf " [%d] pushed %d \n" ind i
                    loop (i+1) acc
         in loop 0 0
 
@@ -388,13 +388,13 @@ test_random_work_stealing total newqueue = do
               m <- spinPopN 100 (tryPopR (arr ! ix))
               case m of
                 Just x -> do
-                  when (i < 10) $ printf " [%d] popped #%d = %d\n" ind i x
+                  when (i < 10) $ dbgPrint 1 $ printf " [%d] popped #%d = %d\n" ind i x
                   consume_loop (summ+x) (i+1)
                 Nothing ->
                   consume_loop summ (i+1) -- Increment even if we don't get a result.
         in consume_loop 0 0
 
-   printf "Reading sums from MVar...\n"
+   dbgPrintLn 1  "Reading sums from MVar..."
    prod_ls <- mapM (\_ -> takeMVar prod_results) [1..producers]
 
    leftovers <- forM qs $ \ q ->
@@ -406,12 +406,12 @@ test_random_work_stealing total newqueue = do
      in loop 0
         
    let finalSum = Prelude.sum (consumer_sums ++ prod_ls ++ leftovers)
-   putStrLn$ "Final sum: "++ show finalSum ++ ", producer/consumer/leftover sums: "++show (prod_ls, consumer_sums, leftovers)
-   putStrLn$ "Checking that queue is finally null..."
+   dbgPrintLn 1$ "Final sum: "++ show finalSum ++ ", producer/consumer/leftover sums: "++show (prod_ls, consumer_sums, leftovers)
+   dbgPrintLn 1$ "Checking that queue is finally null..."
    assertEqual "Correct final sum" (producers * expectedSum perthread) finalSum
    bs <- mapM nullQ qs
    if all id bs
-     then putStrLn$ "Sum matched expected, test passed."
+     then dbgPrintLn 1$ "Sum matched expected, test passed."
      else assertFailure "Queue was not empty!!"
 
 
@@ -481,7 +481,7 @@ spinPopBkoff q = loop 1
   errorafter = 1 * 1000 * 1000
   loop n = do
      when (n == warnafter)
-	  (putStrLn$ "Warning: Failed to pop "++ show warnafter ++ 
+	  (dbgPrintLn 0$ "Warning: Failed to pop "++ show warnafter ++ 
 	             " times consecutively.  That shouldn't happen in this benchmark.")
 --     when (n == errorafter) (error "This can't be right.  A queue consumer spun 1M times.")
      x <- tryPopR q 
@@ -528,3 +528,35 @@ for_ start end fn = loop start
    loop !i | i == end  = return ()
 	   | otherwise = do fn i; loop (i+1)
 
+
+----------------------------------------------------------------------------------------------------
+-- DEBUGGING
+----------------------------------------------------------------------------------------------------
+
+-- | Debugging flag shared by all accelerate-backend-kit modules.
+--   This is activated by setting the environment variable DEBUG=1..5
+dbg :: Int
+dbg = case lookup "DEBUG" theEnv of
+       Nothing  -> defaultDbg
+       Just ""  -> defaultDbg
+       Just "0" -> defaultDbg
+       Just s   ->
+         trace (" ! Responding to env Var: DEBUG="++s)$
+         case reads s of
+           ((n,_):_) -> n
+           [] -> error$"Attempt to parse DEBUG env var as Int failed: "++show s
+
+defaultDbg :: Int
+defaultDbg = 0
+
+-- | Print if the debug level is at or above a threshold.
+dbgPrint :: Int -> String -> IO ()
+dbgPrint lvl str = if dbg < lvl then return () else do
+--    hPutStrLn stderr str
+    -- hPrintf stderr str 
+    -- hFlush stderr
+    printf str
+    hFlush stdout
+
+dbgPrintLn :: Int -> String -> IO ()
+dbgPrintLn lvl str = dbgPrint lvl (str++"\n")

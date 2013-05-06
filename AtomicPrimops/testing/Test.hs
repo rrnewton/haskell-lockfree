@@ -89,6 +89,7 @@ main =
          , size    <- [1, 10, 100]
          , iters   <- [10000]]
          
+setify :: [Int] -> [Int]
 setify = S.toList . S.fromList
 
 #else
