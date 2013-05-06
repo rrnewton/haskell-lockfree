@@ -33,11 +33,13 @@ Description:
 
 -- Extra-Source-Files:
 --                     Makefile, Test.hs, README.md
+Extra-Source-Files: cbits/atomic-bitops-gcc.c cbits/atomic-bitops-gcc.h
+                    cbits/primop.cmm
 
 Library
   exposed-modules:   Data.Atomics
                      Data.Atomics.Internal
-  ghc-options: -O2 -threaded 
+  ghc-options: -O2 -threaded -funbox-strict-fields
   
   -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
   -- (base 4.5 or greater).
@@ -51,6 +53,13 @@ Library
 
   Include-Dirs:     cbits
   C-Sources:        cbits/primops.cmm
+                    cbits/atomic-bitops-gcc.c
+  CC-Options:       -Wall
+  if os (linux)
+      CC-Options: -fomit-frame-pointer -march=native
+  Include-Dirs:     cbits
+  Install-Includes: atomic-bitops-gcc.h
+
 
 -- -- [2013.04.08] This isn't working presently:
 -- -- I'm having problems with building it along with the library; see DEVLOG.

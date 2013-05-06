@@ -6,12 +6,16 @@
 module Data.Atomics.Internal 
    (casArray#, 
     readForCAS#, casMutVarTicketed#, 
-    Ticket )
+    Ticket,
+
+    fetch_and_add_word
+   )
   where 
 
 import GHC.Base (Int(I#))
 import GHC.Word (Word(W#))
-import GHC.Prim (RealWorld, Int#, Word#, State#, MutableArray#, unsafeCoerce#, MutVar#, reallyUnsafePtrEquality#) 
+import GHC.Prim (RealWorld, Int#, Word#, State#, MutableArray#, unsafeCoerce#, MutVar#, reallyUnsafePtrEquality#)
+import Foreign.Ptr (Ptr)
 #if MIN_VERSION_base(4,6,0)
 -- Any is only in GHC 7.6!!!  We want 7.4 support.
 import GHC.Prim (readMutVar#, casMutVar#, Any)
@@ -94,3 +98,42 @@ foreign import prim "stg_casMutVar2zh" casMutVar_TypeErased#
 -- foreign import prim "stg_readMutVar2zh" readMutVar_TypeErased#
 --   :: MutVar# RealWorld () -> 
 --      State# RealWorld -> (# State# RealWorld, Any () #)
+
+
+--------------------------------------------------------------------------------
+
+foreign import ccall unsafe "atomic-bitops-gcc.h fetch_and_add_word"
+    fetch_and_add_word :: Ptr Word -> Word -> IO Word
+{-
+foreign import ccall unsafe "atomic-bitops-gcc.h fetch_and_sub_word"
+    fetch_and_sub_word :: Ptr Word -> Word -> IO Word
+foreign import ccall unsafe "atomic-bitops-gcc.h fetch_and_or_word"
+    fetch_and_or_word :: Ptr Word -> Word -> IO Word
+foreign import ccall unsafe "atomic-bitops-gcc.h fetch_and_and_word"
+    fetch_and_and_word :: Ptr Word -> Word -> IO Word
+foreign import ccall unsafe "atomic-bitops-gcc.h fetch_and_xor_word"
+    fetch_and_xor_word :: Ptr Word -> Word -> IO Word
+foreign import ccall unsafe "atomic-bitops-gcc.h fetch_and_nand_word"
+    fetch_and_nand_word :: Ptr Word -> Word -> IO Word
+foreign import ccall unsafe "atomic-bitops-gcc.h add_and_fetch_word"
+    add_and_fetch_word :: Ptr Word -> Word -> IO Word
+foreign import ccall unsafe "atomic-bitops-gcc.h sub_and_fetch_word"
+    sub_and_fetch_word :: Ptr Word -> Word -> IO Word
+foreign import ccall unsafe "atomic-bitops-gcc.h or_and_fetch_word"
+    or_and_fetch_word :: Ptr Word -> Word -> IO Word
+foreign import ccall unsafe "atomic-bitops-gcc.h and_and_fetch_word"
+    and_and_fetch_word :: Ptr Word -> Word -> IO Word
+foreign import ccall unsafe "atomic-bitops-gcc.h xor_and_fetch_word"
+    xor_and_fetch_word :: Ptr Word -> Word -> IO Word
+foreign import ccall unsafe "atomic-bitops-gcc.h nand_and_fetch_word"
+    nand_and_fetch_word :: Ptr Word -> Word -> IO Word
+foreign import ccall unsafe "atomic-bitops-gcc.h bool_compare_and_swap_word"
+    bool_compare_and_swap_word :: Ptr Word -> Word -> Word -> IO Bool
+foreign import ccall unsafe "atomic-bitops-gcc.h val_compare_and_swap_word"
+    val_compare_and_swap_word :: Ptr Word -> Word -> Word -> IO Word
+foreign import ccall unsafe "atomic-bitops-gcc.h lock_test_and_set_word"
+    lock_test_and_set_word :: Ptr Word -> IO Word
+foreign import ccall unsafe "atomic-bitops-gcc.h lock_release_word"
+    lock_release_word :: Ptr Word -> IO ()
+
+-}
