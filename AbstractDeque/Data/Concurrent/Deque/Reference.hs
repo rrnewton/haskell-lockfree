@@ -22,7 +22,6 @@ module Data.Concurrent.Deque.Reference
 
 import Prelude hiding (length)
 import qualified Data.Concurrent.Deque.Class as C
-import Control.Exception (evaluate)
 import Data.Sequence
 import Data.IORef
 #ifdef USE_CAS
@@ -88,14 +87,17 @@ nullQ (DQ _ qr) =
 -- 	        Nothing -> popL q
 -- 		Just x  -> return x
 
+tryPopL :: SimpleDeque a -> IO (Maybe a)
 tryPopL (DQ _ qr) = modify qr $ \s -> 
   case viewl s of
     EmptyL  -> (empty, Nothing)
     x :< s' -> (s', Just x)
 
+pushR :: SimpleDeque t -> t -> IO ()
 pushR (DQ 0 qr) x = modify qr (\s -> (s |> x, ()))
 pushR (DQ n _) _ = error$ "should not call pushR on Deque with size bound "++ show n
 
+tryPushL :: SimpleDeque a -> a -> IO Bool
 tryPushL q@(DQ 0 _) v = pushL q v >> return True
 tryPushL (DQ lim qr) v = 
   modify qr $ \s -> 
@@ -103,6 +105,7 @@ tryPushL (DQ lim qr) v =
      then (s, False)
      else (v <| s, True)
 
+tryPushR :: SimpleDeque a -> a -> IO Bool
 tryPushR q@(DQ 0 _) v = pushR q v >> return True
 tryPushR (DQ lim qr) v = 
   modify qr $ \s -> 
@@ -119,6 +122,8 @@ instance C.DequeClass SimpleDeque where
   nullQ    = nullQ
   pushL    = pushL
   tryPopR  = tryPopR
+  leftThreadSafe _ = True
+  rightThreadSafe _ = True
 instance C.PopL SimpleDeque where 
   tryPopL  = tryPopL
 instance C.PushR SimpleDeque where 

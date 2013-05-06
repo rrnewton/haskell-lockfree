@@ -25,6 +25,9 @@ import Data.Concurrent.Deque.Class as C
 import qualified Data.Concurrent.Deque.Reference as R
 
 import Control.Monad
+-- import qualified Data.Vector V
+-- import qualified Data.Vector.Mutable as MV
+import Data.Array as A
 import Data.IORef
 -- import System.Mem.StableName
 import Text.Printf
@@ -35,6 +38,7 @@ import Control.Exception (catch, SomeException, fromException, AsyncException(Th
 import System.Environment (getEnvironment)
 import System.IO (hPutStrLn, stderr)
 import System.IO.Unsafe (unsafePerformIO)
+import System.Random (randomRIO)
 import Test.HUnit
 
 import Debug.Trace (trace)
@@ -50,7 +54,7 @@ theEnv = unsafePerformIO getEnvironment
 -- How many elements should each of the tests pump through the queue(s)?
 numElems :: Int
 numElems = case lookup "NUMELEMS" theEnv of 
-             Nothing  -> 50 * 1000 -- 500000 
+             Nothing  -> 100 * 1000 -- 500000
              Just str -> warnUsing ("NUMELEMS = "++str) $ 
                          read str
 
@@ -86,28 +90,6 @@ warnUsing :: String -> a -> a
 warnUsing str a = trace ("  [Warning]: Using environment variable "++str) a
 
 
-----------------------------------------------------------------------------------------------------
--- Misc Helpers
-----------------------------------------------------------------------------------------------------
-
-myfork :: String -> IO () -> IO ThreadId
-myfork msg = forkWithExceptions forkThread msg
-
--- Exceptions that walk up the fork tree of threads:
-forkWithExceptions :: (IO () -> IO ThreadId) -> String -> IO () -> IO ThreadId
-forkWithExceptions forkit descr action = do 
-   parent <- myThreadId
-   forkit $ 
-      Control.Exception.catch action
-	 (\ e -> 
-          case fromException e of
-            -- Let threadKilled exceptions through.
-	    Just ThreadKilled -> return ()
-            _ -> do
-	      hPutStrLn stderr $ "Exception inside child thread "++show descr++": "++show e
-	      throwTo parent (e::SomeException)
-	 )
-
 
 ----------------------------------------------------------------------------------------------------
 -- Test a plain FIFO queue:
@@ -116,7 +98,7 @@ forkWithExceptions forkit descr action = do
 -- | This test serially fills up a queue and then drains it.
 test_fifo_filldrain :: DequeClass d => d Int -> IO ()
 test_fifo_filldrain q = 
-  do -- q <- newQ
+  do
      putStrLn "\nTest FIFO queue: sequential fill and then drain"
      putStrLn "==============================================="
 --     let n = 1000
@@ -146,11 +128,14 @@ test_fifo_filldrain q =
 -- communicated (irrespective of 'numAgents').
 test_fifo_OneBottleneck :: DequeClass d => Bool -> Int -> d Int -> IO ()
 test_fifo_OneBottleneck doBackoff total q = 
-  do -- q <- newQ
+  do
+     assertBool "test_fifo_OneBottleneck requires thread safe left end"  (leftThreadSafe q)
+     assertBool "test_fifo_OneBottleneck requires thread safe right end" (rightThreadSafe q)
+    
      putStrLn$ "\nTest FIFO queue: producers & consumers thru 1 queue"
                ++(if doBackoff then " (with backoff)" else "(hard busy wait)")
      putStrLn "======================================================"       
-     mv <- newEmptyMVar          
+
      x <- nullQ q
      putStrLn$ "Check that queue is initially null: "++show x
      let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
@@ -165,29 +150,26 @@ test_fifo_OneBottleneck doBackoff total q =
      printf "Forking %d consumer threads, each consuming %d elements.\n" consumers perthread2
     
      forM_ [0..producers-1] $ \ id -> 
- 	myfork "producer thread" $
-          let start = id*perthread in
+ 	myfork "producer thread" $ do
+          let start = id*perthread 
+          printf "  * Producer thread %d pushing ints from %d to %d \n" id start (start+perthread - 1)
           for_ start (start+perthread) $ \ i -> do 
 	     pushL q i
-             when (i - id*producers < 10) $ printf " [%d] pushed %d \n" id i
+             when (i < start + 10) $ printf " [p%d] pushed %d \n" id i
 
-     forM_ [0..consumers-1] $ \ id -> 
- 	myfork "consumer thread" $ do 
-          let consume_loop sum maxiters 0 = return (sum, maxiters)
+     ls <- forkJoin consumers $ \ id -> 
+          let consume_loop sum maxiters i | i == perthread2 = return (sum, maxiters)
               consume_loop !sum !maxiters i = do
                 (x,iters) <- if doBackoff then spinPopBkoff q 
                                           else spinPopHard  q
-                when (i < 10) $ printf " [%d] popped %d \n" id i
-                consume_loop (sum+x) (max maxiters iters) (i-1)
-          pr <- consume_loop 0 0 perthread
---          pr <- foldM fn (0,0) (take perthread [id * producers .. ])
-	  putMVar mv pr
+                when (i >= perthread2 - 10) $ printf " [c%d] popped #%d = %d \n" id i x
+                consume_loop (sum+x) (max maxiters iters) (i+1)
+          in consume_loop 0 0 0
 
-     printf "Reading sums from MVar...\n" 
-     ls <- mapM (\_ -> takeMVar mv) [1..consumers]
      let finalSum = Prelude.sum (map fst ls)
      putStrLn$ "Consumers DONE.  Maximum retries for each consumer thread: "++ show (map snd ls)
      putStrLn$ "Final sum: "++ show finalSum
+     assertEqual "Correct final sum" (expectedSum total) finalSum
      putStrLn$ "Checking that queue is finally null..."
      b <- nullQ q
      if b then putStrLn$ "Sum matched expected, test passed."
@@ -197,8 +179,8 @@ test_fifo_OneBottleneck doBackoff total q =
 -- are used in a single-writer multiple-reader fashion (mailboxes).
 test_contention_free_parallel :: DequeClass d => Bool -> Int -> IO (d Int) -> IO ()
 test_contention_free_parallel doBackoff total newqueue = 
-  do -- q <- newQ
-     putStrLn$ "\nTest FIFO queue: producers & consumers thru 1 queue"
+  do 
+     putStrLn$ "\nTest FIFO queue: producers & consumers thru N queues"
                ++(if doBackoff then " (with backoff)" else "(hard busy wait)")
      putStrLn "======================================================"       
      mv <- newEmptyMVar
@@ -229,7 +211,7 @@ test_contention_free_parallel doBackoff total newqueue =
               consume_loop !sum !maxiters i = do
                 (x,iters) <- if doBackoff then spinPopBkoff q 
                                           else spinPopHard  q
-                when (i < 10) $ printf " [%d] popped %d \n" id i
+                when (i < 10) $ printf " [%d] popped #%d = %d \n" id i x
                 unless (x == i) $ error $ "Message out of order! Expected "++show i++" recevied "++show x
                 consume_loop (sum+x) (max maxiters iters) (i+1)
           pr <- consume_loop 0 0 0
@@ -240,6 +222,7 @@ test_contention_free_parallel doBackoff total newqueue =
      let finalSum = Prelude.sum (map fst ls)
      putStrLn$ "Consumers DONE.  Maximum retries for each consumer thread: "++ show (map snd ls)
      putStrLn$ "All messages received in order.  Final sum: "++ show finalSum
+     assertEqual "Correct final sum" (producers * expectedSum perthread) finalSum          
      putStrLn$ "Checking that queue is finally null..."
      bs <- mapM nullQ qs
      if all id bs
@@ -247,11 +230,77 @@ test_contention_free_parallel doBackoff total newqueue =
        else assertFailure "Queue was not empty!!"
 
 
+
+-- | This test uses a number of producer and consumer threads which push and pop
+-- elements from random positions in an array of FIFOs.
+test_random_array_comm :: DequeClass d => Int -> Int -> IO (d Int) -> IO ()
+test_random_array_comm size total newqueue | size > 0 = do
+
+   qs <- sequence (replicate size newqueue)
+--   arr <- V.thaw $ V.fromlist qs
+   let arr = A.listArray (0,size-1) qs
+
+   assertBool "test_random_array_comm requires thread safe left end"  (leftThreadSafe (head qs))
+   assertBool "test_random_array_comm requires thread safe right end" (rightThreadSafe (head qs))
+   
+   putStrLn$ "\nTest FIFO queue: producers & consumers select random queues"
+   putStrLn "======================================================"       
+
+   let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
+       consumers = producers -- max 1 (numAgents - producers)
+       perthread  = total `quot` producers
+       perthread2 = total `quot` consumers
+
+   qs <- sequence (replicate consumers newqueue)
+
+   printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
+   printf "Forking %d consumer threads, each consuming %d elements.\n" consumers perthread2
+
+   forM_ [0..producers-1] $ \ id -> 
+      myfork "producer thread" $
+        let start = id*perthread in
+        for_ 0 perthread $ \ i -> do
+           -- Randomly pick a position:
+           ix <- randomRIO (0,size-1) :: IO Int
+           pushL (arr ! ix) i
+           when (i - id*producers < 10) $ printf " [%d] pushed %d \n" id i
+
+   -- Each consumer doesn't quit until it has popped "perthread":
+   sums <- forkJoin consumers $ \ id -> 
+        let consume_loop sum  i | i == perthread = return sum
+            consume_loop !sum i = do
+              -- Randomly pick a position:
+              ix <- randomRIO (0,size-1) :: IO Int
+              -- Try to pop something, but not too hard:
+              m <- spinPopN 100 (arr ! ix)
+              case m of
+                Just x -> do
+                  when (i < 10) $ printf " [%d] popped #%d = %d\n" id i x
+                  consume_loop (sum+x) (i+1)
+                Nothing ->
+                  consume_loop sum i
+        in consume_loop 0 0
+
+   printf "Reading sums from MVar...\n" 
+   let finalSum = Prelude.sum sums
+   putStrLn$ "Final sum: "++ show finalSum ++ ", per-consumer sums: "++show sums
+   putStrLn$ "Checking that queue is finally null..."
+   assertEqual "Correct final sum" (producers * expectedSum perthread) finalSum
+   bs <- mapM nullQ qs
+   if all id bs
+     then putStrLn$ "Sum matched expected, test passed."
+     else assertFailure "Queue was not empty!!"
+
+-- Sum of first N numbers, starting with ZERO
+expectedSum :: Integral a => a -> a
+expectedSum n = (n * (n - 1)) `quot` 2
+
+
 ------------------------------------------------------------
 
 -- | This creates an HUnit test list to perform all the tests above.
 test_fifo :: DequeClass d => (forall elt. IO (d elt)) -> Test
-test_fifo newq = TestList 
+test_fifo newq = TestList $ 
   [
     TestLabel "test_fifo_filldrain"  (TestCase$ assert $ newq >>= test_fifo_filldrain)
     -- Do half a million elements by default:
@@ -260,6 +309,10 @@ test_fifo newq = TestList
 --  , TestLabel "test the tests" (TestCase$ assert $ assertFailure "This SHOULD fail.")
 
   , TestLabel "test_contention_free_parallel" (TestCase$ assert $ test_contention_free_parallel True numElems newq)
+  ] ++
+  [ TestLabel ("test_random_array_comm_"++show size)
+              (TestCase$ assert $ test_random_array_comm size numElems newq)
+  | size <- [10,100]
   ]
 
 
@@ -308,7 +361,40 @@ test_all newq =
    ]
 
 ----------------------------------------------------------------------------------------------------
--- Helpers
+-- Misc Helpers
+----------------------------------------------------------------------------------------------------
+
+----------------------------------------------------------------------------------------------------
+-- Misc Helpers
+----------------------------------------------------------------------------------------------------
+
+myfork :: String -> IO () -> IO ThreadId
+myfork msg = forkWithExceptions forkThread msg
+
+-- Exceptions that walk up the fork tree of threads:
+forkWithExceptions :: (IO () -> IO ThreadId) -> String -> IO () -> IO ThreadId
+forkWithExceptions forkit descr action = do 
+   parent <- myThreadId
+   forkit $ 
+      Control.Exception.catch action
+	 (\ e -> 
+          case fromException e of
+            -- Let threadKilled exceptions through.
+	    Just ThreadKilled -> return ()
+            _ -> do
+	      hPutStrLn stderr $ "Exception inside child thread "++show descr++": "++show e
+	      throwTo parent (e::SomeException)
+	 )
+
+forkJoin :: Int -> (Int -> IO b) -> IO [b]
+forkJoin numthreads action = 
+  do
+     answers <- sequence (replicate numthreads newEmptyMVar) -- padding?
+     forM_ (zip [0..] answers) $ \ (ix,mv) -> 
+ 	myfork "forkJoin worker" (action ix >>= putMVar mv)
+     -- Reading answers:
+     ls <- mapM readMVar answers
+     return ls
 
 spinPopBkoff :: DequeClass d => d t -> IO (t, Int)
 spinPopBkoff q = loop 1
@@ -348,6 +434,13 @@ spinPopHard q = loop 1
        Nothing -> do loop (n+1)
        Just x  -> return (x, n)
 
+spinPopN :: (DequeClass d) => Int -> d t -> IO (Maybe t)
+spinPopN 0 q = return Nothing
+spinPopN tries q = do
+   x <- tryPopR q 
+   case x of 
+     Nothing      -> spinPopN (tries-1) q
+     res@(Just _) -> return res
 
 -- My own forM for numeric ranges (not requiring deforestation optimizations).
 -- Inclusive start, exclusive end.
@@ -358,6 +451,7 @@ for_ start end fn = loop start
   where
    loop !i | i == end  = return ()
 	   | otherwise = do fn i; loop (i+1)
+
 
 ----------------------------------------------------------------------------------------------------
 

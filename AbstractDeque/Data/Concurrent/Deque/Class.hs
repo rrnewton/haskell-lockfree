@@ -42,12 +42,11 @@ module Data.Concurrent.Deque.Class
 
   -- * Extra capabilities: type classes
 
-   -- | The "DequeClass" approach provides more programmer-friendly constraints than
-   -- directly using the phantom type parameters to constrain the type of each method.
-   -- Further, it allows such methods to be /more/ generic, as instances can be provided
-   -- for Deque types outside the type family.
+   -- | These classes provide a more programmer-friendly constraints than directly
+   -- using the phantom type parameters to constrain queues in user code.  Also note
+   -- that instances can be provided for types outside the type `Deque` type family.
    -- 
-   -- However, we still must make a distinction between the different capabilities
+   -- We still make a distinction between the different capabilities
    -- (e.g. single-ended / double ended), and thus we need the below type classes for
    -- the additional operations unsupported by the minimal "DequeClass".
 
@@ -165,6 +164,14 @@ class DequeClass d where
 
    -- TODO: It would also be possible to include blocking/spinning pops.
    -- But maybe those should go in separate type classes...
+
+   -- | Runtime indication of thread saftey for `pushL` (and `popL`).
+   -- (Argument unused.)            
+   leftThreadSafe  :: d elt -> Bool
+               
+   -- | Runtime indication of thread saftey for `tryPopR` (and `pushR`).
+   -- (Argument unused.) 
+   rightThreadSafe :: d elt -> Bool
 
 class DequeClass d => PopL d where 
    -- | PopL is not the native operation for the left end, so it requires
