@@ -1,5 +1,5 @@
 Name:                IORefCAS
-Version:             0.2
+Version:             0.2.0.1
 License:             BSD3
 License-file:        LICENSE
 Author:              Adam C. Foltzer, Ryan Newton
@@ -15,6 +15,7 @@ HomePage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
 -- 0.0.1.2 -- Egad, super minor update.
 -- 0.1.0.1 -- Include ptrEq in Data.CAS
 -- 0.2     -- Bumped for #if policy to test for GHC >7.2.  Removed casSTRef from the API for now.
+-- 0.2.0.1 -- fix for test suite
 
 Synopsis: Atomic compare and swap for IORefs and STRefs.
 
