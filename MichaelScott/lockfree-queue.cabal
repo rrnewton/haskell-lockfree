@@ -1,5 +1,5 @@
 Name:                lockfree-queue
-Version:             0.2
+Version:             0.2.0.1
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan R. Newton
@@ -13,6 +13,7 @@ Homepage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
 -- Version History:
 -- 0.1 -- initial version
 -- 0.2 -- switched to MutVar 
+-- 0.2.0.1 -- use ticketed CAS internally; add support for -prof mode
 
 Synopsis: Michael and Scott lock-free queues.
 
