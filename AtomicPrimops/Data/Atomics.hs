@@ -18,7 +18,7 @@ module Data.Atomics
    casArrayElem, casArrayElem2, readArrayElem, 
 
    -- * Atomic operations on IORefs
-   readForCAS, casIORef,
+   readForCAS, casIORef, casIORef2, 
    
    -- * Atomic operations on raw MutVars
    readMutVarForCAS, casMutVar, casMutVar2
@@ -84,9 +84,18 @@ readForCAS (IORef (STRef mv)) = readMutVarForCAS mv
 casIORef :: IORef a  -- ^ The 'IORef' containing a value 'current'
          -> Ticket a -- ^ A ticket for the 'old' value
          -> a        -- ^ The 'new' value to replace 'current' if @old == current@
---         -> IO (CASResult a)         
          -> IO (Bool, Ticket a)
 casIORef (IORef (STRef var)) old new = casMutVar var old new 
+
+
+{-# INLINE casIORef2 #-}
+-- | This variant takes two tickets, i.e. the 'new' value is a ticket rather than an
+-- arbitrary, lifted, Haskell value.
+casIORef2 :: IORef a 
+         -> Ticket a -- ^ A ticket for the 'old' value
+         -> Ticket a -- ^ A ticket for the 'new' value
+         -> IO (Bool, Ticket a)
+casIORef2 (IORef (STRef var)) old new = casMutVar2 var old new 
 
 
 --------------------------------------------------------------------------------
