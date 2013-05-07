@@ -58,12 +58,16 @@ runtest:
 #--------------------------------------------------------------------------
 
 # 7.0 and 7.2 having problems...
-all: test76 test74 prof76 prof74
+# all: test76 test74 prof76 prof74
+# [2013.05.07] Now we depend on ANY, so really 7.6 is required:
+all: test76 prof76 
 
+# Experimenting with hydra print:
 hydra:
-#	DEST=hydra-head ${MAKE} -j all 
-#	(hydra-view &); (DEST=hydra-head ${MAKE} -j all &); fg %1
 	(DEST=hydra-head ${MAKE} -j all) | hydra-view
+
+GHC74=ghc-7.4.2
+GHC76=ghc-7.6.2
 
 
 test70:
@@ -73,10 +77,10 @@ test72:
 	GHC=ghc-7.2.2 ${MAKE} test 2>&1 | ${DEST}
 
 test74:
-	GHC=ghc-7.4.2 ${MAKE} test 2>&1 | ${DEST}
+	GHC=$(GHC74) ${MAKE} test 2>&1 | ${DEST}
 
 test76:
-	GHC=ghc-7.6.2 ${MAKE} test 2>&1 | ${DEST}
+	GHC=$(GHC76) ${MAKE} test 2>&1 | ${DEST}
 
 prof70:
 	GHC=ghc-7.0.4 PROF=1 ${MAKE} test 2>&1 | ${DEST}
@@ -85,10 +89,10 @@ prof72:
 	GHC=ghc-7.2.2 PROF=1 ${MAKE} test 2>&1 | ${DEST}
 
 prof74:
-	GHC=ghc-7.4.2 PROF=1 ${MAKE} test 2>&1 | ${DEST}
+	GHC=$(GHC74) PROF=1 ${MAKE} test 2>&1 | ${DEST}l
 
 prof76:
-	GHC=ghc-7.6.2 PROF=1 ${MAKE} test 2>&1 | ${DEST}
+	GHC=$(GHC76) PROF=1 ${MAKE} test 2>&1 | ${DEST}
 
 
 global70:
