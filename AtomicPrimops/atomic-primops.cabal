@@ -27,16 +27,15 @@ Description:
   Also, this library uses the "foreign primop" capability of GHC to
   add access to other variants that may be of
   interest, specifically, compare and swap inside an array.
--- . 
---  For now it only supports the x86 instruction set.
 
--- Extra-Source-Files:
---                     Makefile, Test.hs, README.md
+Extra-Source-Files:  DEVLOG.md,
+                     testing/runTest.hs, testing/Test.hs, testing/test-atomic-primops.cabal
+--                    Makefile, Test.hs, README.md
 
 Library
   exposed-modules:   Data.Atomics
                      Data.Atomics.Internal
-  ghc-options: -O2 -threaded -funbox-strict-fields
+  ghc-options: -O2 -funbox-strict-fields
 
   -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
   -- (base 4.5 or greater).
@@ -46,24 +45,16 @@ Library
   -- Ah, but if we don't USE casMutVar# in this package we are ok:
   -- build-depends:     base >= 4.3, ghc-prim, primitive
 
--- TEMP: these are really only 
-
   Include-Dirs:     cbits
   C-Sources:        cbits/primops.cmm
   CC-Options:       -Wall
 
 -- -- [2013.04.08] This isn't working presently:
 -- -- I'm having problems with building it along with the library; see DEVLOG.
+-- -- Switching to a separate package in ./testing/ 
 -- Test-Suite test-atomic-primops
 --     type:       exitcode-stdio-1.0
---     main-is:    testing/Test.hs
---     ghc-options: -O2 -threaded -rtsopts -
 
---     build-depends: base >= 4.5, ghc-prim, primitive, 
---     -- For Testing:
--- --                   atomic-primops,
---                    time, HUnit, test-framework, test-framework-hunit,
---                    test-framework-th
 
 Source-Repository head
     Type:         git
