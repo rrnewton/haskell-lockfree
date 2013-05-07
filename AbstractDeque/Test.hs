@@ -38,7 +38,7 @@ main = do
   defaultMain$ hUnitTestToTests$ 
       TestList $ 
         [ 
-          T.test_all R.newQ 
+          T.tests_all R.newQ 
         , test_1
 	, test_2
         ]

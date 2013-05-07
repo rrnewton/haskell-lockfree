@@ -8,13 +8,13 @@
 module Data.Concurrent.Deque.Tests 
  ( 
    -- * Tests for simple FIFOs.
-   test_fifo_filldrain, test_fifo_OneBottleneck, test_fifo,
+   test_fifo_filldrain, test_fifo_OneBottleneck, tests_fifo,
 
    -- * Tests for Work-stealing queues.
-   test_ws_triv1, test_ws_triv2, test_wsqueue,
+   test_ws_triv1, test_ws_triv2, tests_wsqueue,
 
    -- * All deque tests, aggregated.
-   test_all,
+   tests_all,
 
    -- * Testing parameters
    numElems, numAgents, producerRatio
@@ -103,7 +103,7 @@ test_fifo_filldrain q =
      dbgPrintLn 1 "==============================================="
 --     let n = 1000
      let n = numElems
-     dbgPrintLn 1$ "Done creating queue.  Pushing elements:"
+     dbgPrintLn 1$ "Done creating queue.  Pushing "++show n++" elements:"
      forM_ [1..n] $ \i -> do 
        pushL q i
        when (i < 200) $ dbgPrint 1 $ printf " %d" i
@@ -295,23 +295,32 @@ expectedSum n = (n * (n - 1)) `quot` 2
 
 ------------------------------------------------------------
 
--- | This creates an HUnit test list to perform all the tests above.
-test_fifo :: DequeClass d => (forall elt. IO (d elt)) -> Test
-test_fifo newq = TestList $ 
-  [
-    TestLabel "test_fifo_filldrain"  (TestCase$ assert $ newq >>= test_fifo_filldrain)
-    -- Do half a million elements by default:
-  , TestLabel "test_fifo_OneBottleneck_backoff" (TestCase$ assert $ newq >>= test_fifo_OneBottleneck True  numElems)
+-- | This creates an HUnit test list to perform all the tests that apply to a
+--   single-ended (threadsafe) queue.  It requires thread safety at /both/ ends.
+tests_fifo :: DequeClass d => (forall elt. IO (d elt)) -> Test
+tests_fifo newq = TestList $
+  tests_basic newq ++ 
+  tests_fifo_exclusive newq
+  
+-- | Tests exclusive to single-ended (threadsafe) queues:
+tests_fifo_exclusive :: DequeClass d => (forall elt. IO (d elt)) -> [Test]
+tests_fifo_exclusive newq = 
+  [ TestLabel "test_fifo_OneBottleneck_backoff" (TestCase$ assert $ newq >>= test_fifo_OneBottleneck True  numElems)
 --  , TestLabel "test_fifo_OneBottleneck_aggressive" (TestCase$ assert $ newq >>= test_fifo_OneBottleneck False numElems)
 --  , TestLabel "test the tests" (TestCase$ assert $ assertFailure "This SHOULD fail.")
-
-  , TestLabel "test_contention_free_parallel" (TestCase$ assert $ test_contention_free_parallel True numElems newq)
   ] ++
   [ TestLabel ("test_random_array_comm_"++show size)
               (TestCase$ assert $ test_random_array_comm size numElems newq)
   | size <- [10,100]
   ]
 
+
+-- | Tests that don't require thread safety at either end.
+tests_basic :: DequeClass d => (forall elt. IO (d elt)) -> [Test]
+tests_basic newq =
+  [ TestLabel "test_fifo_filldrain"  (TestCase$ assert $ newq >>= test_fifo_filldrain)
+  , TestLabel "test_contention_free_parallel" (TestCase$ assert $ test_contention_free_parallel True numElems newq)    
+  ]
 
 ----------------------------------------------------------------------------------------------------
 -- Test a Work-stealing queue:
@@ -416,11 +425,17 @@ test_random_work_stealing total newqueue = do
 
 
 
--- | Aggregate tests for work stealing queues.
-test_wsqueue :: (PopL d) => (forall elt. IO (d elt)) -> Test
-test_wsqueue newq = TestList $ 
- [
-   TestLabel "test_ws_triv1"  (TestCase$ assert $ newq >>= test_ws_triv1)
+-- | Aggregate tests for work stealing queues.  None of these require thread-safety
+-- on the left end.  There is some duplication with tests_fifo.
+tests_wsqueue :: (PopL d) => (forall elt. IO (d elt)) -> Test
+tests_wsqueue newq = TestList $
+ tests_basic newq ++
+ tests_wsqueue_exclusive newq
+
+-- Internal: factoring this out.
+tests_wsqueue_exclusive :: (PopL d) => (forall elt. IO (d elt)) -> [Test]
+tests_wsqueue_exclusive newq = 
+ [ TestLabel "test_ws_triv1"  (TestCase$ assert $ newq >>= test_ws_triv1)
  , TestLabel "test_ws_triv2"  (TestCase$ assert $ newq >>= test_ws_triv2)
  , TestLabel "test_random_work_stealing" (TestCase$ assert $ test_random_work_stealing numElems newq)
  ]
@@ -429,12 +444,12 @@ test_wsqueue newq = TestList $
 -- Combine all tests -- for a deques supporting all capabilities.
 ----------------------------------------------------------------------------------------------------
 
-test_all :: (PopL d) => (forall elt. IO (d elt)) -> Test
-test_all newq = 
-  TestList 
-   [ test_fifo    newq
-   , test_wsqueue newq
-   ]
+-- | This requires double ended queues that are threadsafe on BOTH ends.
+tests_all :: (PopL d) => (forall elt. IO (d elt)) -> Test
+tests_all newq = TestList $ 
+  tests_basic newq ++
+  tests_fifo_exclusive newq ++
+  tests_wsqueue_exclusive newq 
 
 ----------------------------------------------------------------------------------------------------
 -- Misc Helpers
@@ -494,6 +509,7 @@ spinPopBkoff q = loop 1
                               threadDelay n -- 1ms after 1K fails, 2 after 2K...
 		      else when (n > hardspinfor) $ do 
                              putStr "."
+                             hFlush stdout
 			     yield -- At LEAST yield... you'd think this is pretty strong backoff.
 		     loop (n+1)
        Just x  -> return (x, n)
