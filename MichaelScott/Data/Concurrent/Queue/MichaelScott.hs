@@ -199,5 +199,7 @@ instance C.DequeClass LinkedQueue where
   nullQ   = nullQ
   pushL   = pushL
   tryPopR = tryPopR
+  leftThreadSafe _  = True
+  rightThreadSafe _ = True
 
 --------------------------------------------------------------------------------
