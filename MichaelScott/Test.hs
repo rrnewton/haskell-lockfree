@@ -5,7 +5,10 @@
 module Main where
 import Test.Framework                     (defaultMain)
 import Test.Framework.Providers.HUnit     (hUnitTestToTests)
-import Data.Concurrent.Deque.Tests        (test_fifo)
+import Data.Concurrent.Deque.Tests        (tests_fifo)
 import Data.Concurrent.Queue.MichaelScott (newQ)
+import System.Environment (withArgs)
 
-main = defaultMain$ hUnitTestToTests$ test_fifo newQ
+main =
+  withArgs ["-j1","--jxml=test-results.xml"] $ 
+  defaultMain$ hUnitTestToTests$ tests_fifo newQ
