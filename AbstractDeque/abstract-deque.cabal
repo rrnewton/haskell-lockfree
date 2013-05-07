@@ -18,6 +18,7 @@ Homepage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
 -- 0.1.4: Another release.
 -- 0.1.5: Fix for 6.12 and 7.0.
 -- 0.1.6: Make useCAS default FALSE.
+-- 0.1.7: Add leftThreadSafe / rightThreadSafe
 
 Synopsis: Abstract, parameterized interface to mutable Deques.
 
