@@ -298,7 +298,7 @@ expectedSum n = (n * (n - 1)) `quot` 2
 -- | This creates an HUnit test list to perform all the tests that apply to a
 --   single-ended (threadsafe) queue.  It requires thread safety at /both/ ends.
 tests_fifo :: DequeClass d => (forall elt. IO (d elt)) -> Test
-tests_fifo newq = TestList $
+tests_fifo newq = TestLabel "single-ended-queue-tests"$ TestList $
   tests_basic newq ++ 
   tests_fifo_exclusive newq
   
@@ -428,7 +428,7 @@ test_random_work_stealing total newqueue = do
 -- | Aggregate tests for work stealing queues.  None of these require thread-safety
 -- on the left end.  There is some duplication with tests_fifo.
 tests_wsqueue :: (PopL d) => (forall elt. IO (d elt)) -> Test
-tests_wsqueue newq = TestList $
+tests_wsqueue newq = TestLabel "work-stealing-deque-tests"$ TestList $
  tests_basic newq ++
  tests_wsqueue_exclusive newq
 
@@ -446,7 +446,7 @@ tests_wsqueue_exclusive newq =
 
 -- | This requires double ended queues that are threadsafe on BOTH ends.
 tests_all :: (PopL d) => (forall elt. IO (d elt)) -> Test
-tests_all newq = TestList $ 
+tests_all newq = TestLabel "full-deque-tests"$ TestList $ 
   tests_basic newq ++
   tests_fifo_exclusive newq ++
   tests_wsqueue_exclusive newq 

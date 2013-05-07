@@ -9,7 +9,7 @@ import Data.Concurrent.Deque.Class
 
 import Test.Framework (defaultMain)
 import Test.Framework.Providers.HUnit     (hUnitTestToTests)
-import Test.HUnit (assert, assertEqual, Test(TestCase, TestList))
+import Test.HUnit (assert, assertEqual, Test(TestCase, TestList, TestLabel))
 import qualified Data.Concurrent.Deque.Tests as T
 import qualified Data.Concurrent.Deque.Reference as R
 import System.Environment (withArgs)
@@ -40,7 +40,7 @@ main = do
   putStrLn "[ Test executable: test reference deque implementation... ]"
   withArgs ["-j1","--jxml=test-results.xml"] $   
     defaultMain$ hUnitTestToTests$ 
-        TestList $ 
+        TestLabel "Reference_Deque" $ TestList $ 
           [ 
             T.tests_all R.newQ 
           , test_1

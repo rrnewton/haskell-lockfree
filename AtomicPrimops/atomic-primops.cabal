@@ -1,5 +1,5 @@
 Name:                atomic-primops
-Version:             0.1.0.0
+Version:             0.1.0.2
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan Newton
@@ -8,12 +8,14 @@ Category:            Data
 Stability:           Provisional
 -- Portability:         non-portabile (x86_64)
 Build-type:          Simple
+-- TODO: This requirement needs to be bumped to 1.17 when the latest cabal is
+-- released.  This package triggers issue #1284:
 Cabal-version:       >=1.8
 HomePage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
 
 -- Version History:
 -- 0.1.0.0 -- initial release
-
+-- 0.1.0.2 -- disable profiling
 
 Synopsis: A safe approach to CAS and other atomic ops in Haskell.
 
@@ -39,7 +41,7 @@ Library
 
   -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
   -- (base 4.5 or greater).
-  build-depends:     base >= 4.5.0.0 && < 4.7, ghc-prim, primitive
+  build-depends:     base >= 4.5.0.0 && < 4.7, ghc-prim, primitive, Cabal
 
   -- TODO: Try to push support back to 7.0:
   -- Ah, but if we don't USE casMutVar# in this package we are ok:
@@ -48,12 +50,17 @@ Library
   Include-Dirs:     cbits
   C-Sources:        cbits/primops.cmm
   CC-Options:       -Wall
+  ghc-prof-options: -DGHC_PROFILING_ON
+  -- if( cabal-version < 1.17 ) {
+  --   ghc-prof-options: ERROR_DO_NOT_BUILD_THIS_WITH_PROFILING_YET__SEE_CABAL_ISSUE_1284
+  -- }
 
 -- -- [2013.04.08] This isn't working presently:
 -- -- I'm having problems with building it along with the library; see DEVLOG.
 -- -- Switching to a separate package in ./testing/ 
 -- Test-Suite test-atomic-primops
 --     type:       exitcode-stdio-1.0
+
 
 
 Source-Repository head

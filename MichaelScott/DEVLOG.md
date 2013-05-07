@@ -287,3 +287,27 @@ MichaelScott/Test.hs.)  On my laptop:
     PRODUCTIVITY 96.551 93.442 70.666
 
 
+[2013.05.07] {Observing new non-terminations in test-suite}
+-----------------------------------------------------------
+
+I've been making various small changes to the testing setup
+(e.g. enabling junit output).  On our department's redhat linux
+machines I'm now seeing some divergences where MichaelScott's
+test-suite loops forever in the first test, burning CPU but not
+growing in memory footprint.
+
+It happens even when I then run with:
+
+    NUMELEMS=10 DEBUG=1 ./MichaelScott/dist/build/test-lockfree-queue/test-lockfree-queue +RTS -N4
+   
+(And the number of threads doesn't matter.)
+
+Aha! This is just a different manifestation the cabal profiling bug.
+These machines don't aren't using cabal HEAD.  It's building with
+profiling libraries but non-profiling test executables.  Previously
+that segfaulted, but in this case it's just spinning.
+
+Until the cabal patch gets widely disseminated, it would be nice to
+have an install-time check and work-around...
+
+
