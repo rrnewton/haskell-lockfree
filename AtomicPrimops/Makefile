@@ -47,6 +47,7 @@ endif
 test: buildtest runtest
 
 buildtest:
+# FIXME: Is the separate deps install still necessary with a separate build dir? [2013.05.07]
 #       First install deps WITH profiling:
 	$(CABAL) $(DEPSINSTALL) --enable-library-profiling --disable-documentation --with-ghc=$(GHC) ./ ./testing/
 #       Install the lib and executable with the specified mode:
@@ -54,6 +55,9 @@ buildtest:
 
 runtest:
 	$(EXEC) +RTS -N -T -RTS
+
+prof:
+	PROF=1 ${MAKE} test 2>&1 | ${DEST}
 
 #--------------------------------------------------------------------------
 
