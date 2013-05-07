@@ -1,7 +1,7 @@
 
 -- Trying a completely separate .cabal for testing.
 
-Name:                testing
+Name:                test-atomic-primops
 Version:             0.1.0.0
 Build-type:          Simple
 Cabal-version:       >=1.8
@@ -15,3 +15,8 @@ Executable test-atomic-primops
                    atomic-primops,
                    time, HUnit, test-framework, test-framework-hunit
 --                   test-framework-th
+
+Test-Suite test-atomic-primops-runner
+    type:       exitcode-stdio-1.0
+    main-is:    runTest.hs
+    build-depends: base, process
