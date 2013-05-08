@@ -233,8 +233,9 @@ test_contention_free_parallel doBackoff total newqueue =
 -- | This test uses a number of producer and consumer threads which push and pop
 -- elements from random positions in an array of FIFOs.
 test_random_array_comm :: DequeClass d => Int -> Int -> IO (d Int) -> IO ()
-test_random_array_comm size total newqueue | size > 0 = do
-
+test_random_array_comm size total newqueue = do
+   assertBool "positive size" (size > 0)
+  
    qs <- sequence (replicate size newqueue)
 --   arr <- V.thaw $ V.fromlist qs
    let arr = A.listArray (0,size-1) qs
