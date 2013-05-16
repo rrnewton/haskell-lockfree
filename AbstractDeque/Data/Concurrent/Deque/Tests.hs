@@ -398,7 +398,7 @@ test_random_work_stealing total newqueue = do
               m <- spinPopN 100 (tryPopR (arr ! ix))
               case m of
                 Just x -> do
-                  when (i < 10) $ dbgPrint 1 $ printf " [%d] popped #%d = %d\n" ind i x
+                  when (i < 10) $ dbgPrint 1 $ printf " [%d] popped try#%d = %d\n" ind i x
                   consume_loop (summ+x) (i+1)
                 Nothing ->
                   consume_loop summ (i+1) -- Increment even if we don't get a result.

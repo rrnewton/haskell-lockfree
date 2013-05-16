@@ -31,3 +31,10 @@ test itself may be wrong of course!
     expected: 62499750000
      but got: 62499749999
 
+Uh oh, perhaps more worrying I just got this result where the size is TOO BIG:
+
+      :test_random_work_stealing: [Failed]
+    Correct final sum
+    expected: 62499750000
+     but got: 62499887547
+

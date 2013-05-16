@@ -17,7 +17,7 @@ module Data.Concurrent.Deque.ChaseLev
 import Data.IORef
 import qualified Data.Concurrent.Deque.Class as PC
 
-import Data.CAS (casIORef)
+-- import Data.CAS (casIORef)
 import qualified Data.Vector.Mutable as MV
 import qualified Data.Vector as V
 -- import Data.Vector.Unboxed.Mutable as V
@@ -26,6 +26,8 @@ import Text.Printf (printf)
 import Control.Exception(catch, SomeException, throw, evaluate)
 import Control.Monad (when, unless, forM_)
 -- import Control.Monad.ST
+
+import Data.Atomics (readArrayElem, readForCAS, casIORef, Ticket, peekTicket)
 
 -- import qualified Data.ByteString.Char8 as BS
 
@@ -200,18 +202,19 @@ pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
 -- attempt steals from the same thread.
 tryPopR :: ChaseLevDeque elt -> IO (Maybe elt)
 tryPopR CLD{top,bottom,activeArr} =  tryit "tryPopR" $ do
-  t   <- readIORef top  
+--  t   <- readIORef top
+  tt  <- readForCAS top
   b   <- readIORef bottom
   arr <- readIORef activeArr
-
  -- when (dbg && b < t) $ error$ "tryPopR: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
 
-  let size = b - t
+  let t = peekTicket tt
+      size = b - t
   if size <= 0 then 
     return Nothing
    else do 
     obj   <- getCirc  arr t
-    (b,_) <- casIORef top t (t+1) 
+    (b,_) <- casIORef top tt (t+1)
     if b then 
       return (Just obj)
      else 
@@ -223,11 +226,11 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
   arr <- readIORef activeArr
   b   <- return (b - 1) -- shadowing
   writeIORef bottom b
-  t   <- readIORef top    
-
+  tt   <- readForCAS top    
 --  when (dbg && b < t) $ error$ "tryPopL: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
 
-  let size = b - t  
+  let t = peekTicket tt
+      size = b - t 
   if size < 0 then do
     writeIORef bottom t 
     return Nothing
@@ -236,7 +239,7 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
     if size > 0 then 
       return (Just obj)
      else do
-      (b,_) <- casIORef top t (t+1)
+      (b,_) <- casIORef top tt (t+1)
       writeIORef bottom (t+1)
       if b then return$ Just obj
            else return$ Nothing 
