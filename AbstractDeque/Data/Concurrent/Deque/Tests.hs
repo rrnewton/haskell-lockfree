@@ -348,8 +348,9 @@ test_ws_triv2 q = do
     [Just "one",Just "two",Just "four",Just "three",Nothing,Nothing]
 
 
--- | This test uses a number of producer and consumer threads which push and pop
--- elements from random positions in an array of FIFOs.
+-- | This test uses a number of worker threads which randomly either push or pop work
+-- to their local work stealing deque.  Also, there are consumer (always thief)
+-- threads which never produce and only consume.
 test_random_work_stealing :: (DequeClass d, PopL d) => Int -> IO (d Int) -> IO ()
 test_random_work_stealing total newqueue = do
    
@@ -387,7 +388,6 @@ test_random_work_stealing total newqueue = do
                    loop (i+1) acc
         in loop 0 0
 
-   -- Each consumer doesn't quit until it has popped "perthread":
    consumer_sums <- forkJoin consumers $ \ ind ->
         let mymax = if ind==0 then perthread2 + remain else perthread2     
             consume_loop summ  i | i == mymax = return summ
@@ -403,13 +403,15 @@ test_random_work_stealing total newqueue = do
                 Nothing ->
                   consume_loop summ (i+1) -- Increment even if we don't get a result.
         in consume_loop 0 0
+   -- Consumers are finished as of here.
 
    dbgPrintLn 1  "Reading sums from MVar..."
    prod_ls <- mapM (\_ -> takeMVar prod_results) [1..producers]
 
+   -- We sequentially read out the leftovers after all the parallel tasks are done:
    leftovers <- forM qs $ \ q ->
      let loop !acc = do
-           x <- tryPopR q
+           x <- tryPopR q -- This should work as a popR OR a popL.
            case x of
              Nothing -> return acc
              Just n  -> loop (acc+n)

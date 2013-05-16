@@ -19,7 +19,7 @@ Synopsis: Chase & Lev work-stealing lock-free double-ended queues (deques).
 Library
   exposed-modules:   Data.Concurrent.Deque.ChaseLev.DequeInstance,
                      Data.Concurrent.Deque.ChaseLev
-                     Data.Concurrent.Deque.ChaseLev2
+--                     Data.Concurrent.Deque.ChaseLev2
 -- Disabling this [2012.03.08].  It got terrible performance anyway:
 --                     Data.Concurrent.Deque.ReactorDeque
   build-depends:     base >= 4.4.0.0, array, transformers, bits-atomic,
