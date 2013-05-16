@@ -37,6 +37,9 @@ instance PC.DequeClass ChaseLevDeque where
   nullQ = nullQ
   pushL = pushL
   tryPopR = tryPopR
+  -- | Popping the left end is the "local" side:
+  leftThreadSafe  _ = False
+  rightThreadSafe _ = True
 
 instance PC.PopL ChaseLevDeque where 
   tryPopL = tryPopL
