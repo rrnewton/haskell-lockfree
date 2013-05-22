@@ -38,3 +38,23 @@ Uh oh, perhaps more worrying I just got this result where the size is TOO BIG:
     expected: 62499750000
      but got: 62499887547
 
+
+[2013.05.17] {Back to debugging}
+================================
+
+Ok, I replaced the CAS' in ChaseLev.hs with atomicModifyIORef.  I
+still see a failure with too big a sum:
+
+    Checking that queue is finally null...
+      :test_random_work_stealing: [Failed]
+    Correct final sum
+    expected: 62499750000
+     but got: 62499933370
+
+And too little:
+
+    expected: 62499750000
+     but got: 62499749987
+
+Let's audit the test some more...
+

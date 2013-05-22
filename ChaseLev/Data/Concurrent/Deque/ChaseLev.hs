@@ -214,7 +214,8 @@ tryPopR CLD{top,bottom,activeArr} =  tryit "tryPopR" $ do
     return Nothing
    else do 
     obj   <- getCirc  arr t
-    (b,_) <- casIORef top tt (t+1)
+--    (b,_) <- casIORef top tt (t+1)
+    (b,_) <- fakeCAS top tt (t+1)
     if b then 
       return (Just obj)
      else 
@@ -239,9 +240,28 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
     if size > 0 then 
       return (Just obj)
      else do
-      (b,_) <- casIORef top tt (t+1)
+--      (b,_) <- casIORef top tt (t+1)
+      (b,_) <- fakeCAS top tt (t+1)
       writeIORef bottom (t+1)
       if b then return$ Just obj
            else return$ Nothing 
 
 ------------------------------------------------------------
+
+{-# INLINE fakeCAS #-}
+fakeCAS :: Eq a => IORef a -> Ticket a -> a -> IO (Bool,a)
+-- casIORef r !old !new =   
+fakeCAS r oldT new = do
+  let old = peekTicket oldT
+  atomicModifyIORef r $ \val -> 
+{-
+    trace ("    DBG: INSIDE ATOMIC MODIFY, ptr eqs found/expected: " ++ 
+	   show [ptrEq val old, ptrEq val old, ptrEq val old] ++ 
+	   " ptr eq self: " ++ 
+	   show [ptrEq val val, ptrEq old old] ++
+	   " names: " ++ show (unsafeName old, unsafeName old, unsafeName val, unsafeName val)
+	  ) $
+-}
+    if   (val == old)
+    then (new, (True, val))
+    else (val, (False,val))
