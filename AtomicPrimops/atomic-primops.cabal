@@ -7,7 +7,7 @@ Maintainer:          rrnewton@gmail.com
 Category:            Data
 Stability:           Provisional
 -- Portability:         non-portabile (x86_64)
-Build-type:          Simple
+Build-type:          Custom
 -- TODO: This requirement needs to be bumped to 1.17 when the latest cabal is
 -- released.  This package triggers issue #1284:
 Cabal-version:       >=1.8

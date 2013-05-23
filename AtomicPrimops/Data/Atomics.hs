@@ -1,15 +1,5 @@
 {-# LANGUAGE  MagicHash, UnboxedTuples, BangPatterns, ScopedTypeVariables, CPP #-}
 
-#ifdef GHC_PROFILING_ON
-#ifndef MIN_VERSION_Cabal
-#error "MIN_VERSION_Cabal should be defined!"
-#endif
-#if MIN_VERSION_Cabal(1,17,0)
-#else
-#error "Before Cabal 1.17 there was a bug that prevents you from building this library with profiling.  See cabal issue 1284."
-#endif
-#endif
-
 -- | Provides atomic memory operations on IORefs and Mutable Arrays.
 --
 --   Pointer equality need not be maintained by a Haskell compiler.  For example, Int
