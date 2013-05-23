@@ -53,6 +53,7 @@ markThread True _ = return () -- Don't bother tracking.
 markThread False ref = do
   last <- readIORef ref
   tid  <- myThreadId
+  putStrLn$"Marking! "++show tid
   atomicModifyIORef ref $ \ x ->
     case x of
       Nothing -> (Just tid, ())
