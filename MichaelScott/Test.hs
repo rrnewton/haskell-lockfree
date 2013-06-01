@@ -5,13 +5,25 @@
 module Main where
 import Test.Framework                     (defaultMain)
 import Test.Framework.Providers.HUnit     (hUnitTestToTests)
-import Data.Concurrent.Deque.Tests        (tests_fifo)
-import Data.Concurrent.Queue.MichaelScott (newQ)
+import Data.Concurrent.Deque.Tests        (tests_fifo, numElems, numAgents)
 import System.Environment (withArgs)
-import Test.HUnit (Test(TestLabel))
+import Test.HUnit 
 
-main =
+-- import Data.Concurrent.Queue.MichaelScott (newQ)
+import Data.Concurrent.Queue.MichaelScott (LinkedQueue)
+import Data.Concurrent.Deque.Class        (newQ)
+import Data.Concurrent.Deque.Debugger
+
+main = do
+  putStrLn$ "Running with numElems "++show numElems++" and numAgents "++ show numAgents
+  putStrLn "Use NUMELEMS and +RTS to control the size of this benchmark."
+  -- Don't allow concurent tests (the tests are concurrent!):
   withArgs ["-j1","--jxml=test-results.xml"] $ 
-  defaultMain$ hUnitTestToTests$
-  TestLabel "MichaelScott" $
-  tests_fifo newQ
+    defaultMain$ hUnitTestToTests$
+    TestList
+    [ TestLabel "MichaelScott" $ tests_fifo (newQ :: IO (LinkedQueue a))
+    , TestLabel "MichaelScott(DbgWrapper)" $
+        tests_fifo (newQ :: IO (DebugDeque LinkedQueue a))
+    ]
+
+  

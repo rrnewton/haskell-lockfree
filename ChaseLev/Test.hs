@@ -16,4 +16,4 @@ main =
   -- test_all newQ
   tests_wsqueue
   (newQ :: IO (ChaseLevDeque a))
-  -- (newQ :: IO (DebugDeque ChaseLevDeque a))
+--  (newQ :: IO (DebugDeque ChaseLevDeque a))
