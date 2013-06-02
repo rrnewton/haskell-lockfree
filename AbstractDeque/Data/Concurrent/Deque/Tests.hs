@@ -432,8 +432,8 @@ test_random_work_stealing total newqueue = do
 -- on the left end.  There is some duplication with tests_fifo.
 tests_wsqueue :: (PopL d) => (forall elt. IO (d elt)) -> Test
 tests_wsqueue newq = TestLabel "work-stealing-deque-tests"$ TestList $
- tests_basic newq ++
- tests_wsqueue_exclusive newq
+ tests_wsqueue_exclusive newq ++
+ tests_basic newq 
 
 -- Internal: factoring this out.
 tests_wsqueue_exclusive :: (PopL d) => (forall elt. IO (d elt)) -> [Test]

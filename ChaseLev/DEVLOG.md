@@ -58,3 +58,31 @@ And too little:
 
 Let's audit the test some more...
 
+
+[2013.06.01] {Back to it, with new debugging wrapper}
+-----------------------------------------------------
+
+Right now if I turn on the debugging wrapper, here's what happens:
+
+    :ChaseLev(DbgWrapper):work-stealing-deque-tests:
+    Grow to size 64, copying over 31
+    Grow to size 128, copying over 63
+    Grow to size 64, copying over 31
+    Grow to size 128, copying over 63
+    Grow to size 256, copying over 127
+    Grow to size 256, copying over 127
+    Grow to size 512, copying over 255
+    Grow to size 512, copying over 255
+    Grow to size 1024, copying over 511
+    Grow to size 2048, copying over 1023
+    Grow to size 1024, copying over 511
+      :test_random_work_stealing: [Running]
+
+      :test_random_work_stealing: [Failed]
+    Correct final sum
+    expected: 62499750000
+     but got: 62252663774
+
+The queues grow more than in normal runs.  That's fine, of course it
+would change timing.
+

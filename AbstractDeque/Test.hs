@@ -12,6 +12,8 @@ import Test.Framework.Providers.HUnit     (hUnitTestToTests)
 import Test.HUnit (assert, assertEqual, Test(TestCase, TestList, TestLabel))
 import qualified Data.Concurrent.Deque.Tests as T
 import qualified Data.Concurrent.Deque.Reference as R
+import qualified Data.Concurrent.Deque.Class as C
+import Data.Concurrent.Deque.Debugger (DebugDeque)
 import System.Environment (withArgs)
 
 -- Import the instances:
@@ -41,10 +43,12 @@ main = do
   withArgs ["-j1","--jxml=test-results.xml"] $   
     defaultMain$ hUnitTestToTests$ 
         TestLabel "Reference_Deque" $ TestList $ 
-          [ 
-            T.tests_all R.newQ 
-          , test_1
-          , test_2
+          [ TestLabel "test_1" test_1
+          , TestLabel "test_2" test_2 
+          , TestLabel "direct"$ T.tests_all R.newQ
+          -- Test going through the class interface as well:  
+          , TestLabel "thru_class"$ T.tests_all (C.newQ :: IO (R.SimpleDeque a))
+          , TestLabel "with_debug"$ T.tests_all (C.newQ :: IO (DebugDeque R.SimpleDeque a))
           ]
 #else
 main = putStrLn "WARNING: Tests disabled for GHC < 7"
