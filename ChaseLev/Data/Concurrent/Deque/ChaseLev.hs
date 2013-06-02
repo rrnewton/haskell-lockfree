@@ -59,6 +59,7 @@ data ChaseLevDeque a = CLD {
 --------------------------------------------------------------------------------
 -- Debugging mode.
 #define DEBUG
+-- define FAKECAS
 
 {-# INLINE rd #-}
 {-# INLINE wr #-}
@@ -247,7 +248,7 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
 ------------------------------------------------------------
 
 {-# INLINE doCAS #-}
-#ifdef DEBUG
+#ifdef FAKECAS
 doCAS = fakeCAS
 #else 
 doCAS = casIORef

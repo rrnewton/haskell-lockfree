@@ -94,3 +94,28 @@ fakeCAS... what then?  Well, it's a LOT slower, but I still get this:
     expected: 62499750000
      but got: 62499749993
 
+And if I crank the debug level up then I can't reproduce it.
+If I selectively, turn on just one debug message I can get a little
+more info while still failing:
+
+    Final sum: 62461617055, producer/consumer/leftover sums: ([31240128173,31221488882],[0,0],[0,0])
+      :test_random_work_stealing: [Running]
+
+      :test_random_work_stealing: [Failed]
+    Correct final sum
+    expected: 62499750000
+     but got: 62461617055
+     
+
+Interesting... the consumers were not successful at all...
+(Eek, now it's got a build where it's failing ALL the time.)
+Oh wait... that's just a completely busted build.. Must be the profiling thing.
+I seem to have situations where a cabal clean is necessary.  Not hermetic.
+
+Ugh, right now I'm seeing total failure of CAS even if I clean and
+rebuild AtomicPrimops, AbstractDeque, and ChaseLev... what gives? 
+
+
+
+
+

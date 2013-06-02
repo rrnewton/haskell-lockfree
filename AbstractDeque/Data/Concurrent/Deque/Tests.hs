@@ -418,7 +418,7 @@ test_random_work_stealing total newqueue = do
      in loop 0
         
    let finalSum = Prelude.sum (consumer_sums ++ prod_ls ++ leftovers)
-   dbgPrintLn 1$ "Final sum: "++ show finalSum ++ ", producer/consumer/leftover sums: "++show (prod_ls, consumer_sums, leftovers)
+   dbgPrintLn 0$ "Final sum: "++ show finalSum ++ ", producer/consumer/leftover sums: "++show (prod_ls, consumer_sums, leftovers)
    dbgPrintLn 1$ "Checking that queue is finally null..."
    assertEqual "Correct final sum" (producers * expectedSum perthread) finalSum
    bs <- mapM nullQ qs
