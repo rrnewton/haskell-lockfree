@@ -62,7 +62,7 @@ Let's audit the test some more...
 [2013.06.01] {Back to it, with new debugging wrapper}
 -----------------------------------------------------
 
-Right now if I turn on the debugging wrapper, here's what happens:
+Right now if I turn on the debugging wrapper (+realCAS), here's what happens:
 
     :ChaseLev(DbgWrapper):work-stealing-deque-tests:
     Grow to size 64, copying over 31
@@ -85,4 +85,12 @@ Right now if I turn on the debugging wrapper, here's what happens:
 
 The queues grow more than in normal runs.  That's fine, of course it
 would change timing.
+
+If I hop over to the debug branch, and then try the wrapper +
+fakeCAS... what then?  Well, it's a LOT slower, but I still get this:
+
+      :test_random_work_stealing: [Failed]
+    Correct final sum
+    expected: 62499750000
+     but got: 62499749993
 

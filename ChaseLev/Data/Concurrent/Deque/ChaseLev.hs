@@ -214,8 +214,7 @@ tryPopR CLD{top,bottom,activeArr} =  tryit "tryPopR" $ do
     return Nothing
    else do 
     obj   <- getCirc  arr t
---    (b,_) <- casIORef top tt (t+1)
-    (b,_) <- fakeCAS top tt (t+1)
+    (b,_) <- doCAS top tt (t+1)
     if b then 
       return (Just obj)
      else 
@@ -240,13 +239,19 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
     if size > 0 then 
       return (Just obj)
      else do
---      (b,_) <- casIORef top tt (t+1)
-      (b,_) <- fakeCAS top tt (t+1)
+      (b,_) <- doCAS top tt (t+1)
       writeIORef bottom (t+1)
       if b then return$ Just obj
            else return$ Nothing 
 
 ------------------------------------------------------------
+
+{-# INLINE doCAS #-}
+#ifdef DEBUG
+doCAS = fakeCAS
+#else 
+doCAS = casIORef
+#endif
 
 {-# INLINE fakeCAS #-}
 fakeCAS :: Eq a => IORef a -> Ticket a -> a -> IO (Bool,a)
