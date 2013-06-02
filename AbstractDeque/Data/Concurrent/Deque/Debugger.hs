@@ -14,7 +14,7 @@ import Data.Concurrent.Deque.Class
 -- newtype DebugDeque d = DebugDeque d
 
 -- | Warning, this enforces the excessively STRONG invariant that if any end of the
--- deque is non-threadsafe then it may every only be touched by one thread during its
+-- deque is non-threadsafe then it may ever only be touched by one thread during its
 -- entire lifetime.
 --
 -- This extreme form of monagamy is easier to verify, because we don't have enough
@@ -53,7 +53,7 @@ markThread True _ = return () -- Don't bother tracking.
 markThread False ref = do
   last <- readIORef ref
   tid  <- myThreadId
-  putStrLn$"Marking! "++show tid
+--  putStrLn$"Marking! "++show tid
   atomicModifyIORef ref $ \ x ->
     case x of
       Nothing -> (Just tid, ())
