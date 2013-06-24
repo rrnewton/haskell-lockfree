@@ -14,6 +14,8 @@ import qualified Data.Concurrent.Deque.ChaseLev as CL
 import System.Environment (withArgs, getArgs)
 import Test.HUnit 
 
+import RegressionTests.Issue5 (standalone_single_CAS)
+
 main :: IO ()
 main = do 
   putStrLn$ "Running with numElems "++show numElems++" and numAgents "++ show numAgents
@@ -24,6 +26,7 @@ main = do
     defaultMain$ hUnitTestToTests$
     TestList
     [ TestLabel "simplest_single_CAS"  $ TestCase simplest_single_CAS
+    , TestLabel "standalone_single_CAS"  $ TestCase simplest_single_CAS
     , TestLabel "ChaseLev" $ tests_wsqueue (newQ :: IO (CL.ChaseLevDeque a))
     , TestLabel "ChaseLev(DbgWrapper)" $ tests_wsqueue (newQ :: IO (DebugDeque CL.ChaseLevDeque a))
     ]
@@ -34,6 +37,7 @@ main = do
 
 
 -- <Small Reproducer for recent debug wrapper problem>
+-- This fails even without profiling on.
 simplest_single_CAS :: IO ()
 simplest_single_CAS =
   triv =<< (newQ :: IO (DebugDeque CL.ChaseLevDeque a))           
@@ -47,3 +51,4 @@ simplest_single_CAS =
               Just x -> x
               Nothing -> error "Even a single CAS in isolation did not work!"
      assertEqual "test_ws_triv1" y "hi"
+
