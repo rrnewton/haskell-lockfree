@@ -1,12 +1,9 @@
-module RegressionTests.Issue5 (standalone_single_CAS, main) where
+module RegressionTests.Issue5 (standalone_single_CAS) where
 
 import Control.Concurrent
 import Data.IORef
 import Data.Concurrent.Deque.Class 
 import qualified Data.Concurrent.Deque.ChaseLev as CL
-
-main :: IO ()
-main = standalone_single_CAS
 
 --------------------------------------------------------------------------------
 
@@ -20,7 +17,7 @@ standalone_single_CAS =
      pushL q "hi" 
      x <- tryPopL q
      case x of
-       Just "hi" -> return ()
+       Just "hi" -> putStrLn "Got expected value.  Test passed.\n"
        Just x'   -> error$ "A single CAS got the WRONG value back: "++show x'
        Nothing   -> error "Even a single CAS in isolation did not work!"
 
