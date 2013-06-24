@@ -37,11 +37,9 @@ data DebugDeque d elt = DebugDeque (IORef (Maybe ThreadId), IORef (Maybe ThreadI
 
 instance DequeClass d => DequeClass (DebugDeque d) where 
   pushL (DebugDeque (ref,_) q) elt = do
-    markThread (leftThreadSafe q) ref
     pushL q elt
 
   tryPopR (DebugDeque (_,ref) q) = do
-    markThread (rightThreadSafe q) ref
     tryPopR q 
 
   newQ = do l <- newIORef Nothing
@@ -57,19 +55,5 @@ instance DequeClass d => DequeClass (DebugDeque d) where
 
 instance PopL d => PopL (DebugDeque d) where 
   tryPopL (DebugDeque (ref,_) q) = do
-    markThread (leftThreadSafe q) ref
     tryPopL q 
-
--- | Mark the last thread to use this endpoint.
-markThread True _ = return () -- Don't bother tracking.
-markThread False ref = do
-  last <- readIORef ref
-  tid  <- myThreadId
---  putStrLn$"Marking! "++show tid
-  atomicModifyIORef ref $ \ x ->
-    case x of
-      Nothing -> (Just tid, ())
-      Just tid2
-        | tid == tid2 -> (Just tid,())
-        | otherwise   -> error$ "DebugDeque: invariant violated, thread safety not allowed but accessed by: "++show (tid,tid2)
 
