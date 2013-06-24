@@ -255,6 +255,9 @@ doCAS = casIORef
 #endif
 
 {-# INLINE fakeCAS #-}
+-- This approach for faking it requires proper equality, it doesn't use pointer
+-- equality at all.  That makes it not a true substitute but useful for some
+-- debugging.
 fakeCAS :: Eq a => IORef a -> Ticket a -> a -> IO (Bool,a)
 -- casIORef r !old !new =   
 fakeCAS r oldT new = do

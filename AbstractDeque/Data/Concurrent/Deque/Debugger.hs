@@ -20,6 +20,9 @@ import Data.Concurrent.Deque.Class
 -- This extreme form of monagamy is easier to verify, because we don't have enough
 -- information to know if two operations on different threads are racing with one
 -- another or are properly synchronized.
+--
+-- The wrapper data structure has two IORefs to track the last thread that touched
+-- the left and right end of the deque, respectively.
 data DebugDeque d elt = DebugDeque (IORef (Maybe ThreadId), IORef (Maybe ThreadId)) (d elt) 
 
 

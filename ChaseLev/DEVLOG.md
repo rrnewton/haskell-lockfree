@@ -109,13 +109,51 @@ more info while still failing:
 
 Interesting... the consumers were not successful at all...
 (Eek, now it's got a build where it's failing ALL the time.)
-Oh wait... that's just a completely busted build.. Must be the profiling thing.
-I seem to have situations where a cabal clean is necessary.  Not hermetic.
+[Oh wait... that's just a completely busted build.. Must be the profiling thing.
+I seem to have situations where a cabal clean is necessary.  Not hermetic.]
 
 Ugh, right now I'm seeing total failure of CAS even if I clean and
 rebuild AtomicPrimops, AbstractDeque, and ChaseLev... what gives? 
 
+Oh wait, this time it's NOT just the profiling.  The debug wrapper is
+causing failures (how!?).  
 
+    :ChaseLev:work-stealing-deque-tests:
+      :test_ws_triv1: [OK]
+      :test_ws_triv2: [OK]
+    :ChaseLev(DbgWrapper):work-stealing-deque-tests:
+      :test_ws_triv1: [Failed]
+    ERROR: user error (Pattern match failure in do expression at Data/Concurrent/Deque/Tests.hs:334:3-8)
+      :test_ws_triv2: [Failed]
 
+In particular a push followed by an immediate tryPop is failing... 
+That blows my mind because the debug wrapper is adding very little.
+I already disabled the thread-marking so, basically, it is just eta expansion.
 
+[2013.06.04] {Continued debugging}
+----------------------------------
+
+Ok, the extreme form of failure above... with triv1/triv2 failing.
+That does NOT happen with fakeCAS.  So this is a nice small reproducer.
+
+[2013.06.24] {Reference implementation does use leftover bucket}
+----------------------------------------------------------------
+
+By the way, the reference implementation passes all these tests with a
+variety of different thread settings.  Also it DOES sometimes have
+some numbers fall into the "leftover" bucket:
+
+    Final sum: 4999950000, producer/consumer/leftover sums: ([3537163301],[1459399490],[3387209])
+
+[2013.06.24] {back to eternal debugging}
+----------------------------------------
+
+What kinds of invariants should we start to see?  For one, I assert we
+should NOT see this failure:
+
+    Warning: Failed to pop 5000 times consecutively
+
+Unless triv1 & triv2 also fail (i.e. CAS is completely broken because
+of the old cabal/profiling bug or the new debug-wrapper oddity).  I
+don't think I've invalidated that hypothesis yet.
 
