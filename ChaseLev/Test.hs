@@ -15,10 +15,7 @@ import System.Environment (withArgs, getArgs)
 import Test.HUnit 
 
 main :: IO ()
-
-main = main1
-
-main1 = do 
+main = do 
   putStrLn$ "Running with numElems "++show numElems++" and numAgents "++ show numAgents
   putStrLn "Use NUMELEMS and +RTS to control the size of this benchmark."
   args <- getArgs
@@ -26,27 +23,27 @@ main1 = do
   withArgs (args ++ ["-j1","--jxml=test-results.xml"]) $   
     defaultMain$ hUnitTestToTests$
     TestList
-    [ TestLabel "ChaseLev" $ tests_wsqueue (newQ :: IO (CL.ChaseLevDeque a))
+    [ TestLabel "simplest_single_CAS"  $ TestCase simplest_single_CAS
+    , TestLabel "ChaseLev" $ tests_wsqueue (newQ :: IO (CL.ChaseLevDeque a))
     , TestLabel "ChaseLev(DbgWrapper)" $ tests_wsqueue (newQ :: IO (DebugDeque CL.ChaseLevDeque a))
-    , TestLabel "newtriv"  $ TestCase main2
     ]
 
--- main2 = new_triv1 =<< (newQ :: IO (DebugDeque ChaseLevDeque a))
-main2 = do
-  q <- (newQ :: IO (DebugDeque CL.ChaseLevDeque a))
-  pushL q "hi" 
-  Just x <- tryPopL q 
-  assertEqual "test_ws_triv1" x "hi"
-  putStrLn "Test passed."
-  
--- main2 = new_triv1 =<< (newQ :: IO (ChaseLevDeque a))
--- main2 = new_triv1 =<< (newQ :: IO (SimpleDeque a))
+--------------------------------------------------------------------------------
+-- Individual unit and regression tests:
+-------------------------------------------------------------------------------
 
--- <Small Reproducer>
--- This is what's failing with the debug wrapper, WHY?
-new_triv1 :: PopL d => d [Char] -> IO ()
-new_triv1 q = do
-  pushL q "hi" 
-  Just x <- tryPopL q 
-  assertEqual "test_ws_triv1" x "hi"
 
+-- <Small Reproducer for recent debug wrapper problem>
+simplest_single_CAS :: IO ()
+simplest_single_CAS =
+  triv =<< (newQ :: IO (DebugDeque CL.ChaseLevDeque a))           
+ where   
+   -- This is what's failing with the debug wrapper, WHY?
+   triv :: PopL d => d [Char] -> IO ()
+   triv q = do
+     pushL q "hi" 
+     x <- tryPopL q
+     let y = case x of
+              Just x -> x
+              Nothing -> error "Even a single CAS in isolation did not work!"
+     assertEqual "test_ws_triv1" y "hi"
