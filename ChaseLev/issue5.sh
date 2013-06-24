@@ -14,6 +14,11 @@ cabal-1.17.0_HEAD install $CBLARGS ../AtomicPrimops/
 # This works in -O0, and fails in -O2.
 # $GHC -O0 -fforce-recomp --make RegressionTests/Issue5.hs -o Issue5.exe -main-is RegressionTests.Issue5.standalone_single_CAS
 
-$GHC -O1 -fforce-recomp --make RegressionTests/Issue5.hs -o Issue5.exe -main-is RegressionTests.Issue5.standalone_single_CAS
+
+# OPT="-O2 -threaded -rtsopts"
+OPT="-O1"
+DBG="-keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint -ddump-ds -ddump-simpl -ddump-stg -ddump-asm -ddump-bcos -ddump-cmm -ddump-opt-cmm -ddump-inlinings -fforce-recomp"
+
+$GHC $OPT $DBG --make RegressionTests/Issue5.hs -o Issue5.exe -main-is RegressionTests.Issue5.standalone_pushPop
 
 ./Issue5.exe

@@ -1,4 +1,4 @@
-module RegressionTests.Issue5 (standalone_single_CAS) where
+module RegressionTests.Issue5 (standalone_pushPop) where
 
 import Control.Concurrent
 import Data.IORef
@@ -7,8 +7,8 @@ import qualified Data.Concurrent.Deque.ChaseLev as CL
 
 --------------------------------------------------------------------------------
 
-standalone_single_CAS :: IO ()
-standalone_single_CAS =
+standalone_pushPop :: IO ()
+standalone_pushPop =
   triv =<< (newQ :: IO (DebugDeque CL.ChaseLevDeque a))           
  where   
    -- This is what's failing with the debug wrapper, WHY?
@@ -18,8 +18,8 @@ standalone_single_CAS =
      x <- tryPopL q
      case x of
        Just "hi" -> putStrLn "Got expected value.  Test passed.\n"
-       Just x'   -> error$ "A single CAS got the WRONG value back: "++show x'
-       Nothing   -> error "Even a single CAS in isolation did not work!"
+       Just x'   -> error$ "A single push/pop got the WRONG value back: "++show x'
+       Nothing   -> error "Even a single push/pop in isolation did not work!"
 
 
 -- | Warning, this enforces the excessively STRONG invariant that if any end of the

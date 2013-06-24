@@ -157,3 +157,31 @@ Unless triv1 & triv2 also fail (i.e. CAS is completely broken because
 of the old cabal/profiling bug or the new debug-wrapper oddity).  I
 don't think I've invalidated that hypothesis yet.
 
+I factored out the simple failure as a standalone test (see Issue #5
+on this repo).  I need to go through the core to see what is
+triggering it.  To get started, here are the relative sizes:
+
+    O0_dump:
+    total 135168
+    -rw-r----- 1 rrnewton admin 31992 Jun 24 15:39 Issue5.dump-asm
+    -rw-r----- 1 rrnewton admin 31560 Jun 24 15:39 Issue5.dump-cmm
+    -rw-r----- 1 rrnewton admin  7340 Jun 24 15:39 Issue5.dump-ds
+    -rw-r----- 1 rrnewton admin 36740 Jun 24 15:39 Issue5.dump-opt-cmm
+    -rw-r----- 1 rrnewton admin  7283 Jun 24 15:39 Issue5.dump-simpl
+    -rw-r----- 1 rrnewton admin   130 Jun 24 15:39 Issue5.dump-simpl-stats
+    -rw-r----- 1 rrnewton admin 11912 Jun 24 15:39 Issue5.dump-stg
+
+    O1_dump:
+    total 208896
+    -rw-r----- 1 rrnewton admin 41159 Jun 24 15:37 Issue5.dump-asm
+    -rw-r----- 1 rrnewton admin 38537 Jun 24 15:37 Issue5.dump-cmm
+    -rw-r----- 1 rrnewton admin  7340 Jun 24 15:37 Issue5.dump-ds
+    -rw-r----- 1 rrnewton admin 44177 Jun 24 15:37 Issue5.dump-opt-cmm
+    -rw-r----- 1 rrnewton admin 36091 Jun 24 15:37 Issue5.dump-simpl
+    -rw-r----- 1 rrnewton admin  4210 Jun 24 15:37 Issue5.dump-simpl-stats
+    -rw-r----- 1 rrnewton admin 22054 Jun 24 15:37 Issue5.dump-stg
+
+The optimized one is bigger, likely as a result of link time inlining
+from the existing libs.
+
+

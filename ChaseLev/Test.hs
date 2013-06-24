@@ -14,7 +14,7 @@ import qualified Data.Concurrent.Deque.ChaseLev as CL
 import System.Environment (withArgs, getArgs)
 import Test.HUnit 
 
-import RegressionTests.Issue5 (standalone_single_CAS)
+import RegressionTests.Issue5 (standalone_pushPop)
 
 main :: IO ()
 main = do 
@@ -25,8 +25,8 @@ main = do
   withArgs (args ++ ["-j1","--jxml=test-results.xml"]) $   
     defaultMain$ hUnitTestToTests$
     TestList
-    [ TestLabel "simplest_single_CAS"  $ TestCase simplest_single_CAS
-    , TestLabel "standalone_single_CAS"  $ TestCase simplest_single_CAS
+    [ TestLabel "simplest_pushPop"  $ TestCase simplest_pushPop
+    , TestLabel "standalone_pushPop"  $ TestCase standalone_pushPop
     , TestLabel "ChaseLev" $ tests_wsqueue (newQ :: IO (CL.ChaseLevDeque a))
     , TestLabel "ChaseLev(DbgWrapper)" $ tests_wsqueue (newQ :: IO (DebugDeque CL.ChaseLevDeque a))
     ]
@@ -35,11 +35,10 @@ main = do
 -- Individual unit and regression tests:
 -------------------------------------------------------------------------------
 
-
 -- <Small Reproducer for recent debug wrapper problem>
 -- This fails even without profiling on.
-simplest_single_CAS :: IO ()
-simplest_single_CAS =
+simplest_pushPop :: IO ()
+simplest_pushPop =
   triv =<< (newQ :: IO (DebugDeque CL.ChaseLevDeque a))           
  where   
    -- This is what's failing with the debug wrapper, WHY?
@@ -49,6 +48,6 @@ simplest_single_CAS =
      x <- tryPopL q
      let y = case x of
               Just x -> x
-              Nothing -> error "Even a single CAS in isolation did not work!"
+              Nothing -> error "Even a single push/pop in isolation did not work!"
      assertEqual "test_ws_triv1" y "hi"
 
