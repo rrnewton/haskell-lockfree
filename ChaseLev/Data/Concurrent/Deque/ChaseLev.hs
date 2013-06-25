@@ -29,6 +29,8 @@ import Control.Exception (catch, SomeException, throw, evaluate,try)
 import Control.Monad (when, unless, forM_)
 import Data.Atomics (readArrayElem, readForCAS, casIORef, Ticket, peekTicket)
 
+-- import Data.Atomics.Counter (newCounter, incrCounter, casCounter)
+
 -- Debugging:
 import System.IO.Unsafe (unsafePerformIO)
 import Text.Printf (printf)
@@ -269,24 +271,14 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
   let t = peekTicket tt
       size = b - t 
   if size < 0 then do
-#ifdef DEBUGCL
-    printf "Debug: tryPopL in size<0 case... \n"
-#endif    
     writeIORef bottom =<< evaluate t 
     return Nothing
    else do
     obj <- getCirc arr b
     if size > 0 then do
-#ifdef DEBUGCL
-      printf "Debug: tryPopL in size>0 case... \n"
-#endif    
       return (Just obj)
      else do
       (b,ol) <- doCAS top tt (t+1)
-#ifdef DEBUGCL
-      printf "Debug: tryPopL in size=0, last element case! CAS: %s, tt %x, old %x, ptreq %s\n"
-             (show b) (unsafeName tt) (unsafeName ol) (show$ ptrEq tt ol)
-#endif    
       writeIORef bottom =<< evaluate (t+1)
       if b then return$ Just obj
            else return$ Nothing 
