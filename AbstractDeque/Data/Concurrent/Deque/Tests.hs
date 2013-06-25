@@ -359,6 +359,7 @@ test_ws_triv2 q = do
     [Just "one",Just "two",Just "four",Just "three",Nothing,Nothing]
 
 
+
 -- | This test uses a number of worker threads which randomly either push or pop work
 -- to their local work stealing deque.  Also, there are consumer (always thief)
 -- threads which never produce and only consume.
@@ -369,10 +370,13 @@ test_random_work_stealing total newqueue = do
    dbgPrintLn 1 "======================================================"       
 
    numAgents <- getNumAgents
-   let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
-       consumers = max 1 (numAgents - producers)
-       perthread  = fromIntegral (total `quot` producers)
-       (perthread2,remain) = (total `quotRem` consumers)
+   let producers, consumers :: Int 
+       perthread, realtotal, perthread2 :: Elt
+       producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
+       consumers = max 1 (fromIntegral numAgents - producers)
+       perthread = fromIntegral total `quot` fromIntegral producers
+       realtotal = perthread * fromIntegral producers
+       (perthread2,remain) = realtotal `quotRem` fromIntegral consumers
        
    qs <- sequence (replicate producers newqueue)   
    -- A work-stealing deque only has ONE threadsafe end:
@@ -385,25 +389,31 @@ test_random_work_stealing total newqueue = do
    prod_results <- newEmptyMVar
    forM_ (zip [0..producers-1] qs) $ \ (ind,myQ) -> do 
       myfork "producer thread" $
-        let loop i !acc | i == perthread = putMVar prod_results acc
-            loop i !acc = 
-              do -- Randomly push or pop:
+        let loop :: Elt -> Elt -> Elt -> IO ()
+            loop i !pops !acc 
+              | i == perthread = putMVar prod_results (pops,acc)
+              | otherwise = do 
+                 -- Randomly push or pop:
                  b   <-  randomIO  :: IO Bool
                  if b then do
                    x <- spinPopN 100 (tryPopL myQ)
+                   -- In the case where we pop, we do NOT advance 'i', saving that
+                   -- for the next iteration that acutally does a push.
                    case x of
-                     Nothing -> loop i acc
-                     Just n  -> loop i (n+acc)
+                     Nothing -> loop i  pops    acc
+                     Just n  -> loop i (pops+1) (n+acc)
                    else do
                    pushL myQ i
                    -- when (i - ind*producers < 10) $ dbgPrint 1 $ printf " [%d] pushed %d \n" ind i
-                   loop (i+1) acc
-        in loop 0 0
+                   loop (i+1) pops acc
+        in loop 0 0 0
 
+   -- In this version
    consumer_sums <- forkJoin consumers $ \ ind ->
-        let mymax = if ind==0 then perthread2 + remain else perthread2     
-            consume_loop summ  i | i == mymax = return summ
-            consume_loop !summ i = do
+        let mymax = if ind==0 then perthread2 + remain else perthread2             
+            consume_loop !summ !successes i 
+               | i == mymax = return (successes, summ)
+               | otherwise  = do 
               -- Randomly pick a position:
               ix <- randomRIO (0,producers - 1) :: IO Int
               -- Try to pop something, but not too hard:
@@ -411,26 +421,33 @@ test_random_work_stealing total newqueue = do
               case m of
                 Just x -> do
                   when (i < 10) $ dbgPrint 1 $ printf " [%d] popped try#%d = %d\n" ind i x
-                  consume_loop (summ+x) (i+1)
+                  consume_loop (summ+x) (successes+1) (i+1)
                 Nothing ->
-                  consume_loop summ (i+1) -- Increment even if we don't get a result.
-        in consume_loop 0 0
-   -- Consumers are finished as of here.
+                  consume_loop summ successes (i+1) -- Increment even if we don't get a result.
+        in do dbgPrintLn 1 ("   Beginning consumer thread loop for "++show mymax ++" attempts.")
+              consume_loop 0 0 0
+   -- <-- Consumers are finished as of here.
 
    dbgPrintLn 1  "Reading sums from MVar..."
    prod_ls <- mapM (\_ -> takeMVar prod_results) [1..producers]
 
    -- We sequentially read out the leftovers after all the parallel tasks are done:
    leftovers <- forM qs $ \ q ->
-     let loop !acc = do
+     let loop !cnt !acc = do
            x <- tryPopR q -- This should work as a popR OR a popL.
            case x of
-             Nothing -> return acc
-             Just n  -> loop (acc+n)
-     in loop 0
+             Nothing -> return (cnt,acc)
+             Just n  -> loop (cnt+1) (acc+n)
+     in loop 0 0
         
-   let finalSum = Prelude.sum (consumer_sums ++ prod_ls ++ leftovers)
+   let finalSum = Prelude.sum (map snd consumer_sums ++ 
+                               map snd prod_ls ++ 
+                               map snd leftovers)
    dbgPrintLn 0$ "Final sum: "++ show finalSum ++ ", producer/consumer/leftover sums: "++show (prod_ls, consumer_sums, leftovers)
+   dbgPrintLn 1$ "Total pop events: "++ show (Prelude.sum (map fst consumer_sums ++ 
+                                                           map fst prod_ls ++ 
+                                                           map fst leftovers))
+                 ++" should be "++ (show$ realtotal)
    dbgPrintLn 1$ "Checking that queue is finally null..."
    assertEqual "Correct final sum" (fromIntegral producers * expectedSum perthread) finalSum
    bs <- mapM nullQ qs

@@ -493,14 +493,14 @@ the thread/queue contract:
 
     NUMELEMS=1000000 ONLYWRAPPER=1 NUMTHREADS=4 rep 10 ./dist/build/test-chaselev-deque/test-chaselev-deque -t random_work
 
-### Rev  - pump up the NOINLINE's in Data.Atomics
+### Pump up the NOINLINE's in Data.Atomics
 
 I don't currently know how many functions have to be marked NOINLINE
 to avoid problems analagous to the one exposed by "peekTicket".  If we
 conservatively apply NOINLINE to ALL functions in Data.Atomics.hs,
 what happens?
 
-    NUMELEMS=1000000 NOWRAPPER=1 NUMTHREADS=4 rep 10 ./dist/build/test-chaselev-deque/test-chaselev-deque -t random_work
+    DEBUG=1 NUMELEMS=1000000 NOWRAPPER=1 NUMTHREADS=4 rep 10 ./dist/build/test-chaselev-deque/test-chaselev-deque -t random_work
 
 The short answer is that we still get those same failures:
 
@@ -515,5 +515,52 @@ Hmm, these answers, even if we pump the size up to 5M, are still
 around 42 bits big.  I don't think any kind of overflow could possible
 be occuring, given as we use 64 bit ints on a 64 bit machine.  But it
 wouldn't hurt to make them explicitly 64 bit to make sure.. (or
-Integer)...
+Integer)... ok, did that.  No change as expected.
+
+### Instrumenting test to return more info on #successes
+
+Ok, in the current version of the random_work_stealing test, the
+consumers will TRY (finite spinPop) the same number of times as the
+producers push, and any failures must be made up for in the
+"leftovers" phase.
+
+    Final sum: 6249999558444, producer/consumer/leftover sums: 
+      ([1938888882141,1925206902443],[(945156,1191595147306),(949088,1194308626554)],[(0,0),(0,0)])
+
+Let's look a little deeper at the # of successful pops.  Ok this is
+exactly what you might expect.  The total number of pops is off by
+ONE:
+
+    Final sum: 6249997583859, producer/consumer/leftover sums: ([(1510144,1924759993822),(1536889,1924135117200)],[(977451,1202425485357),(975517,1198676987480)],[(0,0),(0,0)])
+    Total pop events: 5000001 should be 5000000
+    Checking that queue is finally null...
+      :test_random_work_stealing: [Running]
+      :test_random_work_stealing: [Failed]
+    Correct final sum
+    expected: 6249997500000
+     but got: 6249997583859
+     
+In this case we can even say which element got duplicated!  It was
+iteration 83,859.
+
+Now, here's something odd.  When we end up with too small a sum, we
+actually have the CORRECT number of pops: 
+
+    Final sum: 6249997499996, producer/consumer/leftover sums: ([(1537725,1903359749484),(1555446,1947679153181)],[(955687,1201494171631),(951142,1197464425700)],[(0,0),(0,0)])
+    Total pop events: 5000000 should be 5000000
+    Checking that queue is finally null...
+      :test_random_work_stealing: [Running]
+      :test_random_work_stealing: [Failed]
+    Correct final sum
+    expected: 6249997500000
+     but got: 6249997499996
+     
+(1537725 + 1555446  + 955687 + 951142 = 5M)
+
+So apparently we can have errors both with duplicated elements
+and... what? aliased dropped and duplicated elements?  Corrupted
+elements / collisions?
+
+Next up: Factor out a proper atomic counter library
+===================================================
 
