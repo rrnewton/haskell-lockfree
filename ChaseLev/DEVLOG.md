@@ -188,3 +188,232 @@ Here's something weird... changing Issue5.hs to Issue5B.hs and
 inlining the definition of ChaseLev makes the problem GO AWAY.  Why
 would that be?  That could only enable more inlining, right?
 
+[2013.06.25] {Continued}
+
+Ok, now it is narrowed down to a situation where a simple CAS counter
+bump for an IORef Int is failing.  Really, this should be switched for
+some kind of unboxed int container (MutArray) but I would like to know
+why this is failing in any case.
+
+The ticketing approach SHOULD save us (Any Kind), but it's not.  This
+is a situation (in tryPopL), where:
+
+ * We are executing a readForCAS followed by a casIORef, presenting
+   the ticket for the old value properly; leaving it abstract.
+ * Stable names report that the old and new values were the same, even
+   though CAS failed.
+ * reallyUnsafePtrEquality# reports that the old and new values are
+   the same, even though CAS failed. 
+
+So here's the core that gets generated for the failing CAS.  You can
+see how tickets are represented by unsafe coercions to Any.  But what
+results is a complicated series of unsafe coercions that is tricky to
+follow:
+
+   False ->
+     case ({__pkg_ccall_GC atomic-primops-0.1.0.2 stg_casMutVar2zh MutVar#
+				RealWorld ()
+			      -> Any (* -> *) ()
+			      -> Any (* -> *) ()
+			      -> State# RealWorld
+			      -> (# State# RealWorld,
+				    Int#,
+				    Any (* -> *) () #)}_a1hq
+	     (ww_s2ze
+	      `cast` (MutVar# <RealWorld> (UnsafeCo Int ())
+		      :: MutVar# RealWorld Int ~# MutVar# RealWorld ()))
+	     (wild1_a1v5
+	      `cast` (UnsafeCo Int (Ticket Int) ; UnsafeCo
+						    (Ticket Int)
+						    (Any (* -> *) ())
+		      :: Int ~# Any (* -> *) ()))
+	     ((I# (+# y_a1v7 1))
+	      `cast` (UnsafeCo Int (Ticket Int) ; UnsafeCo
+						    (Ticket Int)
+						    (Any (* -> *) ())
+		      :: Int ~# Any (* -> *) ()))
+	     ipv8_X1R1)
+	  `cast` ((# <State# RealWorld>,
+		     <Int#>,
+		     UnsafeCo (Any (* -> *) ()) (Ticket Int) #)
+		  :: (# State# RealWorld, Int#, Any (* -> *) () #)
+		       ~#
+		     (# State# RealWorld, Int#, Ticket Int #))
+     of _ { (# ipv10_a1ht, ipv11_a1hu, ipv12_a1hv #) ->
+
+Here's a somewhat simpler version that results ifwe make casIORef
+NOINLINE:
+
+    False ->
+      case ((casIORef
+	       @ Int
+	       ((STRef @ RealWorld @ Int ww_s2yd)
+		`cast` (Sym <(NTCo:IORef)> <Int>
+			:: STRef RealWorld Int ~# IORef Int))
+	       (wild1_a1uC
+		`cast` (UnsafeCo Int (Ticket Int) :: Int ~# Ticket Int))
+	       (I# (+# y_a1uE 1)))
+	    `cast` (<NTCo:IO <(Bool, Ticket Int)>>
+		    :: IO (Bool, Ticket Int)
+			 ~#
+		       (State# RealWorld
+			-> (# State# RealWorld, (Bool, Ticket Int) #))))
+	     ipv8_X1Ql
+
+In both cases you can see that the wild1_a1* arguments, i.e. the OLD
+value presented as evidence, the thing which is SUPPOSED to be
+abstract, is really passed in as a raw Int, and coerced at the last
+moment to Ticket Int. (At least if I'm reading those UnsafeCo
+constructors properly.)
+
+But, this program should have NEVER had the handle on the Int for that
+variable!  It should have only seen the "Ticket Int".
+
+Where does that value come from?  Code above the previous snippet does
+this to retrieve it:
+
+         case ipv7_X1PZ
+              `cast` (UnsafeCo (Ticket Int) Int :: Ticket Int ~# Int)
+         of wild1_a1uC { I# y_a1uE ->
+
+Which is part of this bigger piece, reading the value from the mutable var:
+
+         case (readMutVar#
+                 @ (Any *)
+                 @ (Any *)
+                 (ww_s2yd
+                  `cast` (MutVar# (UnsafeCo RealWorld (Any *)) (UnsafeCo Int (Any *))
+                          :: MutVar# RealWorld Int ~# MutVar# (Any *) (Any *)))
+                 (s2#_a263
+                  `cast` (State# (UnsafeCo RealWorld (Any *))
+                          :: State# RealWorld ~# State# (Any *))))
+              `cast` ((# State# (UnsafeCo (Any *) RealWorld),
+                         UnsafeCo (Any *) (Ticket Int) #)
+                      :: (# State# (Any *), Any * #)
+                           ~#
+                         (# State# RealWorld, Ticket Int #))
+         of _ { (# ipv6_X1PX, ipv7_X1PZ #) ->
+         case ipv5_X1PQ of _ { I# x_a1uA ->
+         case ipv7_X1PZ
+              `cast` (UnsafeCo (Ticket Int) Int :: Ticket Int ~# Int)
+         of wild1_a1uC { I# y_a1uE ->
+
+Ok, it's fair that we are unpacking wild1_a1uC... we need to do that
+to get the value on which to perform "plus 1".  
+
+But it's NOT good that we using wild1_a1uC (which is an Int) instead
+of using ipv7_X1PZ (which is a Ticket Int) as the old value for the
+CAS operation.  Whenever we use the "Int" GHC can play naughty tricks
+-- the ticket did NOT stay abstract here.
+
+But, as written, the result of readForCAS is fed directly into
+casIORef.  So what optimization rule allowed it to short-circuit that,
+peering through the code introduce by "readForCAS" + "peekTicket", and
+seeing the raw, unticketed value?
+
+Was it common-subexpression-elimination?  No... I don't see where.
+That is, readForCAS# uses a coerce at the level of a function to
+expose readMutVar# as a ticketed operation.  Then peekTicket uses a
+coerce on the result to get back to an Int.
+
+Maybe it's a fusion rule for coercions?  Short circuiting these
+multiple coercions and allowing us to reference the source directly?
+
+HYPOTHESIS 1: coercing arrow types is bad.
+------------------------------------------
+ 
+The theory here is that it doesn't establish a correct data-flow for
+the optimizer to observe.  Let's try getting rid of these.  
+
+Ok, fixing this by itself doesn't seem to work.  At the point of the
+readMutVar# we get this code:
+
+         case readMutVar# @ RealWorld @ Int ww_s2ye s2#_a263
+         of _ { (# ipv6_a28F, ipv7_a28G #) ->
+         case ipv5_X1PP of _ { I# x_a1uA ->
+         case ipv7_a28G of wild1_a1uC { I# y_a1uE ->
+
+And wild1_a1uC is still used at the casIORef, cast just at the last
+moment from Int to Ticket Int, which doesn't help at all.
+
+### What about ALSO making readForCAS NOINLINE?  
+
+The result of that is interesting...
+
+         case readForCAS# @ Int ww_s2yn s_a1LD
+         of _ { (# ipv_a1LG, ipv1_a1LH #) ->
+	 .....
+         case ipv1_a1LH
+              `cast` (UnsafeCo (Ticket Int) Int :: Ticket Int ~# Int)
+         of wild1_a1uC { I# y_a1uE ->
+         .....
+                           case ((casIORef
+                                    @ Int
+                                    ((STRef @ RealWorld @ Int ww_s2yn)
+                                     `cast` (Sym <(NTCo:IORef)> <Int>
+                                             :: STRef RealWorld Int ~# IORef Int))
+                                    (wild1_a1uC
+                                     `cast` (UnsafeCo Int (Ticket Int) :: Int ~# Ticket Int))
+                                    (I# (+# y_a1uE 1)))
+
+So we only observe the Ticket version (ipv1) in this case, however, it
+STILL uses wild1_a1uC, even though it must coerce it to a (Ticket
+Int), rather than using ipv1_a1LH as the old value for the CAS.
+
+So it would seem that we start out with this dataflow:
+
+   readForCAS -> 
+    ipv1 -> peekTicket -> wild1_a1uC
+         |-> casIORef 
+	
+with the result (ipv1) used in two different places, both peekTicket
+and casIORef.  Yet at some point the dataflow gets changed so the
+result of peekTicket ALSO becomes the input to casIORef.  I.e.:
+
+    ipv1 -> peekTicket -> wild1_a1uC -> casIORef 
+
+How and why could that happen?  Again, is it special rules for coerce,
+or a general optimization?
+
+First, let's get a litle more specific about the above sketches of the
+dataflow graph.  If we look at the desugared Haskell, *.dump-ds, we
+see the following:
+   
+    (>>=
+      @ IO
+      $fMonadIO
+      @ (Ticket Int)
+      @ (Maybe elt_tt)
+      (readForCAS @ Int top_aVg)
+      (\ (tt_aVm :: Ticket Int) ->
+         let {
+	 t_aVn :: Int
+	 [LclId]
+	 t_aVn = peekTicket @ Int tt_aVm } in
+      ..........
+		    False ->
+		      >>=
+			@ IO
+			$fMonadIO
+			@ (Bool, Ticket Int)
+			@ (Maybe elt_tt)
+			(doCAS
+			   @ Int
+			   top_aVg
+			   tt_aVm
+			   (+ @ Int $fNumInt t_aVn (I# 1)))
+      ......			   
+	 ))
+
+At this point you can confirm that we were right above.  tt_aVm flows
+to both peekTicket and doCAS.  At what point do wwe then substitute
+t_aVn for tt_aVm?  
+   Well, no matter where it happens, it is fair to say that this
+requires inlining peekTicket, which then exposes that it is nothing
+but an unsafeCoerce.  
+
+### Next, let's NOINLINE peekTicket.
+
+That fixes issue5.
+
+

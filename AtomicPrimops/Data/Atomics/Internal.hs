@@ -60,11 +60,14 @@ instance Eq (Ticket a) where
 --------------------------------------------------------------------------------
 
 
-{-# INLINE readForCAS# #-}
+{-# NOINLINE readForCAS# #-}
 readForCAS# :: MutVar# RealWorld a ->
                State# RealWorld -> (# State# RealWorld, Ticket a #)
-readForCAS# = unsafeCoerce# readMutVar#
--- readForCAS# = unsafeCoerce# readMutVar_TypeErased#
+-- readForCAS# = unsafeCoerce# readMutVar#
+readForCAS# mv rw =
+  case readMutVar# mv rw of
+    (# rw', a #) -> (# rw', unsafeCoerce# a #)
+
 
 {-# INLINE casMutVarTicketed# #-}
 casMutVarTicketed# :: MutVar# RealWorld a -> Ticket a -> Ticket a ->

@@ -74,7 +74,9 @@ readArrayElem (MutableArray arr#) (I# i#) = IO $ \ st -> unsafeCoerce# (fn st)
 readForCAS :: IORef a -> IO ( Ticket a )
 readForCAS (IORef (STRef mv)) = readMutVarForCAS mv
 
-{-# INLINE casIORef #-}
+-- [2013.06.25] Changing this to NOINLINE for debugging...
+-- Note, it doesn't fix issue5.
+{-# NOINLINE casIORef #-}
 -- | Performs a machine-level compare and swap operation on an
 -- 'IORef'. Returns a tuple containing a 'Bool' which is 'True' when a
 -- swap is performed, along with the 'current' value from the 'IORef'.
@@ -101,6 +103,7 @@ casIORef2 (IORef (STRef var)) old new = casMutVar2 var old new
 --------------------------------------------------------------------------------
 
 -- | A ticket contains or can get the usable Haskell value.
+{-# NOINLINE peekTicket #-}
 peekTicket :: Ticket a -> a 
 peekTicket = unsafeCoerce#
 
