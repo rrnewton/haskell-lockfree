@@ -20,6 +20,12 @@ import GHC.Prim (readMutVar#, casMutVar#, Any)
 -- type Any a = Word#
 #endif    
 
+#ifdef DEBUG_ATOMICS
+{-# NOINLINE readForCAS# #-}
+#endif
+
+#define CASTFUN
+
 --------------------------------------------------------------------------------
 -- Entrypoints for end-users
 --------------------------------------------------------------------------------
@@ -28,8 +34,10 @@ import GHC.Prim (readMutVar#, casMutVar#, Any)
 -- | Unsafe, machine-level atomic compare and swap on an element within an Array.  
 casArray# :: MutableArray# RealWorld a -> Int# -> Ticket a -> Ticket a 
           -> State# RealWorld -> (# State# RealWorld, Int#, Ticket a #)
+#ifdef CASTFUN
+-- WARNING: cast of a function -- need to verify these are safe or eta expand.
 casArray# = unsafeCoerce# casArrayTypeErased#
-
+#endif
 
 -- | When performing compare-and-swaps, the /ticket/ encapsulates proof
 -- that a thread observed a specific previous value of a mutable
@@ -60,20 +68,25 @@ instance Eq (Ticket a) where
 --------------------------------------------------------------------------------
 
 
-{-# NOINLINE readForCAS# #-}
 readForCAS# :: MutVar# RealWorld a ->
                State# RealWorld -> (# State# RealWorld, Ticket a #)
--- readForCAS# = unsafeCoerce# readMutVar#
+-- WARNING: cast of a function -- need to verify these are safe or eta expand:
+#ifdef CASTFUN
+readForCAS# = unsafeCoerce# readMutVar#
+#else
 readForCAS# mv rw =
   case readMutVar# mv rw of
     (# rw', a #) -> (# rw', unsafeCoerce# a #)
+#endif
 
 
 {-# INLINE casMutVarTicketed# #-}
 casMutVarTicketed# :: MutVar# RealWorld a -> Ticket a -> Ticket a ->
                State# RealWorld -> (# State# RealWorld, Int#, Ticket a #)
+-- WARNING: cast of a function -- need to verify these are safe or eta expand:
+#ifdef CASTFUN
 casMutVarTicketed# = unsafeCoerce# casMutVar_TypeErased#
--- casMutVarTicketed# = unsafeCoerce# casMutVar#
+#endif
 
 --------------------------------------------------------------------------------
 -- Type-erased versions that call the raw foreign primops:
