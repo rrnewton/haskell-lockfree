@@ -136,8 +136,8 @@ I already disabled the thread-marking so, basically, it is just eta expansion.
 Ok, the extreme form of failure above... with triv1/triv2 failing.
 That does NOT happen with fakeCAS.  So this is a nice small reproducer.
 
-[2013.06.24] {Reference implementation does use leftover bucket}
-----------------------------------------------------------------
+[2013.06.24] {btw, Reference implementation does use leftover bucket}
+---------------------------------------------------------------------
 
 By the way, the reference implementation passes all these tests with a
 variety of different thread settings.  Also it DOES sometimes have
@@ -189,6 +189,7 @@ inlining the definition of ChaseLev makes the problem GO AWAY.  Why
 would that be?  That could only enable more inlining, right?
 
 [2013.06.25] {Continued}
+------------------------
 
 Ok, now it is narrowed down to a situation where a simple CAS counter
 bump for an IORef Int is failing.  Really, this should be switched for
@@ -417,3 +418,71 @@ but an unsafeCoerce.
 That fixes issue5.
 
 
+[2013.06.25] {Segfault!}
+========================
+
+     ./dist/build/test-chaselev-deque/test-chaselev-deque -t 'test_contention_free_parallel'
+    Running with numElems 100000 and numAgents 1
+    Use NUMELEMS and +RTS to control the size of this benchmark.
+    Running on a machine with 8 hardware threads.
+    Running all tests for these thread settings: [1,2,4,8,16]
+    ............
+    :N2_ChaseLev(DbgWrapper):work-stealing-deque-tests:
+
+       [Setting # capabilities to 2 before test]
+    Grow to size 64, copying over 31
+    .Grow to size 128, copying over 63
+    .Grow to size 256, copying over 127
+    .Grow to size 512, copying over 255
+    .Grow to size 1024, copying over 511
+    Grow to size 2048, copying over 1023
+    Grow to size 4096, copying over 2047
+    Grow to size 8192, copying over 4095
+    Grow to size 16384, copying over 8191
+
+       [Setting # capabilities to 4 before test]
+
+    Segmentation fault: 11
+
+
+Ok, because of recent complications, I've had to exposesome more knobs
+to be able to run a single stress test.  Here is one test:
+
+    time NUMELEMS=5000000 NOWRAPPER=1 NUMTHREADS=4 ./dist/build/test-chaselev-deque/test-chaselev-deque -t 'test_contention_free_parallel'
+
+    time DEBUG=1 NUMELEMS=5000000 NOWRAPPER=1 NUMTHREADS=4 ./dist/build/test-chaselev-deque/test-chaselev-deque -t 'test_contention_free_parallel'
+
+This one seems to not have problems:
+    
+    NUMELEMS=5000000 NOWRAPPER=1 NUMTHREADS=4 rep 10 time ./dist/build/test-chaselev-deque/test-chaselev-deque -t 'test_contention_free_parallel'
+
+But it's slow, it takes almost three seconds on my laptop to push 5M
+elements (across four deques).  It seems to grow the arrays rather
+large:
+
+    Grow to size 2097152, copying over 1048575
+    Grow to size 2097152, copying over 1048575
+    
+How about the other benchmarks?  The old "OneBottleNeck" test doesn't
+work for work stealing, but test_random_work_stealing is one that
+stresses all valid operations.  It doesn't grow the arrays NEARLY as
+much, but it is significantly slower, taking 12-13 seconds on my
+retina mbp to push 5M elements across either two or four threads.
+
+Ack!  Further, we've still got bad sums, even though Issue5 is closed:
+
+    time DEBUG=1 NUMELEMS=5000000 NOWRAPPER=1 NUMTHREADS=4 ./dist/build/test-chaselev-deque/test-chaselev-deque -t random_work_steal    
+    .....
+    Final sum: 6249998732279, producer/consumer/leftover sums: ([1806520075438,1742608637591],[1351485936177,1349384083073],[0,0])
+    Checking that queue is finally null...
+      :test_random_work_stealing: [Running]
+      :test_random_work_stealing: [Failed]
+    Correct final sum
+    expected: 6249997500000
+     but got: 6249998732279
+
+Actually, running it at 1M is enough to trigger the error:
+
+    NUMELEMS=1000000 NOWRAPPER=1 NUMTHREADS=4 rep 10 ./dist/build/test-chaselev-deque/test-chaselev-deque -t random_work_steal
+    
+    

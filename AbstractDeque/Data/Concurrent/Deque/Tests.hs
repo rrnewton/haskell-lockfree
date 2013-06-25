@@ -17,7 +17,7 @@ module Data.Concurrent.Deque.Tests
    tests_all,
 
    -- * Testing parameters
-   numElems, numAgents, producerRatio
+   numElems, getNumAgents, producerRatio
  )
  where 
 
@@ -31,7 +31,7 @@ import Data.Array as A
 import Data.IORef
 -- import System.Mem.StableName
 import Text.Printf
-import GHC.Conc (numCapabilities, throwTo, threadDelay, myThreadId)
+import GHC.Conc (getNumCapabilities, throwTo, threadDelay, myThreadId)
 import Control.Concurrent.MVar
 import Control.Concurrent (yield, forkOS, forkIO, ThreadId)
 import Control.Exception (catch, SomeException, fromException, AsyncException(ThreadKilled))
@@ -71,11 +71,11 @@ forkThread = case lookup "OSTHREADS" theEnv of
 
 -- | How many communicating agents are there?  By default one per
 -- thread used by the RTS.
-numAgents :: Int
-numAgents = case lookup "NUMAGENTS" theEnv of 
-             Nothing  -> numCapabilities
-             Just str -> warnUsing ("NUMAGENTS = "++str) $ 
-                         read str
+getNumAgents :: IO Int
+getNumAgents = case lookup "NUMAGENTS" theEnv of 
+                Nothing  -> getNumCapabilities
+                Just str -> warnUsing ("NUMAGENTS = "++str) $ 
+                            return (read str)
 
 -- | It is possible to have imbalanced concurrency where there is more
 -- contention on the producing or consuming side (which corresponds to
@@ -138,12 +138,15 @@ test_fifo_OneBottleneck doBackoff total q =
 
      bl <- nullQ q
      dbgPrintLn 1$ "Check that queue is initially null: "++show bl
+
+     numAgents <- getNumAgents      
      let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
 	 consumers = max 1 (numAgents - producers)
 	 perthread  = total `quot` producers
          (perthread2,remain) = total `quotRem` consumers
-     
-     when (not doBackoff && (numCapabilities == 1 || numCapabilities < producers + consumers)) $ 
+
+     numCap <- getNumCapabilities     
+     when (not doBackoff && (numCap == 1 || numCap < producers + consumers)) $ 
        error$ "The aggressively busy-waiting version of the test can only run with the right thread settings."
      
      dbgPrint 1 $ printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
@@ -176,8 +179,8 @@ test_fifo_OneBottleneck doBackoff total q =
      if b then dbgPrintLn 1$ "Sum matched expected, test passed."
           else assertFailure "Queue was not empty!!"
 
--- | This test uses a separate queue per consumer thread.  The queues
--- are used in a single-writer multiple-reader fashion (mailboxes).
+-- | This test uses a separate queue per producer/consumer pair.  The queues
+-- are used in a single-writer single-reader.
 test_contention_free_parallel :: DequeClass d => Bool -> Int -> IO (d Int) -> IO ()
 test_contention_free_parallel doBackoff total newqueue = 
   do 
@@ -185,13 +188,15 @@ test_contention_free_parallel doBackoff total newqueue =
                ++(if doBackoff then " (with backoff)" else "(hard busy wait)")
      dbgPrintLn 1 "======================================================"       
      mv <- newEmptyMVar
-          
+
+     numAgents <- getNumAgents
      let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
 	 consumers = producers -- Must be matched
 	 perthread  = total `quot` producers
      qs <- sequence (replicate consumers newqueue)
-     
-     when (not doBackoff && (numCapabilities == 1 || numCapabilities < producers + consumers)) $ 
+
+     numCap <- getNumCapabilities 
+     when (not doBackoff && (numCap == 1 || numCap < producers + consumers)) $ 
        error$ "The aggressively busy-waiting version of the test can only run with the right thread settings."
      
      dbgPrint 1 $ printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
@@ -246,6 +251,7 @@ test_random_array_comm size total newqueue = do
    dbgPrintLn 1$ "\nTest FIFO queue: producers & consumers select random queues"
    dbgPrintLn 1 "======================================================"       
 
+   numAgents <- getNumAgents
    let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
        consumers = max 1 (numAgents - producers)
        perthread  = total `quot` producers
@@ -320,7 +326,7 @@ tests_fifo_exclusive newq =
 tests_basic :: DequeClass d => (forall elt. IO (d elt)) -> [Test]
 tests_basic newq =
   [ TestLabel "test_fifo_filldrain"  (TestCase$ assert $ newq >>= test_fifo_filldrain)
-  , TestLabel "test_contention_free_parallel" (TestCase$ assert $ test_contention_free_parallel True numElems newq)    
+  , TestLabel "test_contention_free_parallel" (TestCase$ assert $ test_contention_free_parallel True numElems newq)
   ]
 
 ----------------------------------------------------------------------------------------------------
@@ -357,6 +363,7 @@ test_random_work_stealing total newqueue = do
    dbgPrintLn 1$ "\nTest FIFO queue: producers & consumers select random queues"
    dbgPrintLn 1 "======================================================"       
 
+   numAgents <- getNumAgents
    let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
        consumers = max 1 (numAgents - producers)
        perthread  = total `quot` producers
@@ -368,7 +375,7 @@ test_random_work_stealing total newqueue = do
    let arr = A.listArray (0,producers - 1) qs   
 
    dbgPrint 1 $ printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
-   dbgPrint 1 $ printf "Forking %d consumer threads, each consuming %d elements.\n" consumers perthread2
+   dbgPrint 1 $ printf "Forking %d consumer threads, each consuming ~%d elements.\n" consumers perthread2
    
    prod_results <- newEmptyMVar
    forM_ (zip [0..producers-1] qs) $ \ (ind,myQ) -> do 
@@ -490,6 +497,7 @@ forkJoin numthreads action =
      ls <- mapM readMVar answers
      return ls
 
+-- | Pop from the right end more gently.
 spinPopBkoff :: DequeClass d => d t -> IO (t, Int)
 spinPopBkoff q = loop 1
  where 
@@ -518,8 +526,10 @@ spinPopBkoff q = loop 1
        Just x  -> return (x, n)
 
 
--- | This is always a crazy and dangerous thing to do -- GHC cannot
---   deschedule this spinning thread because it does not allocate:
+-- | This is always a crazy and dangerous thing to do -- GHC cannot deschedule this
+-- spinning thread because it does not allocate.  Thus one can run into a deadlock
+-- situation where the consumer holds the capabilitity hostage, not letting the
+-- producer run (and therefore unblock it).
 spinPopHard :: (DequeClass d) => d t -> IO (t, Int)
 spinPopHard q = loop 1
  where 

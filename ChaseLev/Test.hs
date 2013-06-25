@@ -8,14 +8,14 @@ module Main where
 import Control.Concurrent (setNumCapabilities, getNumCapabilities)
 import GHC.Conc (getNumProcessors)
 import Control.Exception (bracket)
-import Data.Concurrent.Deque.Tests     (tests_wsqueue, numElems, numAgents)
+import Data.Concurrent.Deque.Tests     (tests_wsqueue, numElems, getNumAgents)
 import Data.Concurrent.Deque.Reference (SimpleDeque)
 import Data.Concurrent.Deque.Class     -- (newQ)
 import Data.Concurrent.Deque.Debugger  (DebugDeque)
 import qualified Data.Concurrent.Deque.ChaseLev as CL
 import qualified Data.Set as S
 -- import Data.Concurrent.Deque.ChaseLev  (newQ)
-import System.Environment (withArgs, getArgs)
+import System.Environment (withArgs, getArgs, getEnvironment)
 import Test.HUnit as HU
 import qualified Test.Framework as TF
 import Test.Framework.Providers.HUnit  (hUnitTestToTests)
@@ -25,30 +25,47 @@ import RegressionTests.Issue5 (standalone_pushPop)
 import qualified RegressionTests.Issue5B 
 
 main :: IO ()
-main = do 
+main = do
+  numAgents <- getNumAgents 
   putStrLn$ "Running with numElems "++show numElems++" and numAgents "++ show numAgents
-  putStrLn "Use NUMELEMS and +RTS to control the size of this benchmark."
+  putStrLn "Use NUMELEMS, NUMAGENTS, NUMTHREADS to control the size of this benchmark."
   args <- getArgs
 
   np <- getNumProcessors
-  putStrLn $"Running on a machine with "++show np++" hardware threads."  
-  let all_threads = S.toList$ S.fromList$
-                    [1, 2, np `quot` 2, np, 2*np ]
+  putStrLn $"Running on a machine with "++show np++" hardware threads."
+
+  theEnv <- getEnvironment
+  -- We allow the user to set this directly, because the "-t" based regexp selection
+  -- of benchmarks is quite limited.
+  let all_threads = case lookup "NUMTHREADS" theEnv of
+                      Just str -> [read str]
+                      Nothing -> S.toList$ S.fromList$
+                        [1, 2, np `quot` 2, np, 2*np ]
   putStrLn $"Running all tests for these thread settings: "  ++show all_threads
 
+  let dbg = case lookup "NOWRAPPER" theEnv of
+              Just _  -> False
+              Nothing -> True
+
   let all_tests :: HU.Test
-      all_tests = TestList
+      all_tests = TestList $ 
         [ TestLabel "simplest_pushPop"  $ TestCase simplest_pushPop
         , TestLabel "standalone_pushPop"  $ TestCase standalone_pushPop
         , TestLabel "standalone_pushPop2" $ TestCase RegressionTests.Issue5B.standalone_pushPop      
-        , TestLabel "ChaseLev" $ tests_wsqueue (newQ :: IO (CL.ChaseLevDeque a))
-        , TestLabel "ChaseLev(DbgWrapper)" $ tests_wsqueue (newQ :: IO (DebugDeque CL.ChaseLevDeque a))
-        ]
+        , TestLabel "ChaseLev" $ tests_wsqueue (newQ :: IO (CL.ChaseLevDeque a)) ]
+        ++ if dbg then
+             [ TestLabel "ChaseLev(DbgWrapper)" $ tests_wsqueue (newQ :: IO (DebugDeque CL.ChaseLevDeque a)) ]
+           else []
         
   -- Don't allow concurent tests (the tests are concurrent!):
-  withArgs (args ++ ["-j1","--jxml=test-results.xml"]) $   
-    TF.defaultMain$ hUnitTestToTests $ TestList $    
-       [ setThreads n all_tests | n <- all_threads ]
+  withArgs (args ++ ["-j1","--jxml=test-results.xml"]) $ do 
+
+    -- Hack, this shouldn't be necessary, but I'm having problems with -t:
+    tests <- case all_threads of
+              [one] -> do setNumCapabilities one
+                          return all_tests
+              _ -> return$ TestList [ setThreads n all_tests | n <- all_threads ]
+    TF.defaultMain$ hUnitTestToTests tests
 
 
 -- | Dig through the test constructors to find the leaf IO actions and bracket them
