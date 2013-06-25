@@ -85,7 +85,7 @@ dbgInspectCLD CLD{top,bottom,activeArr} = do
 
 --------------------------------------------------------------------------------
 -- Debugging mode.
-#define DEBUG
+#define DEBUGCL
 -- define FAKECAS
 
 {-# INLINE rd #-}
@@ -93,7 +93,7 @@ dbgInspectCLD CLD{top,bottom,activeArr} = do
 {-# INLINE nu #-}
 {-# INLINE cpy #-}
 {-# INLINE slc #-}
-#ifndef DEBUG
+#ifndef DEBUGCL
 dbg = False
 nu  = MV.unsafeNew
 rd  = MV.unsafeRead
@@ -115,7 +115,7 @@ wr  = MV.write
 #endif
 
 
-#ifdef DEBUG
+#ifdef DEBUGCL
 tryit msg action = Control.Exception.catch action 
 	                        (\e -> do putStrLn$ "ERROR inside "++msg++" "++ show e 
                                           throw (e::SomeException))
