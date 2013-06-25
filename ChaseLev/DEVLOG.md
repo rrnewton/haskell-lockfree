@@ -564,3 +564,17 @@ elements / collisions?
 Next up: Factor out a proper atomic counter library
 ===================================================
 
+Ok, I created two versions, corresponding to the previous raw CAS and
+fake CAS strategies.  It fails as usual with raw CAS.  And it also
+fails with the simulated CAS.  Here's an example with two too many
+elements popped:
+
+    Final sum: 6249998697052, producer/consumer/leftover sums: ([(1389411,1732239601843),(1382086,1726959654896)],[(1115131,1395897141782),(1113374,1394902298531)],[(0,0),(0,0)])
+    Total pop events: 5000002 should be 5000000
+    Checking that queue is finally null...
+      :test_random_work_stealing: [Running]
+      :test_random_work_stealing: [Failed]
+    Correct final sum
+    expected: 6249997500000
+     but got: 6249998697052
+

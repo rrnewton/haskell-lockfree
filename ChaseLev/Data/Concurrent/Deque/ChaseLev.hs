@@ -27,9 +27,10 @@ import qualified Data.Vector as V
 import Text.Printf (printf)
 import Control.Exception (catch, SomeException, throw, evaluate,try)
 import Control.Monad (when, unless, forM_)
-import Data.Atomics (readArrayElem, readForCAS, casIORef, Ticket, peekTicket)
-
--- import Data.Atomics.Counter (newCounter, incrCounter, casCounter)
+--import Data.Atomics (readArrayElem, readForCAS, casIORef, Ticket, peekTicket)
+-- import Data.Atomics.Counter.IORef
+import Data.Atomics.Counter.Reference
+       (AtomicCounter, newCounter, readCounter, writeCounter, casCounter, readCounterForCAS, peekCTicket)
 
 -- Debugging:
 import System.IO.Unsafe (unsafePerformIO)
@@ -57,16 +58,16 @@ instance PC.PopL ChaseLevDeque where
 -- Type definition
 
 data ChaseLevDeque a = CLD {
-    top       :: {-# UNPACK #-} !(IORef Int)
-  , bottom    :: {-# UNPACK #-} !(IORef Int)
+    top       :: {-# UNPACK #-} !AtomicCounter
+  , bottom    :: {-# UNPACK #-} !AtomicCounter
     -- This is a circular array:
   , activeArr :: {-# UNPACK #-} !(IORef (MV.IOVector a))
   }
 
 dbgInspectCLD :: Show a => ChaseLevDeque a -> IO String
 dbgInspectCLD CLD{top,bottom,activeArr} = do
-  tp <- readIORef top
-  bt <- readIORef bottom
+  tp <- readCounter top
+  bt <- readCounter bottom
   vc <- readIORef activeArr
   elems  <- fmap V.toList$ V.freeze vc
   elems' <- mapM safePrint elems
@@ -201,15 +202,15 @@ newQ :: IO (ChaseLevDeque elt)
 newQ = do
   -- We start as size 32 and double from there:
   v  <- MV.new 32 
-  r1 <- newIORef 0
-  r2 <- newIORef 0
+  r1 <- newCounter
+  r2 <- newCounter
   r3 <- newIORef v
   return$ CLD r1 r2 r3
 
 nullQ :: ChaseLevDeque elt -> IO Bool
 nullQ CLD{top,bottom} = do
-  b   <- readIORef bottom
-  t   <- readIORef top  
+  b   <- readCounter bottom
+  t   <- readCounter top  
 --  return (b == t)
   let size = b - t  
   return (size <= 0)
@@ -218,8 +219,8 @@ nullQ CLD{top,bottom} = do
 --   only a single thread should perform this operation.
 pushL :: ChaseLevDeque a -> a  -> IO ()
 pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
-  b   <- readIORef bottom
-  t   <- readIORef top
+  b   <- readCounter bottom
+  t   <- readCounter top
   arr <- readIORef activeArr
   let len = MV.length arr 
       size = b - t
@@ -234,7 +235,7 @@ pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
           else return arr
 
   putCirc arr' b obj
-  writeIORef bottom =<< evaluate (b+1)
+  writeCounter bottom (b+1)
   return ()
 
 -- | This is the steal operation.  Multiple threads may concurrently
@@ -242,18 +243,18 @@ pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
 tryPopR :: ChaseLevDeque elt -> IO (Maybe elt)
 tryPopR CLD{top,bottom,activeArr} =  tryit "tryPopR" $ do
 --  t   <- readIORef top
-  tt  <- readForCAS top
-  b   <- readIORef bottom
+  tt  <- readCounterForCAS top
+  b   <- readCounter bottom
   arr <- readIORef activeArr
  -- when (dbg && b < t) $ error$ "tryPopR: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
 
-  let t = peekTicket tt
+  let t = peekCTicket tt
       size = b - t
   if size <= 0 then 
     return Nothing
    else do 
     obj   <- getCirc  arr t
-    (b,_) <- doCAS top tt (t+1)
+    (b,_) <- casCounter top tt (t+1)
     if b then 
       return (Just obj)
      else 
@@ -261,66 +262,26 @@ tryPopR CLD{top,bottom,activeArr} =  tryit "tryPopR" $ do
 
 tryPopL  :: ChaseLevDeque elt -> IO (Maybe elt)
 tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
-  b   <- readIORef bottom
+  b   <- readCounter bottom
   arr <- readIORef activeArr
   b   <- evaluate (b-1)
-  writeIORef bottom b
-  tt   <- readForCAS top    
+  writeCounter bottom b
+  tt   <- readCounterForCAS top
 --  when (dbg && b < t) $ error$ "tryPopL: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
 
-  let t = peekTicket tt
+  let t = peekCTicket tt
       size = b - t 
   if size < 0 then do
-    writeIORef bottom =<< evaluate t 
+    writeCounter bottom t 
     return Nothing
    else do
     obj <- getCirc arr b
     if size > 0 then do
       return (Just obj)
      else do
-      (b,ol) <- doCAS top tt (t+1)
-      writeIORef bottom =<< evaluate (t+1)
+      (b,ol) <- casCounter top tt (t+1)
+      writeCounter bottom (t+1)
       if b then return$ Just obj
            else return$ Nothing 
 
 ------------------------------------------------------------
-
-{-# INLINE doCAS #-}
-#ifdef FAKECAS
-doCAS r o !n = fakeCAS  r o n
-#else 
-doCAS r o !n = casIORef r o n
-#endif
-
-{-# INLINE fakeCAS #-}
--- This approach for faking it requires proper equality, it doesn't use pointer
--- equality at all.  That makes it not a true substitute but useful for some
--- debugging.
-fakeCAS :: Eq a => IORef a -> Ticket a -> a -> IO (Bool,Ticket a)
--- casIORef r !old !new =   
-fakeCAS r oldT new = do
-  let old = peekTicket oldT
-  atomicModifyIORef r $ \val -> 
-{-
-    trace ("    DBG: INSIDE ATOMIC MODIFY, ptr eqs found/expected: " ++ 
-	   show [ptrEq val old, ptrEq val old, ptrEq val old] ++ 
-	   " ptr eq self: " ++ 
-	   show [ptrEq val val, ptrEq old old] ++
-	   " names: " ++ show (unsafeName old, unsafeName old, unsafeName val, unsafeName val)
-	  ) $
--}
-    if   (val == old)
-    then (new, (True, unsafeCoerce# val))
-    else (val, (False,unsafeCoerce# val))
-
-
-{-# NOINLINE unsafeName #-}
-unsafeName :: a -> Int
-unsafeName x = unsafePerformIO $ do 
-   sn <- makeStableName x
-   return (hashStableName sn)
-
-{-# NOINLINE ptrEq #-}
-ptrEq :: a -> a -> Bool
-ptrEq !x !y = I# (reallyUnsafePtrEquality# x y) == 1
-

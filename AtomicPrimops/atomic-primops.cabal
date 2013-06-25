@@ -35,12 +35,15 @@ Extra-Source-Files:  DEVLOG.md,
 --                    Makefile, Test.hs, README.md
 
 Flag debug
-    Description: Enable the extra internal checks.
+    Description: Enable extra internal checks.
     Default: True
 
 Library
   exposed-modules:   Data.Atomics
                      Data.Atomics.Internal
+                     Data.Atomics.Counter
+                     Data.Atomics.Counter.IORef
+                     Data.Atomics.Counter.Reference
   ghc-options: -O2 -funbox-strict-fields
 
   -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
