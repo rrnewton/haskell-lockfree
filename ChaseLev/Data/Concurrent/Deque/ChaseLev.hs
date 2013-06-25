@@ -66,10 +66,10 @@ dbgInspectCLD CLD{top,bottom,activeArr} = do
   elems  <- fmap V.toList$ V.freeze vc
   elems' <- mapM safePrint elems
   let sz = MV.length vc
-  return$ "{DbgInspectCLD: top "++show tp++", bot "++show bt++", size "++show sz++"\n" ++
+  return$ "  {DbgInspectCLD: top "++show tp++", bot "++show bt++", size "++show sz++"\n" ++
           -- show elems ++ "\n"++
-          "[ "++(concat $ intersperse " " elems')++" ]\n"++
-          "end_DbgInspectCLD}"
+          "   [ "++(concat $ intersperse " " elems')++" ]\n"++
+          "  end_DbgInspectCLD}"
  where
    -- Print any thunk, even if it raises an exception.
    safePrint :: Show a => a -> IO String
@@ -94,6 +94,7 @@ dbgInspectCLD CLD{top,bottom,activeArr} = do
 {-# INLINE cpy #-}
 {-# INLINE slc #-}
 #ifndef DEBUGCL
+#warning "Activating DEBUGCL!"
 dbg = False
 nu  = MV.unsafeNew
 rd  = MV.unsafeRead
@@ -111,7 +112,12 @@ wr  = MV.write
 -- wr v i x = 
 --   if i >= MV.length v
 --   then error (printf "ERROR: Out of bounds of top of vector index %d, vec length %d\n" i (MV.length v))
---   else MV.write v i x 
+--   else MV.write v i x
+
+-- [2013.06.25] Note Issue5 is not affected by this:
+{-# NOINLINE pushL #-}
+{-# NOINLINE tryPopL #-}
+{-# NOINLINE tryPopR #-}
 #endif
 
 
@@ -223,7 +229,7 @@ pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
           else return arr
 
   putCirc arr' b obj
-  writeIORef bottom (b+1)
+  writeIORef bottom =<< evaluate (b+1)
   return ()
 
 -- | This is the steal operation.  Multiple threads may concurrently
@@ -252,7 +258,7 @@ tryPopL  :: ChaseLevDeque elt -> IO (Maybe elt)
 tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
   b   <- readIORef bottom
   arr <- readIORef activeArr
-  b   <- return (b - 1) -- shadowing
+  b   <- evaluate (b-1)
   writeIORef bottom b
   tt   <- readForCAS top    
 --  when (dbg && b < t) $ error$ "tryPopL: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
@@ -260,7 +266,7 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
   let t = peekTicket tt
       size = b - t 
   if size < 0 then do
-    writeIORef bottom t 
+    writeIORef bottom =<< evaluate t 
     return Nothing
    else do
     obj <- getCirc arr b
@@ -268,7 +274,7 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
       return (Just obj)
      else do
       (b,_) <- doCAS top tt (t+1)
-      writeIORef bottom (t+1)
+      writeIORef bottom =<< evaluate (t+1)
       if b then return$ Just obj
            else return$ Nothing 
 
