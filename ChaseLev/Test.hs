@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns, NamedFieldPuns #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 {- Example build:
   ghc --make Test.hs -o Test.exe -rtsopts -fforce-recomp
 -}
@@ -6,6 +7,7 @@ module Main where
 
 import Control.Concurrent (setNumCapabilities, getNumCapabilities)
 import GHC.Conc (getNumProcessors)
+import Control.Exception (bracket)
 import Data.Concurrent.Deque.Tests     (tests_wsqueue, numElems, numAgents)
 import Data.Concurrent.Deque.Reference (SimpleDeque)
 import Data.Concurrent.Deque.Class     -- (newQ)
@@ -14,9 +16,10 @@ import qualified Data.Concurrent.Deque.ChaseLev as CL
 import qualified Data.Set as S
 -- import Data.Concurrent.Deque.ChaseLev  (newQ)
 import System.Environment (withArgs, getArgs)
-import Test.HUnit 
+import Test.HUnit as HU
 import qualified Test.Framework as TF
 import Test.Framework.Providers.HUnit  (hUnitTestToTests)
+import Text.Printf (printf)
 
 import RegressionTests.Issue5 (standalone_pushPop)
 import qualified RegressionTests.Issue5B 
@@ -30,10 +33,11 @@ main = do
   np <- getNumProcessors
   putStrLn $"Running on a machine with "++show np++" hardware threads."  
   let all_threads = S.toList$ S.fromList$
-                    [1, 2, np `quot` 2, np-1, np, np+1, 2*np ]
+                    [1, 2, np `quot` 2, np, 2*np ]
   putStrLn $"Running all tests for these thread settings: "  ++show all_threads
 
-  let all_tests = TestList
+  let all_tests :: HU.Test
+      all_tests = TestList
         [ TestLabel "simplest_pushPop"  $ TestCase simplest_pushPop
         , TestLabel "standalone_pushPop"  $ TestCase standalone_pushPop
         , TestLabel "standalone_pushPop2" $ TestCase RegressionTests.Issue5B.standalone_pushPop      
@@ -43,24 +47,32 @@ main = do
         
   -- Don't allow concurent tests (the tests are concurrent!):
   withArgs (args ++ ["-j1","--jxml=test-results.xml"]) $   
-    TF.defaultMain$ 
-       [ withThreads n t
-       | n <- all_threads
-       , t <- hUnitTestToTests all_tests ]
+    TF.defaultMain$ hUnitTestToTests $ TestList $    
+       [ setThreads n all_tests | n <- all_threads ]
 
-withThreads :: Int -> TF.Test -> TF.Test
-withThreads n tst = do
-  TF.buildTest $
-    do putStrLn$ "\n   [Setting # capabilities to "++show n++" before test] "
-       putStrLn    "   ==================================================== "
-       setNumCapabilities n
-       return tst
-  
-  -- TF.buildTestBracketed $
-  --   do orig <- getNumCapabilities
-  --      setNumCapabilities n
-  --      return (tst, setNumCapabilities orig)
 
+-- | Dig through the test constructors to find the leaf IO actions and bracket them
+--   with a thread-setting action.
+setThreads :: Int -> HU.Test -> HU.Test
+setThreads nm tst = loop False tst
+ where
+   loop flg x = 
+    case x of
+      TestLabel lb t2 -> TestLabel (decor flg lb) (loop True t2)
+      TestList ls -> TestList (map (loop flg) ls)
+      TestCase io -> TestCase (bracketThreads nm io)
+
+   -- We only need to insert the numcapabilities in the description string ONCE:
+   decor False lb = "N"++show nm++"_"++ lb
+   decor True  lb = lb
+
+bracketThreads :: Int -> IO a -> IO a
+bracketThreads n act =
+  bracket (getNumCapabilities)
+          setNumCapabilities
+          (\_ -> do printf "\n   [Setting # capabilities to %d before test] \n" n
+                    setNumCapabilities n
+                    act)
 
 --------------------------------------------------------------------------------
 -- Individual unit and regression tests:
