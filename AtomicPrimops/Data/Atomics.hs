@@ -41,18 +41,32 @@ import GHC.IO (IO(IO))
 import GHC.Word (Word(W#))
 
 #ifdef DEBUG_ATOMICS
-#warning "Activating DEBUG_ATOMICS..."
--- [2013.06.25] Changing this to NOINLINE for debugging...
-{-# NOINLINE casIORef #-} -- Note, it doesn't fix issue5.
-
+#warning "Activating DEBUG_ATOMICS... NOINLINE's and more"
 {-# NOINLINE seal #-}
-#else
 
+{-# NOINLINE casIORef #-}
+{-# NOINLINE casArrayElem2 #-}   
+{-# NOINLINE readArrayElem #-}
+{-# NOINLINE readForCAS #-}
+{-# NOINLINE casArrayElem #-}
+{-# NOINLINE casIORef2 #-}
+{-# NOINLINE readMutVarForCAS #-}
+{-# NOINLINE casMutVar #-}
+{-# NOINLINE casMutVar2 #-}
+#else
+{-# INLINE casIORef #-}
+{-# INLINE casArrayElem2 #-}   
+{-# INLINE readArrayElem #-}
+{-# INLINE readForCAS #-}
+{-# INLINE casArrayElem #-}
+{-# INLINE casIORef2 #-}
+{-# INLINE readMutVarForCAS #-}
+{-# INLINE casMutVar #-}
+{-# INLINE casMutVar2 #-}
 #endif
 
 --------------------------------------------------------------------------------
 
-{-# INLINE casArrayElem #-}
 -- | Compare-and-swap 
 casArrayElem :: MutableArray RealWorld a -> Int -> Ticket a -> a -> IO (Bool, Ticket a)
 -- casArrayElem (MutableArray arr#) (I# i#) old new = IO$ \s1# ->
@@ -60,7 +74,6 @@ casArrayElem :: MutableArray RealWorld a -> Int -> Ticket a -> a -> IO (Bool, Ti
 --    (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, res) #)
 casArrayElem arr i old new = casArrayElem2 arr i old (seal new)
 
-{-# INLINE casArrayElem2 #-}   
 -- | This variant takes two tickets: the 'new' value is a ticket rather than an
 -- arbitrary, lifted, Haskell value.
 casArrayElem2 :: MutableArray RealWorld a -> Int -> Ticket a -> Ticket a -> IO (Bool, Ticket a)
@@ -69,7 +82,6 @@ casArrayElem2 (MutableArray arr#) (I# i#) old new = IO$ \s1# ->
    (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, res) #)
 
 
-{-# INLINE readArrayElem #-}
 readArrayElem :: forall a . MutableArray RealWorld a -> Int -> IO (Ticket a)
 -- readArrayElem = unsafeCoerce# readArray#
 readArrayElem (MutableArray arr#) (I# i#) = IO $ \ st -> unsafeCoerce# (fn st)
@@ -80,11 +92,9 @@ readArrayElem (MutableArray arr#) (I# i#) = IO $ \ st -> unsafeCoerce# (fn st)
 
 --------------------------------------------------------------------------------
 
-{-# INLINE readForCAS #-}
 readForCAS :: IORef a -> IO ( Ticket a )
 readForCAS (IORef (STRef mv)) = readMutVarForCAS mv
 
-{-# INLINE casIORef #-}
 -- | Performs a machine-level compare and swap operation on an
 -- 'IORef'. Returns a tuple containing a 'Bool' which is 'True' when a
 -- swap is performed, along with the 'current' value from the 'IORef'.
@@ -97,8 +107,6 @@ casIORef :: IORef a  -- ^ The 'IORef' containing a value 'current'
          -> IO (Bool, Ticket a)
 casIORef (IORef (STRef var)) old new = casMutVar var old new 
 
-
-{-# INLINE casIORef2 #-}
 -- | This variant takes two tickets, i.e. the 'new' value is a ticket rather than an
 -- arbitrary, lifted, Haskell value.
 casIORef2 :: IORef a 
@@ -112,6 +120,8 @@ casIORef2 (IORef (STRef var)) old new = casMutVar2 var old new
 
 -- | A ticket contains or can get the usable Haskell value.
 {-# NOINLINE peekTicket #-}
+-- At least this function MUST remain NOINLINE.  Issue5 is an example of a bug that
+-- ensues otherwise.
 peekTicket :: Ticket a -> a 
 peekTicket = unsafeCoerce#
 
@@ -120,18 +130,14 @@ peekTicket = unsafeCoerce#
 seal :: a -> Ticket a 
 seal = unsafeCoerce#
 
-
-{-# INLINE readMutVarForCAS #-}
 readMutVarForCAS :: MutVar# RealWorld a -> IO ( Ticket a )
 readMutVarForCAS !mv = IO$ \ st -> readForCAS# mv st
 
-{-# INLINE casMutVar #-}
 -- | MutVar counterpart of `casIORef`.
 --
 casMutVar :: MutVar# RealWorld a -> Ticket a -> a -> IO (Bool, Ticket a)
 casMutVar !mv !tick !new = casMutVar2 mv tick (seal new)
 
-{-# INLINE casMutVar2 #-}
 -- | This variant takes two tickets, i.e. the 'new' value is a ticket rather than an
 -- arbitrary, lifted, Haskell value.
 casMutVar2 :: MutVar# RealWorld a -> Ticket a -> Ticket a -> IO (Bool, Ticket a)

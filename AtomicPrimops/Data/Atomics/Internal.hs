@@ -22,11 +22,12 @@ import GHC.Prim (readMutVar#, casMutVar#, Any)
 
 #ifdef DEBUG_ATOMICS
 {-# NOINLINE readForCAS# #-}
-{-# NOINLINE casArray #-}
-{-# NOINLINE casMutVarTicketed #-}
+{-# NOINLINE casArray# #-}
+{-# NOINLINE casMutVarTicketed# #-}
+#define CASTFUN
 #else
 {-# INLINE casMutVarTicketed# #-}
-
+{-# INLINE casArray# #-}
 -- I *think* inlining may be ok here as long as casting happens on the arrow types:
 #define CASTFUN
 #endif
@@ -35,7 +36,6 @@ import GHC.Prim (readMutVar#, casMutVar#, Any)
 -- Entrypoints for end-users
 --------------------------------------------------------------------------------
 
-{-# INLINE casArray# #-}
 -- | Unsafe, machine-level atomic compare and swap on an element within an Array.  
 casArray# :: MutableArray# RealWorld a -> Int# -> Ticket a -> Ticket a 
           -> State# RealWorld -> (# State# RealWorld, Int#, Ticket a #)

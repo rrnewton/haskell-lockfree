@@ -34,6 +34,10 @@ Extra-Source-Files:  DEVLOG.md,
                      testing/runTest.hs, testing/Test.hs, testing/test-atomic-primops.cabal
 --                    Makefile, Test.hs, README.md
 
+Flag debug
+    Description: Enable the extra internal checks.
+    Default: True
+
 Library
   exposed-modules:   Data.Atomics
                      Data.Atomics.Internal
@@ -54,6 +58,9 @@ Library
   -- if( cabal-version < 1.17 ) {
   --   ghc-prof-options: ERROR_DO_NOT_BUILD_THIS_WITH_PROFILING_YET__SEE_CABAL_ISSUE_1284
   -- }
+
+  if flag(debug)
+    cpp-options: -DDEBUG_ATOMICS
 
 -- -- [2013.04.08] This isn't working presently:
 -- -- I'm having problems with building it along with the library; see DEVLOG.

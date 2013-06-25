@@ -485,4 +485,35 @@ Actually, running it at 1M is enough to trigger the error:
 
     NUMELEMS=1000000 NOWRAPPER=1 NUMTHREADS=4 rep 10 ./dist/build/test-chaselev-deque/test-chaselev-deque -t random_work_steal
     
-    
+And, btw, it triggers when DEBUGCL is on too.
+
+Added another hack (ONLYWRAPPER) so I can test the debug wrapper by
+itself again.  It still gets bad sums without catching a violation of
+the thread/queue contract:
+
+    NUMELEMS=1000000 ONLYWRAPPER=1 NUMTHREADS=4 rep 10 ./dist/build/test-chaselev-deque/test-chaselev-deque -t random_work
+
+### Rev  - pump up the NOINLINE's in Data.Atomics
+
+I don't currently know how many functions have to be marked NOINLINE
+to avoid problems analagous to the one exposed by "peekTicket".  If we
+conservatively apply NOINLINE to ALL functions in Data.Atomics.hs,
+what happens?
+
+    NUMELEMS=1000000 NOWRAPPER=1 NUMTHREADS=4 rep 10 ./dist/build/test-chaselev-deque/test-chaselev-deque -t random_work
+
+The short answer is that we still get those same failures:
+
+    Final sum: 249999499999, producer/consumer/leftover sums: ([79457516832,80190885993],[45385333059,44965764115],[0,0])
+      :test_random_work_stealing: [Running]
+      :test_random_work_stealing: [Failed]
+    Correct final sum
+    expected: 249999500000
+     but got: 249999499999
+
+Hmm, these answers, even if we pump the size up to 5M, are still
+around 42 bits big.  I don't think any kind of overflow could possible
+be occuring, given as we use 64 bit ints on a 64 bit machine.  But it
+wouldn't hurt to make them explicitly 64 bit to make sure.. (or
+Integer)...
+

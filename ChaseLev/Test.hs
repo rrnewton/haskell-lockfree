@@ -43,17 +43,23 @@ main = do
                         [1, 2, np `quot` 2, np, 2*np ]
   putStrLn $"Running all tests for these thread settings: "  ++show all_threads
 
-  let dbg = case lookup "NOWRAPPER" theEnv of
-              Just _  -> False
-              Nothing -> True
-
+  let wrapper = case lookup "NOWRAPPER" theEnv of
+                 Just _  -> False
+                 Nothing -> True
+  let plain = case lookup "ONLYWRAPPER" theEnv of
+                Just _  -> False
+                Nothing -> True
+  
   let all_tests :: HU.Test
       all_tests = TestList $ 
         [ TestLabel "simplest_pushPop"  $ TestCase simplest_pushPop
         , TestLabel "standalone_pushPop"  $ TestCase standalone_pushPop
-        , TestLabel "standalone_pushPop2" $ TestCase RegressionTests.Issue5B.standalone_pushPop      
-        , TestLabel "ChaseLev" $ tests_wsqueue (newQ :: IO (CL.ChaseLevDeque a)) ]
-        ++ if dbg then
+        , TestLabel "standalone_pushPop2" $ TestCase RegressionTests.Issue5B.standalone_pushPop ]
+        -- This is very ugly and should be unnecessary:
+        ++ if plain then
+             [ TestLabel "ChaseLev" $ tests_wsqueue (newQ :: IO (CL.ChaseLevDeque a)) ]
+           else []  
+        ++ if wrapper then
              [ TestLabel "ChaseLev(DbgWrapper)" $ tests_wsqueue (newQ :: IO (DebugDeque CL.ChaseLevDeque a)) ]
            else []
         

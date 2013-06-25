@@ -29,6 +29,7 @@ import Control.Monad
 -- import qualified Data.Vector.Mutable as MV
 import Data.Array as A
 import Data.IORef
+import Data.Int
 -- import System.Mem.StableName
 import Text.Printf
 import GHC.Conc (getNumCapabilities, throwTo, threadDelay, myThreadId)
@@ -95,14 +96,17 @@ warnUsing str a = trace ("  [Warning]: Using environment variable "++str) a
 -- Test a plain FIFO queue:
 ----------------------------------------------------------------------------------------------------
 
+-- The type of data that we push over the queues.
+type Elt = Int64
+
 -- | This test serially fills up a queue and then drains it.
-test_fifo_filldrain :: DequeClass d => d Int -> IO ()
+test_fifo_filldrain :: DequeClass d => d Elt -> IO ()
 test_fifo_filldrain q = 
   do
      dbgPrintLn 1 "\nTest FIFO queue: sequential fill and then drain"
      dbgPrintLn 1 "==============================================="
 --     let n = 1000
-     let n = numElems
+     let n = fromIntegral numElems
      dbgPrintLn 1$ "Done creating queue.  Pushing "++show n++" elements:"
      forM_ [1..n] $ \i -> do 
        pushL q i
@@ -115,7 +119,7 @@ test_fifo_filldrain q =
            when (i < 200) $ dbgPrint 1 $ printf " %d" x
            loop (i-1) (sumR + x)
      s <- loop n 0
-     let expected = sum [1..n] :: Int
+     let expected = sum [1..n] :: Elt
      dbgPrint 1 $ printf "\nSum of popped vals: %d should be %d\n" s expected
      when (s /= expected) (assertFailure "Incorrect sum!")
      return ()
@@ -126,7 +130,7 @@ test_fifo_filldrain q =
 -- thread performs its designated operation as fast as possible.  The
 -- 'Int' argument 'total' designates how many total items should be
 -- communicated (irrespective of 'numAgents').
-test_fifo_OneBottleneck :: DequeClass d => Bool -> Int -> d Int -> IO ()
+test_fifo_OneBottleneck :: DequeClass d => Bool -> Int -> d Elt -> IO ()
 test_fifo_OneBottleneck doBackoff total q = 
   do
      assertBool "test_fifo_OneBottleneck requires thread safe left end"  (leftThreadSafe q)
@@ -156,9 +160,9 @@ test_fifo_OneBottleneck doBackoff total q =
  	myfork "producer thread" $ do
           let start = ind * perthread 
           dbgPrint 1 $ printf "  * Producer thread %d pushing ints from %d to %d \n" ind start (start+perthread - 1)
-          for_ start (start+perthread) $ \ i -> do 
+          forI_ start (start+perthread) $ \ i -> do 
 	     pushL q i
-             when (i < start + 10) $ dbgPrint 1 $ printf " [p%d] pushed %d \n" ind i
+             -- when (i < start + 10) $ dbgPrint 1 $ printf " [p%d] pushed %d \n" ind i
 
      ls <- forkJoin consumers $ \ ind ->         
           let mymax = if ind==0 then perthread2 + remain else perthread2
@@ -173,7 +177,7 @@ test_fifo_OneBottleneck doBackoff total q =
      let finalSum = Prelude.sum (map fst ls)
      dbgPrintLn 1$ "Consumers DONE.  Maximum retries for each consumer thread: "++ show (map snd ls)
      dbgPrintLn 1$ "Final sum: "++ show finalSum
-     assertEqual "Correct final sum" (expectedSum (producers * perthread)) finalSum
+     assertEqual "Correct final sum" (expectedSum (fromIntegral$ producers * perthread)) finalSum
      dbgPrintLn 1$ "Checking that queue is finally null..."
      b <- nullQ q
      if b then dbgPrintLn 1$ "Sum matched expected, test passed."
@@ -181,7 +185,7 @@ test_fifo_OneBottleneck doBackoff total q =
 
 -- | This test uses a separate queue per producer/consumer pair.  The queues
 -- are used in a single-writer single-reader.
-test_contention_free_parallel :: DequeClass d => Bool -> Int -> IO (d Int) -> IO ()
+test_contention_free_parallel :: DequeClass d => Bool -> Int -> IO (d Elt) -> IO ()
 test_contention_free_parallel doBackoff total newqueue = 
   do 
      dbgPrintLn 1$ "\nTest FIFO queue: producers & consumers thru N queues"
@@ -205,9 +209,9 @@ test_contention_free_parallel doBackoff total newqueue =
      forM_ (zip [0..producers-1] qs) $ \ (id, q) -> 
  	myfork "producer thread" $
           let start = id*perthread in
-          for_ 0 perthread $ \ i -> do 
+          forI_ 0 perthread $ \ i -> do 
 	     pushL q i
-             when (i - id*producers < 10) $ dbgPrint 1 $ printf " [%d] pushed %d \n" id i
+             -- when (i - id*producers < 10) $ dbgPrint 1 $ printf " [%d] pushed %d \n" id i
 
      forM_ (zip [0..consumers-1] qs) $ \ (id, q) -> 
  	myfork "consumer thread" $ do 
@@ -216,7 +220,8 @@ test_contention_free_parallel doBackoff total newqueue =
                 (x,iters) <- if doBackoff then spinPopBkoff q 
                                           else spinPopHard  q
                 when (i < 10) $ dbgPrint 1 $ printf " [%d] popped #%d = %d \n" id i x
-                unless (x == i) $ error $ "Message out of order! Expected "++show i++" recevied "++show x
+                unless (x == fromIntegral i) $
+                  error $ "Message out of order! Expected "++show i++" recevied "++show x
                 consume_loop (sum+x) (max maxiters iters) (i+1)
           pr <- consume_loop 0 0 0
 	  putMVar mv pr
@@ -226,7 +231,7 @@ test_contention_free_parallel doBackoff total newqueue =
      let finalSum = Prelude.sum (map fst ls)
      dbgPrintLn 1$ "Consumers DONE.  Maximum retries for each consumer thread: "++ show (map snd ls)
      dbgPrintLn 1$ "All messages received in order.  Final sum: "++ show finalSum
-     assertEqual "Correct final sum" (producers * expectedSum perthread) finalSum          
+     assertEqual "Correct final sum" (fromIntegral producers * expectedSum (fromIntegral perthread)) finalSum          
      dbgPrintLn 1$ "Checking that queue is finally null..."
      bs <- mapM nullQ qs
      if all id bs
@@ -237,7 +242,7 @@ test_contention_free_parallel doBackoff total newqueue =
 
 -- | This test uses a number of producer and consumer threads which push and pop
 -- elements from random positions in an array of FIFOs.
-test_random_array_comm :: DequeClass d => Int -> Int -> IO (d Int) -> IO ()
+test_random_array_comm :: DequeClass d => Int -> Int -> IO (d Elt) -> IO ()
 test_random_array_comm size total newqueue = do
    assertBool "positive size" (size > 0)
   
@@ -254,7 +259,7 @@ test_random_array_comm size total newqueue = do
    numAgents <- getNumAgents
    let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
        consumers = max 1 (numAgents - producers)
-       perthread  = total `quot` producers
+       perthread           = fromIntegral (total `quot` producers)
        (perthread2,remain) = total `quotRem` consumers
    
    dbgPrintLn 1 $ printf "Forking %d producer threads, each producing %d elements.\n" producers perthread
@@ -264,9 +269,9 @@ test_random_array_comm size total newqueue = do
       myfork "producer thread" $
         for_ 0 perthread $ \ i -> do
            -- Randomly pick a position:
-           ix <- randomRIO (0,size-1) :: IO Int
+           ix <- randomRIO (0,size - 1) :: IO Int
            pushL (arr ! ix) i
-           when (i - ind*producers < 10) $ dbgPrint 1 $ printf " [%d] pushed %d \n" ind i
+           -- when (i - ind*producers < 10) $ dbgPrint 1 $ printf " [%d] pushed %d \n" ind i
 
    -- Each consumer doesn't quit until it has popped "perthread":
    sums <- forkJoin consumers $ \ ind ->
@@ -289,7 +294,7 @@ test_random_array_comm size total newqueue = do
    let finalSum = Prelude.sum sums
    dbgPrintLn 1$ "Final sum: "++ show finalSum ++ ", per-consumer sums: "++show sums
    dbgPrintLn 1$ "Checking that queue is finally null..."
-   assertEqual "Correct final sum" (producers * expectedSum perthread) finalSum
+   assertEqual "Correct final sum" (fromIntegral producers * expectedSum perthread) finalSum
    bs <- mapM nullQ qs
    if all id bs
      then dbgPrintLn 1$ "Sum matched expected, test passed."
@@ -357,7 +362,7 @@ test_ws_triv2 q = do
 -- | This test uses a number of worker threads which randomly either push or pop work
 -- to their local work stealing deque.  Also, there are consumer (always thief)
 -- threads which never produce and only consume.
-test_random_work_stealing :: (DequeClass d, PopL d) => Int -> IO (d Int) -> IO ()
+test_random_work_stealing :: (DequeClass d, PopL d) => Int -> IO (d Elt) -> IO ()
 test_random_work_stealing total newqueue = do
    
    dbgPrintLn 1$ "\nTest FIFO queue: producers & consumers select random queues"
@@ -366,8 +371,8 @@ test_random_work_stealing total newqueue = do
    numAgents <- getNumAgents
    let producers = max 1 (round$ producerRatio * (fromIntegral numAgents) / (producerRatio + 1))
        consumers = max 1 (numAgents - producers)
-       perthread  = total `quot` producers
-       (perthread2,remain) = total `quotRem` consumers
+       perthread  = fromIntegral (total `quot` producers)
+       (perthread2,remain) = (total `quotRem` consumers)
        
    qs <- sequence (replicate producers newqueue)   
    -- A work-stealing deque only has ONE threadsafe end:
@@ -391,7 +396,7 @@ test_random_work_stealing total newqueue = do
                      Just n  -> loop i (n+acc)
                    else do
                    pushL myQ i
-                   when (i - ind*producers < 10) $ dbgPrint 1 $ printf " [%d] pushed %d \n" ind i
+                   -- when (i - ind*producers < 10) $ dbgPrint 1 $ printf " [%d] pushed %d \n" ind i
                    loop (i+1) acc
         in loop 0 0
 
@@ -427,7 +432,7 @@ test_random_work_stealing total newqueue = do
    let finalSum = Prelude.sum (consumer_sums ++ prod_ls ++ leftovers)
    dbgPrintLn 0$ "Final sum: "++ show finalSum ++ ", producer/consumer/leftover sums: "++show (prod_ls, consumer_sums, leftovers)
    dbgPrintLn 1$ "Checking that queue is finally null..."
-   assertEqual "Correct final sum" (producers * expectedSum perthread) finalSum
+   assertEqual "Correct final sum" (fromIntegral producers * expectedSum perthread) finalSum
    bs <- mapM nullQ qs
    if all id bs
      then dbgPrintLn 1$ "Sum matched expected, test passed."
@@ -550,13 +555,15 @@ spinPopN tries act = do
 -- My own forM for numeric ranges (not requiring deforestation optimizations).
 -- Inclusive start, exclusive end.
 {-# INLINE for_ #-}
-for_ :: Monad m => Int -> Int -> (Int -> m ()) -> m ()
+for_ :: Monad m => Elt -> Elt -> (Elt -> m ()) -> m ()
 for_ start end _fn | start > end = error "for_: start is greater than end"
 for_ start end fn = loop start
   where
    loop !i | i == end  = return ()
 	   | otherwise = do fn i; loop (i+1)
 
+forI_ :: Monad m => Int -> Int -> (Elt -> m ()) -> m ()
+forI_ st en = for_ (fromIntegral st) (fromIntegral en)
 
 ----------------------------------------------------------------------------------------------------
 -- DEBUGGING
