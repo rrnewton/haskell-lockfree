@@ -184,4 +184,7 @@ triggering it.  To get started, here are the relative sizes:
 The optimized one is bigger, likely as a result of link time inlining
 from the existing libs.
 
+Here's something weird... changing Issue5.hs to Issue5B.hs and
+inlining the definition of ChaseLev makes the problem GO AWAY.  Why
+would that be?  That could only enable more inlining, right?
 

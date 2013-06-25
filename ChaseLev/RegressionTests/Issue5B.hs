@@ -1,38 +1,100 @@
-{-# LANGUAGE FlexibleInstances, NamedFieldPuns, CPP, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances, NamedFieldPuns, CPP #-}
 
--- | Chase-Lev work stealing Deques
--- 
--- This implementation derives directly from the pseudocode in the 2005 SPAA paper:
---
---   http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.170.1097&rep=rep1&type=pdf
---
-module Data.Concurrent.Deque.ChaseLev 
-  (
-    -- The convention here is to directly provide the concrete
-    -- operations as well as providing the class instances.
-    ChaseLevDeque(), newQ, nullQ, pushL, tryPopL, tryPopR,
-    dbgInspectCLD
-  )
- where
+module RegressionTests.Issue5B (standalone_pushPop) where
 
+import Control.Concurrent
 import Data.IORef
-import Data.List (isInfixOf, intersperse)
 import qualified Data.Concurrent.Deque.Class as PC
+
+-- We DO observe the error with SEPLIB on, and NOT with it off.
+-- That means for the time being I cannot reproduce this bug in a standalone file...
+#define SEPLIB
+#ifdef SEPLIB
+import Data.Concurrent.Deque.ChaseLev (ChaseLevDeque, dbgInspectCLD)
+#endif
+
+import Data.Atomics
 
 -- import Data.CAS (casIORef)
 import qualified Data.Vector.Mutable as MV
 import qualified Data.Vector as V
--- import Data.Vector.Unboxed.Mutable as V
--- import Data.Vector
-import Text.Printf (printf)
-import Control.Exception (catch, SomeException, throw, evaluate,try)
+-- import Text.Printf (printf)
+import Control.Exception(catch, SomeException, throw, evaluate)
 import Control.Monad (when, unless, forM_)
 -- import Control.Monad.ST
 
 import Data.Atomics (readArrayElem, readForCAS, casIORef, Ticket, peekTicket)
+import System.Mem.StableName (makeStableName, hashStableName)
+import GHC.IO (unsafePerformIO)
+import Text.Printf (printf)
 
--- import qualified Data.ByteString.Char8 as BS
+--------------------------------------------------------------------------------
 
+standalone_pushPop :: IO ()
+standalone_pushPop =
+  triv =<< (PC.newQ :: IO (DebugDeque ChaseLevDeque a))           
+ where   
+   -- This is what's failing with the debug wrapper, WHY?
+   -- triv :: PC.PopL d => d [Char] -> IO ()
+   triv :: DebugDeque ChaseLevDeque [Char] -> IO ()
+   triv q = do
+     -- r <- newIORef
+     -- writeIORef r "hi"
+     -- (bl,tick) <- readForCAS r 
+     -- casIORef r tick "there"
+     -- case bl of
+     --   True -> putStrLn "CAS succeeded. Test passed.\n"
+     let val = "hi"
+     PC.pushL q val
+     printf "Done pushing single value... queue %x, val %x\n" (unsafeName q) (unsafeName val)
+     x <- PC.tryPopL q
+     y <- PC.tryPopL q
+     z <- PC.tryPopL q
+
+     s <- dbgInspectCLD (unwrapDebug q)
+     printf "Queue after 3 pops:\n%s\n" s     
+     case x of
+       Just "hi" -> putStrLn "Got expected value.  Test passed.\n"
+       Just x'   -> error$ "A single push/pop got the WRONG value back: "++show x'
+       Nothing   -> error$"Even a single push/pop in isolation did not work!: "++show (x,y,z)
+
+data DebugDeque d elt =
+  DebugDeque {
+    tidMarks :: (IORef (Maybe ThreadId), IORef (Maybe ThreadId)),
+    unwrapDebug :: (d elt)
+  }
+
+instance PC.DequeClass d => PC.DequeClass (DebugDeque d) where 
+  pushL (DebugDeque (ref,_) q) elt = do
+    PC.pushL q elt
+
+  tryPopR (DebugDeque (_,ref) q) = do
+    PC.tryPopR q 
+
+  newQ = do l <- newIORef Nothing
+            r <- newIORef Nothing
+            fmap (DebugDeque (l,r)) PC.newQ
+
+  -- FIXME: What are the threadsafe rules for nullQ?
+  nullQ (DebugDeque _ q) = PC.nullQ q
+      
+  leftThreadSafe  (DebugDeque _ q) = PC.leftThreadSafe q
+  rightThreadSafe (DebugDeque _ q) = PC.rightThreadSafe q
+
+
+instance PC.PopL d => PC.PopL (DebugDeque d) where 
+  tryPopL (DebugDeque (ref,_) q) = do
+    PC.tryPopL q 
+
+--------------------------------------------------------------------------------
+
+{-# NOINLINE unsafeName #-}
+unsafeName :: a -> Int
+unsafeName x = unsafePerformIO $ do 
+   sn <- makeStableName x
+   return (hashStableName sn)
+
+#ifndef SEPLIB
 --------------------------------------------------------------------------------
 -- Instances
 
@@ -57,31 +119,6 @@ data ChaseLevDeque a = CLD {
     -- This is a circular array:
   , activeArr :: {-# UNPACK #-} !(IORef (MV.IOVector a))
   }
-
-dbgInspectCLD :: Show a => ChaseLevDeque a -> IO String
-dbgInspectCLD CLD{top,bottom,activeArr} = do
-  tp <- readIORef top
-  bt <- readIORef bottom
-  vc <- readIORef activeArr
-  elems  <- fmap V.toList$ V.freeze vc
-  elems' <- mapM safePrint elems
-  let sz = MV.length vc
-  return$ "{DbgInspectCLD: top "++show tp++", bot "++show bt++", size "++show sz++"\n" ++
-          -- show elems ++ "\n"++
-          "[ "++(concat $ intersperse " " elems')++" ]\n"++
-          "end_DbgInspectCLD}"
- where
-   -- Print any thunk, even if it raises an exception.
-   safePrint :: Show a => a -> IO String
-   safePrint val = do
-     res <- try (evaluate val)
-     case res of
-       Left (e::SomeException)
-         | isInfixOf "uninitialised element" (show e) -> return "<uninit>"
-         | otherwise -> return$ "<"++ show e ++">"
-       Right val' -> return (show val')
-     
-
 
 --------------------------------------------------------------------------------
 -- Debugging mode.
@@ -301,3 +338,5 @@ fakeCAS r oldT new = do
     if   (val == old)
     then (new, (True, val))
     else (val, (False,val))
+
+#endif
