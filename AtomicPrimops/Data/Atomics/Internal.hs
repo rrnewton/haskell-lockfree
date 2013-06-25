@@ -22,9 +22,14 @@ import GHC.Prim (readMutVar#, casMutVar#, Any)
 
 #ifdef DEBUG_ATOMICS
 {-# NOINLINE readForCAS# #-}
-#endif
+{-# NOINLINE casArray #-}
+{-# NOINLINE casMutVarTicketed #-}
+#else
+{-# INLINE casMutVarTicketed# #-}
 
+-- I *think* inlining may be ok here as long as casting happens on the arrow types:
 #define CASTFUN
+#endif
 
 --------------------------------------------------------------------------------
 -- Entrypoints for end-users
@@ -80,7 +85,6 @@ readForCAS# mv rw =
 #endif
 
 
-{-# INLINE casMutVarTicketed# #-}
 casMutVarTicketed# :: MutVar# RealWorld a -> Ticket a -> Ticket a ->
                State# RealWorld -> (# State# RealWorld, Int#, Ticket a #)
 -- WARNING: cast of a function -- need to verify these are safe or eta expand:

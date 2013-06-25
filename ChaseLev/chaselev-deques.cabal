@@ -16,6 +16,10 @@ Homepage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
 Synopsis: Chase & Lev work-stealing lock-free double-ended queues (deques).
 
 
+Flag: debug
+    cpp-options: -DDEBUGCL
+    default: False
+
 Library
   exposed-modules:   Data.Concurrent.Deque.ChaseLev.DequeInstance,
                      Data.Concurrent.Deque.ChaseLev
@@ -26,6 +30,7 @@ Library
                      abstract-deque, vector,
                      atomic-primops, 
                      IORefCAS >= 0.2
+  build-depends: ghc-prim
   ghc-options: -O2
 
 
@@ -41,6 +46,7 @@ Test-Suite test-chaselev-deque
                    HUnit, test-framework, test-framework-hunit,
                    atomic-primops, 
                    IORefCAS >= 0.2
+    build-depends: containers
     ghc-options: -O2 -threaded -rtsopts 
 
     -- ghc-options: -O2 -threaded -rtsopts 

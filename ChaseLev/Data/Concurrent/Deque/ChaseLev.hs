@@ -88,7 +88,7 @@ dbgInspectCLD CLD{top,bottom,activeArr} = do
 
 --------------------------------------------------------------------------------
 -- Debugging mode.
-#define DEBUGCL
+-- define DEBUGCL
 --define FAKECAS
 
 {-# INLINE rd #-}
@@ -97,7 +97,6 @@ dbgInspectCLD CLD{top,bottom,activeArr} = do
 {-# INLINE cpy #-}
 {-# INLINE slc #-}
 #ifndef DEBUGCL
-#warning "Activating DEBUGCL!"
 dbg = False
 nu  = MV.unsafeNew
 rd  = MV.unsafeRead
@@ -105,6 +104,7 @@ wr  = MV.unsafeWrite
 slc = MV.unsafeSlice
 cpy = MV.unsafeCopy
 #else
+#warning "Activating DEBUGCL!"
 dbg = True
 nu  = MV.new 
 rd  = MV.read
@@ -331,3 +331,4 @@ unsafeName x = unsafePerformIO $ do
 {-# NOINLINE ptrEq #-}
 ptrEq :: a -> a -> Bool
 ptrEq !x !y = I# (reallyUnsafePtrEquality# x y) == 1
+

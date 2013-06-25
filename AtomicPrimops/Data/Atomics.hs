@@ -46,6 +46,8 @@ import GHC.Word (Word(W#))
 {-# NOINLINE casIORef #-} -- Note, it doesn't fix issue5.
 
 {-# NOINLINE seal #-}
+#else
+
 #endif
 
 --------------------------------------------------------------------------------
@@ -82,6 +84,7 @@ readArrayElem (MutableArray arr#) (I# i#) = IO $ \ st -> unsafeCoerce# (fn st)
 readForCAS :: IORef a -> IO ( Ticket a )
 readForCAS (IORef (STRef mv)) = readMutVarForCAS mv
 
+{-# INLINE casIORef #-}
 -- | Performs a machine-level compare and swap operation on an
 -- 'IORef'. Returns a tuple containing a 'Bool' which is 'True' when a
 -- swap is performed, along with the 'current' value from the 'IORef'.
@@ -122,14 +125,13 @@ seal = unsafeCoerce#
 readMutVarForCAS :: MutVar# RealWorld a -> IO ( Ticket a )
 readMutVarForCAS !mv = IO$ \ st -> readForCAS# mv st
 
-
+{-# INLINE casMutVar #-}
 -- | MutVar counterpart of `casIORef`.
 --
 casMutVar :: MutVar# RealWorld a -> Ticket a -> a -> IO (Bool, Ticket a)
 casMutVar !mv !tick !new = casMutVar2 mv tick (seal new)
-{-# INLINE casMutVar #-}
 
-
+{-# INLINE casMutVar2 #-}
 -- | This variant takes two tickets, i.e. the 'new' value is a ticket rather than an
 -- arbitrary, lifted, Haskell value.
 casMutVar2 :: MutVar# RealWorld a -> Ticket a -> Ticket a -> IO (Bool, Ticket a)
@@ -139,7 +141,5 @@ casMutVar2 !mv !tick !new = IO$ \st ->
       (# st, (flag ==# 0#, tick') #)
 --      (# st, if flag ==# 0# then Succeed tick' else Fail tick' #)
 --      if flag ==# 0#    then       else (# st, Fail (W# tick')  #)
-{-# INLINE casMutVar2 #-}
-
 
 
