@@ -85,7 +85,7 @@ foreign import prim "stg_casArrayzh" casArrayTypeErased#
 --   out_of_line = True
 --   has_side_effects = True
 
--- | This alternate version of casMutVar returns a numeric "ticket" for
+-- | This alternate version of casMutVar returns an opaque "ticket" for
 --   future CAS operations.
 foreign import prim "stg_casMutVar2zh" casMutVar_TypeErased#
   :: MutVar# RealWorld () -> Any () -> Any () ->

@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, NamedFieldPuns, CPP, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances, NamedFieldPuns, CPP, ScopedTypeVariables, BangPatterns, MagicHash #-}
 
 -- | Chase-Lev work stealing Deques
 -- 
@@ -27,11 +27,14 @@ import qualified Data.Vector as V
 import Text.Printf (printf)
 import Control.Exception (catch, SomeException, throw, evaluate,try)
 import Control.Monad (when, unless, forM_)
--- import Control.Monad.ST
-
 import Data.Atomics (readArrayElem, readForCAS, casIORef, Ticket, peekTicket)
 
--- import qualified Data.ByteString.Char8 as BS
+-- Debugging:
+import System.IO.Unsafe (unsafePerformIO)
+import Text.Printf (printf)
+import System.Mem.StableName (makeStableName, hashStableName)
+import GHC.Exts (Int(I#))
+import GHC.Prim (reallyUnsafePtrEquality#, unsafeCoerce#)
 
 --------------------------------------------------------------------------------
 -- Instances
@@ -86,7 +89,7 @@ dbgInspectCLD CLD{top,bottom,activeArr} = do
 --------------------------------------------------------------------------------
 -- Debugging mode.
 #define DEBUGCL
--- define FAKECAS
+--define FAKECAS
 
 {-# INLINE rd #-}
 {-# INLINE wr #-}
@@ -266,14 +269,24 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
   let t = peekTicket tt
       size = b - t 
   if size < 0 then do
+#ifdef DEBUGCL
+    printf "Debug: tryPopL in size<0 case... \n"
+#endif    
     writeIORef bottom =<< evaluate t 
     return Nothing
    else do
     obj <- getCirc arr b
-    if size > 0 then 
+    if size > 0 then do
+#ifdef DEBUGCL
+      printf "Debug: tryPopL in size>0 case... \n"
+#endif    
       return (Just obj)
      else do
-      (b,_) <- doCAS top tt (t+1)
+      (b,ol) <- doCAS top tt (t+1)
+#ifdef DEBUGCL
+      printf "Debug: tryPopL in size=0, last element case! CAS: %s, tt %x, old %x, ptreq %s\n"
+             (show b) (unsafeName tt) (unsafeName ol) (show$ ptrEq tt ol)
+#endif    
       writeIORef bottom =<< evaluate (t+1)
       if b then return$ Just obj
            else return$ Nothing 
@@ -282,16 +295,16 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
 
 {-# INLINE doCAS #-}
 #ifdef FAKECAS
-doCAS = fakeCAS
+doCAS r o !n = fakeCAS  r o n
 #else 
-doCAS = casIORef
+doCAS r o !n = casIORef r o n
 #endif
 
 {-# INLINE fakeCAS #-}
 -- This approach for faking it requires proper equality, it doesn't use pointer
 -- equality at all.  That makes it not a true substitute but useful for some
 -- debugging.
-fakeCAS :: Eq a => IORef a -> Ticket a -> a -> IO (Bool,a)
+fakeCAS :: Eq a => IORef a -> Ticket a -> a -> IO (Bool,Ticket a)
 -- casIORef r !old !new =   
 fakeCAS r oldT new = do
   let old = peekTicket oldT
@@ -305,5 +318,16 @@ fakeCAS r oldT new = do
 	  ) $
 -}
     if   (val == old)
-    then (new, (True, val))
-    else (val, (False,val))
+    then (new, (True, unsafeCoerce# val))
+    else (val, (False,unsafeCoerce# val))
+
+
+{-# NOINLINE unsafeName #-}
+unsafeName :: a -> Int
+unsafeName x = unsafePerformIO $ do 
+   sn <- makeStableName x
+   return (hashStableName sn)
+
+{-# NOINLINE ptrEq #-}
+ptrEq :: a -> a -> Bool
+ptrEq !x !y = I# (reallyUnsafePtrEquality# x y) == 1
