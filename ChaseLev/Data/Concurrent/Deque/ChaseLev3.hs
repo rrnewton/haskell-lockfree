@@ -105,8 +105,6 @@ assert_wsdeque_invariants WSDeque{size,moduloSize,top,bottom,topBound,elements} 
   _ <- rd elements' (size' - 1)
   return ()
 
-{-
-
 -- No: it is possible that top > bottom when using pop()
 --  ASSERT((p)->bottom >= (p)->top);           
 --  ASSERT((p)->size > (p)->bottom - (p)->top);
@@ -120,65 +118,61 @@ assert_wsdeque_invariants WSDeque{size,moduloSize,top,bottom,topBound,elements} 
  *
  * -------------------------------------------------------------------------- -}
 
--- Allocation, deallocation
-WSDeque * newWSDeque  (nat size);
-void      freeWSDeque (WSDeque *q);
+-- | Allocation
+newWSDeque :: Int -> WSDeque a
+newWSDeque = undefined
 
--- Take an element from the "write" end of the pool.  Can be called
+-- | Take an element from the "write" end of the pool.  Can be called
 -- by the pool owner only.
-void* popWSDeque (WSDeque *q);
+popWSDeque :: WSDeque a -> IO (Maybe a)
+popWSDeque = undefined
 
--- Push onto the "write" end of the pool.  Return true if the push
+-- | Push onto the "write" end of the pool.  Return true if the push
 -- succeeded, or false if the deque is full.
-rtsBool pushWSDeque (WSDeque *q, void *elem);
+pushWSDeque :: WSDeque a -> a -> IO Bool
+pushWSDeque = undefined
 
 -- Removes all elements from the deque
-EXTERN_INLINE void discardElements (WSDeque *q);
+discardElements :: WSDeque a -> IO ()
 
 -- Removes an element of the deque from the "read" end, or returns
 -- NULL if the pool is empty, or if there was a collision with another
 -- thief.
-void * stealWSDeque_ (WSDeque *q);
+stealWSDeque_ :: WSDeque a -> IO (Maybe a)
+stealWSDeque_ = undefined 
 
 -- Removes an element of the deque from the "read" end, or returns
 -- NULL if the pool is empty.
-void * stealWSDeque (WSDeque *q);
+stealWSDeque :: WSDeque a -> IO (Maybe a)
+stealWSDeque = undefined 
 
 -- "guesses" whether a deque is empty. Can return false negatives in
 --  presence of concurrent steal() calls, and false positives in
 --  presence of a concurrent pushBottom().
-EXTERN_INLINE rtsBool looksEmptyWSDeque (WSDeque* q);
+looksEmptyWSDeque :: WSDeque a -> IO Bool
 
-EXTERN_INLINE long dequeElements   (WSDeque *q);
+dequeElements ::  WSDeque a -> IO Int
+
 
 {- -----------------------------------------------------------------------------
  * PRIVATE below here
  * -------------------------------------------------------------------------- -}
 
-EXTERN_INLINE long
-dequeElements (WSDeque *q)
-{
-    StgWord t = q->top;
-    StgWord b = q->bottom;
+dequeElements WSDeque{top,bottom} = do
+    t <- readCounter top
+    b <- readCounter bottom
     -- try to prefer false negatives by reading top first
-    return ((long)b - (long)t);
-}
+    return (b - t)
 
-EXTERN_INLINE rtsBool
-looksEmptyWSDeque (WSDeque *q)
-{
-    return (dequeElements(q) <= 0);
-}
+looksEmptyWSDeque q = do
+  s <- dequeElements q
+  return (s <= 0)
 
-EXTERN_INLINE void
-discardElements (WSDeque *q)
-{
-    q->top = q->bottom;
+discardElements WSDeque{top,bottom} = do
+  b <- readCounter bottom
+  writeCounter top b
 --    pool->topBound = pool->top;
-}
 
-
--}
 {-
 
 {- -----------------------------------------------------------------------------
