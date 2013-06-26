@@ -29,6 +29,7 @@ import Control.Exception (catch, SomeException, throw, evaluate,try)
 import Control.Monad (when, unless, forM_)
 --import Data.Atomics (readArrayElem, readForCAS, casIORef, Ticket, peekTicket)
 -- import Data.Atomics.Counter.IORef
+import Data.Atomics (storeLoadBarrier, writeBarrier, loadLoadBarrier)
 import Data.Atomics.Counter.Reference
        (AtomicCounter, newCounter, readCounter, writeCounter, casCounter, readCounterForCAS, peekCTicket)
 
@@ -235,6 +236,15 @@ pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
           else return arr
 
   putCirc arr' b obj
+  {-
+     KG: we need to put write barrier here since otherwise we might
+     end with elem not added to q->elements, but q->bottom already
+     modified (write reordering) and with stealWSDeque_ failing
+     later when invoked from another thread since it thinks elem is
+     there (in case there is just added element in the queue). This
+     issue concretely hit me on ARMv7 multi-core CPUs
+   -}
+  writeBarrier
   writeCounter bottom (b+1)
   return ()
 
@@ -242,8 +252,10 @@ pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
 -- attempt steals from the same thread.
 tryPopR :: ChaseLevDeque elt -> IO (Maybe elt)
 tryPopR CLD{top,bottom,activeArr} =  tryit "tryPopR" $ do
---  t   <- readIORef top
+  -- NB. these loads must be ordered, otherwise there is a race
+  -- between steal and pop.  
   tt  <- readCounterForCAS top
+  loadLoadBarrier
   b   <- readCounter bottom
   arr <- readIORef activeArr
  -- when (dbg && b < t) $ error$ "tryPopR: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
@@ -266,6 +278,11 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
   arr <- readIORef activeArr
   b   <- evaluate (b-1)
   writeCounter bottom b
+
+  -- very important that the following read of q->top does not occur
+  -- before the earlier write to q->bottom.
+  storeLoadBarrier
+  
   tt   <- readCounterForCAS top
 --  when (dbg && b < t) $ error$ "tryPopL: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
 

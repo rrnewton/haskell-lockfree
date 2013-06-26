@@ -64,6 +64,7 @@ main =
          , testCase "create_and_mutate"       case_create_and_mutate
          , testCase "create_and_mutate_twice" case_create_and_mutate_twice
          , testCase "n_threads_mutate"        case_n_threads_mutate
+         , testCase "run_barriers"            case_run_barriers
 
          , testCase "test_succeed_once Int"   (test_succeed_once (0::Int))
          , testCase "test_succeed_once Int64" (test_succeed_once (0::Int64))
@@ -258,6 +259,13 @@ case_n_threads_mutate = do
   arr <- forkJoin 120 (\_ -> work counter) 
   ans <- readIORef counter
   assertBool "Did the sum end up equal to 120?" (ans == 120)
+
+-- | Just make sure these link and run properly:
+case_run_barriers :: Assertion
+case_run_barriers = do
+  A.storeLoadBarrier
+  A.loadLoadBarrier
+  A.writeBarrier
 
 ----------------------------------------------------------------------------------------------------
 
