@@ -17,5 +17,9 @@ fi
 
 ALLPKG="./CAS ./AtomicPrimops ./AtomicPrimops/testing ./AbstractDeque ./MichaelScott ./ChaseLev ./MegaDeque"
 
-$CABAL install --force-reinstalls --with-ghc=$GHC $ALLPKG $*
+# A manual form of cleaning.
+for dir in $ALLPKG; do 
+  rm -rf $dir/dist/
+done
 
+$CABAL install -fforce-recomp --force-reinstalls --with-ghc=$GHC $ALLPKG $*
