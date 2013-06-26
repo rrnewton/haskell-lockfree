@@ -4,18 +4,10 @@
 -}
 module Main where
 
-import Control.Concurrent (setNumCapabilities, getNumCapabilities)
-import GHC.Conc           (getNumProcessors)
-import Control.Exception           (bracket)
-import qualified Data.Set as S
--- import Data.Concurrent.Deque.ChaseLev  (newQ)
-import System.Environment (withArgs, getArgs, getEnvironment)
 import Test.HUnit as HU
-import Text.Printf (printf)
-
 import Data.Concurrent.Deque.Tests 
 import Data.Concurrent.Deque.Class
-import Data.Concurrent.MegaDeque 
+import Data.Concurrent.MegaDeque () -- Instances.
 
 main :: IO ()
 main = stdTestHarness $ return all_tests

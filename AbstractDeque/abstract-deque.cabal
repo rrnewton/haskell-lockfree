@@ -78,7 +78,8 @@ Source-Repository head
 Test-Suite test-abstract-deque
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
-    build-depends:  base >= 4 && < 5, containers, HUnit, array, random
+    build-depends:  base >= 4 && < 5, containers, HUnit, array, random,
+                    HUnit, test-framework >= 0.6, test-framework-hunit >= 0.2.7
     ghc-options: -O2 -threaded -rtsopts
 
     -- ghc-options: -keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint
