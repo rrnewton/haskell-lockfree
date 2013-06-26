@@ -7,10 +7,13 @@ module Data.Concurrent.Deque.ChaseLev3
        where 
 
 import Data.IORef
+import Data.Bits
+import Data.Word
+import Data.List (isInfixOf, intersperse)
 import Data.Atomics.Counter.Reference
 import qualified Data.Vector.Mutable as MV
 import qualified Data.Vector as V
-import Control.Exception (assert)
+import Control.Exception (catch, SomeException, throw, evaluate,try, assert)
 import Control.Monad.Primitive (PrimState)
 
 {-# INLINE rd #-}
@@ -59,8 +62,8 @@ wr  = MV.write
 data WSDeque a = WSDeque {
     -- Size of elements array. Used for modulo calculation: we round up
     -- to powers of 2 and use the dyadic log (modulo == bitwise &) 
-    size       :: {-# UNPACK #-} !(IORef Int), 
-    moduloSize :: {-# UNPACK #-} !(IORef Int), -- bitmask for modulo 
+    size       :: {-# UNPACK #-} !(IORef Word), 
+    moduloSize :: {-# UNPACK #-} !(IORef Word), -- bitmask for modulo 
 
     -- top, index where multiple readers steal() (protected by a cas)
     top    :: {-# UNPACK #-} !AtomicCounter, -- Volatile
@@ -102,8 +105,32 @@ assert_wsdeque_invariants WSDeque{size,moduloSize,top,bottom,topBound,elements} 
 --  ASSERT((p)->elements != NULL);  
 --  ASSERT(*((p)->elements) || 1);
   _ <- rd elements' 0
-  _ <- rd elements' (size' - 1)
+  _ <- rd elements' (fromIntegral size' - 1)
   return ()
+
+
+dbgInspectWSDeque :: Show a => WSDeque a -> IO String
+dbgInspectWSDeque WSDeque{top,bottom,elements} = do
+  tp <- readCounter top
+  bt <- readCounter bottom
+  vc <- readIORef elements
+  elems  <- fmap V.toList$ V.freeze vc
+  elems' <- mapM safePrint elems
+  let sz = MV.length vc
+  return$ "  {DbgInspectWSDeque: top "++show tp++", bot "++show bt++", arr size "++show sz++"\n" ++
+--          "   " 
+          "   [ "++(concat $ intersperse " " elems')++" ]\n"++
+          "  end_DbgInspectWSDeque}"
+ where
+   -- Print any thunk, even if it raises an exception.
+   safePrint :: Show a => a -> IO String
+   safePrint val = do
+     res <- try (evaluate val)
+     case res of
+       Left (e::SomeException)
+         | isInfixOf "uninitialised element" (show e) -> return "<uninit>"
+         | otherwise -> return$ "<"++ show e ++">"
+       Right val' -> return (show val')
 
 -- No: it is possible that top > bottom when using pop()
 --  ASSERT((p)->bottom >= (p)->top);           
@@ -119,8 +146,7 @@ assert_wsdeque_invariants WSDeque{size,moduloSize,top,bottom,topBound,elements} 
  * -------------------------------------------------------------------------- -}
 
 -- | Allocation
-newWSDeque :: Int -> WSDeque a
-newWSDeque = undefined
+newWSDeque :: Int -> IO (WSDeque a)
 
 -- | Take an element from the "write" end of the pool.  Can be called
 -- by the pool owner only.
@@ -173,8 +199,6 @@ discardElements WSDeque{top,bottom} = do
   writeCounter top b
 --    pool->topBound = pool->top;
 
-{-
-
 {- -----------------------------------------------------------------------------
  *
  * (c) The GHC Team, 2009
@@ -215,13 +239,8 @@ discardElements WSDeque{top,bottom} = do
  * 
  * ----------------------------------------------------------------------------}
 
-include "PosixSource.h"
-include "Rts.h"
+-- define CASTOP(addr,old,new) ((old) == cas(((StgPtr)addr),(old),(new)))
 
-include "RtsUtils.h"
-include "WSDeque.h"
-
-define CASTOP(addr,old,new) ((old) == cas(((StgPtr)addr),(old),(new)))
 
 {- -----------------------------------------------------------------------------
  * newWSDeque
@@ -229,44 +248,45 @@ define CASTOP(addr,old,new) ((old) == cas(((StgPtr)addr),(old),(new)))
 
 {- internal helpers ... -}
 
-static StgWord
-roundUp2(StgWord val)
-{
-    StgWord rounded = 1;
-    
-    {- StgWord is unsigned anyway, only catch 0 -}
-    if (val == 0) {
-        barf("DeQue,roundUp2: invalid size 0 requested");
-    }
+-- Crop all but the leading bit of a number.
+roundUp2 :: Word -> Word
+roundUp2 origval = do
+  -- rounded = 1
+  
+  -- StgWord is unsigned anyway, only catch 0 
+  if origval == 0 then
+    error "DeQue,roundUp2: invalid size 0 requested"
+  else 
     {- at least 1 bit set, shift up to its place -}
-    do {
-        rounded = rounded << 1;
-    } while (0 != (val = val>>1));
-    return rounded;
-}
+    let loop !rounded !val = 
+          let val' = shiftR val 1 in
+          if val' == 0 
+          then rounded
+          else loop (shiftL rounded 1) val'
+    in loop 1 origval
 
-WSDeque *
-newWSDeque (nat size)
-{
-    StgWord realsize; 
-    WSDeque *q;
-    
-    realsize = roundUp2(size); {- to compute modulo as a bitwise & -}
-    
-    q = (WSDeque*) stgMallocBytes(sizeof(WSDeque),   {- admin fields -}
-                                  "newWSDeque");
-    q->elements = stgMallocBytes(realsize * sizeof(StgClosurePtr), {- dataspace -}
-                                 "newWSDeque:data space");
-    q->top=0;
-    q->bottom=0;
-    q->topBound=0; {- read by writer, updated each time top is read -}
-    
-    q->size = realsize;  {- power of 2 -}
-    q->moduloSize = realsize - 1; {- n % size == n & moduloSize  -}
-    
-    ASSERT_WSDEQUE_INVARIANTS(q); 
-    return q;
-}
+newWSDeque size = do   
+    let realsize = roundUp2 (fromIntegral size) {- to compute modulo as a bitwise & -} 
+    arr <- nu size
+
+    top      <- newCounter 
+    bottom   <- newCounter
+    topBound <- newCounter
+    size       <- newIORef realsize
+    moduloSize <- newIORef (realsize - 1)
+    elements   <- newIORef arr
+    let q = WSDeque {
+              top, bottom, 
+              topBound,   {- read by writer, updated each time top is read -}
+              size,       {- power of 2 -}
+              moduloSize, {- n % size == n & moduloSize  -}
+              elements
+            }
+    assert_wsdeque_invariants q
+    return q
+
+
+{-
 
 {- -----------------------------------------------------------------------------
  * freeWSDeque
