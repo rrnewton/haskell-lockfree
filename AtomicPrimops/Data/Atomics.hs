@@ -21,13 +21,15 @@ module Data.Atomics
    readForCAS, casIORef, casIORef2, 
    
    -- * Atomic operations on raw MutVars
-   readMutVarForCAS, casMutVar, casMutVar2
-      
+   readMutVarForCAS, casMutVar, casMutVar2,
+
+   -- * Memory barriers
+   storeLoadBarrier, loadLoadBarrier, writeBarrier
  ) where
 
 import Control.Monad.ST (stToIO)
 import Data.Primitive.Array (MutableArray(MutableArray))
-import Data.Atomics.Internal (casArray#, readForCAS#, casMutVarTicketed#, Ticket)
+import Data.Atomics.Internal
 import Data.Int -- TEMPORARY
 
 import Data.IORef
@@ -149,3 +151,25 @@ casMutVar2 !mv !tick !new = IO$ \st ->
 --      if flag ==# 0#    then       else (# st, Fail (W# tick')  #)
 
 
+--------------------------------------------------------------------------------
+-- Memory barriers
+--------------------------------------------------------------------------------
+
+
+-- | Memory barrier implemented by the GHC rts (SMP.h).
+storeLoadBarrier :: IO ()
+storeLoadBarrier = IO$ \st ->
+  case stg_storeLoadBarrier# st of
+    (# st', _ #) -> (# st', () #)
+
+-- | Memory barrier implemented by the GHC rts (SMP.h).
+loadLoadBarrier :: IO ()
+loadLoadBarrier = IO$ \st ->
+  case stg_loadLoadBarrier# st of
+    (# st', _ #) -> (# st', () #)
+
+-- | Memory barrier implemented by the GHC rts (SMP.h).
+writeBarrier :: IO ()
+writeBarrier = IO$ \st ->
+  case stg_writeBarrier# st of
+    (# st', _ #) -> (# st', () #)

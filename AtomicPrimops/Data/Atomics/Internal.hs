@@ -6,7 +6,8 @@
 module Data.Atomics.Internal 
    (casArray#, 
     readForCAS#, casMutVarTicketed#, 
-    Ticket )
+    Ticket,
+    stg_storeLoadBarrier#, stg_loadLoadBarrier#, stg_writeBarrier# )
   where 
 
 import GHC.Base (Int(I#))
@@ -33,7 +34,7 @@ import GHC.Prim (readMutVar#, casMutVar#, Any)
 #endif
 
 --------------------------------------------------------------------------------
--- Entrypoints for end-users
+-- CAS and friendsa
 --------------------------------------------------------------------------------
 
 -- | Unsafe, machine-level atomic compare and swap on an element within an Array.  
@@ -72,7 +73,6 @@ instance Eq (Ticket a) where
 
 --------------------------------------------------------------------------------
 
-
 readForCAS# :: MutVar# RealWorld a ->
                State# RealWorld -> (# State# RealWorld, Ticket a #)
 -- WARNING: cast of a function -- need to verify these are safe or eta expand:
@@ -91,6 +91,19 @@ casMutVarTicketed# :: MutVar# RealWorld a -> Ticket a -> Ticket a ->
 #ifdef CASTFUN
 casMutVarTicketed# = unsafeCoerce# casMutVar_TypeErased#
 #endif
+
+--------------------------------------------------------------------------------
+-- Memory barriers
+--------------------------------------------------------------------------------
+
+foreign import prim "stg_store_load_barrier" stg_storeLoadBarrier#
+  :: State# RealWorld -> (# State# RealWorld, Int# #)
+
+foreign import prim "stg_load_load_barrier" stg_loadLoadBarrier#
+  :: State# RealWorld -> (# State# RealWorld, Int# #)
+
+foreign import prim "stg_write_barrier" stg_writeBarrier#
+  :: State# RealWorld -> (# State# RealWorld, Int# #)
 
 --------------------------------------------------------------------------------
 -- Type-erased versions that call the raw foreign primops:
@@ -114,3 +127,4 @@ foreign import prim "stg_casMutVar2zh" casMutVar_TypeErased#
 -- foreign import prim "stg_readMutVar2zh" readMutVar_TypeErased#
 --   :: MutVar# RealWorld () -> 
 --      State# RealWorld -> (# State# RealWorld, Any () #)
+

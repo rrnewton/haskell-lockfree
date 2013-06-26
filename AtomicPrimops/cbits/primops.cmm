@@ -89,3 +89,22 @@ stg_readMutVar2zh
 }
 /* emitPrimOp [res] ReadMutVarOp [mutv] _ */
 /*    = stmtC (CmmAssign (CmmLocal res) (cmmLoadIndexW mutv fixedHdrSize gcWord)) */
+
+
+// This is already existing functionality in the RTS (SMP.h).  It
+// handles the complexity of architecture-portability.  We just need
+// to expose it here.
+stg_store_load_barrier {
+    foreign "C" store_load_barrier();
+    RET_N(0);
+}
+
+stg_load_load_barrier {
+    foreign "C" load_load_barrier();
+    RET_N(0);
+}
+
+stg_write_barrier {
+    foreign "C" write_barrier();
+    RET_N(0);
+}
