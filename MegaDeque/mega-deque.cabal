@@ -25,7 +25,8 @@ Library
   exposed-modules:   Data.Concurrent.MegaDeque
   build-depends:     base >= 4.4.0.0,
                      abstract-deque,
-                     lockfree-queue
+                     lockfree-queue,
+                     chaselev-deque
   ghc-options: -O2
 
 Source-Repository head

@@ -11,7 +11,10 @@ import qualified Data.Concurrent.Deque.ChaseLev as R
 --
 -- Work stealing queues are only threadsafe on one end (pop-only) and
 -- double (push/pop) functionality on the other:
-type instance Deque NT T D S Grow Safe elt = R.ChaseLevDeque elt
+
+-- type instance Deque NT T D S Grow Safe elt = R.ChaseLevDeque elt -- Minimal slice
+
+type instance Deque NT t dbl S grow safe elt = R.ChaseLevDeque elt -- Maximal slice
 
 -- [2011.11.09] Presently having problems with this error when I try
 -- to use these Deques:

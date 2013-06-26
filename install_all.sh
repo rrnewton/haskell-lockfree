@@ -15,16 +15,7 @@ if [ "$GHC" == "" ];
 then GHC=`which ghc`
 fi
 
+ALLPKG="./CAS ./AtomicPrimops ./AtomicPrimops/testing ./AbstractDeque ./MichaelScott ./ChaseLev ./MegaDeque"
 
-function doall () {
-  CMD=$1
-  (cd CAS;           $CMD)
-  (cd AbstractDeque; $CMD)
-  (cd MichaelScott;  $CMD)
-  (cd ChaseLev;      $CMD)
-  (cd MegaDeque;     $CMD)
-}
+$CABAL install --force-reinstalls --with-ghc=$GHC $ALLPKG $*
 
-# doall "cabal haddock --with-haddock=$HADDOCK"
-# doall "cabal install --haddock"
-doall "$CABAL install --with-ghc=$GHC $*"
