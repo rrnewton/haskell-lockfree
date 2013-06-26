@@ -18,7 +18,7 @@ cabal-1.17.0_HEAD install $CBLARGS ../AtomicPrimops/
 
 
 # OPT="-O2 -threaded -rtsopts"
-OPT="-O1"
+OPT="-O1 -threaded"
 DBG="-keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint -ddump-ds -ddump-simpl -ddump-stg -ddump-asm -ddump-bcos -ddump-cmm -ddump-opt-cmm -ddump-inlinings -fforce-recomp"
 
 #$GHC $OPT $DBG --make RegressionTests/Issue5.hs -o Issue5.exe -main-is RegressionTests.Issue5.standalone_pushPop
