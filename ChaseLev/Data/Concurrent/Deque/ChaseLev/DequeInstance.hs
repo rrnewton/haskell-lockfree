@@ -9,8 +9,8 @@ import qualified Data.Concurrent.Deque.ChaseLev as R
 
 -- | Populate a slice of the configuration-space for `Deque`:
 --
--- Work stealing queues are only threadsafe on one end and
--- double-functionality on the other:
+-- Work stealing queues are only threadsafe on one end (pop-only) and
+-- double (push/pop) functionality on the other:
 type instance Deque NT T D S Grow Safe elt = R.ChaseLevDeque elt
 
 -- [2011.11.09] Presently having problems with this error when I try
