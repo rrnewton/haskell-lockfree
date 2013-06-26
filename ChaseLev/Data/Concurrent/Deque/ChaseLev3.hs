@@ -10,6 +10,7 @@ import Data.IORef
 import Data.Bits
 import Data.Word
 import Data.List (isInfixOf, intersperse)
+import Data.Atomics (storeLoadBarrier)
 import Data.Atomics.Counter.Reference
 import qualified Data.Vector.Mutable as MV
 import qualified Data.Vector as V
@@ -151,7 +152,6 @@ newWSDeque :: Int -> IO (WSDeque a)
 -- | Take an element from the "write" end of the pool.  Can be called
 -- by the pool owner only.
 popWSDeque :: WSDeque a -> IO (Maybe a)
-popWSDeque = undefined
 
 -- | Push onto the "write" end of the pool.  Return true if the push
 -- succeeded, or false if the deque is full.
@@ -250,10 +250,8 @@ discardElements WSDeque{top,bottom} = do
 
 -- Crop all but the leading bit of a number.
 roundUp2 :: Word -> Word
-roundUp2 origval = do
-  -- rounded = 1
-  
-  -- StgWord is unsigned anyway, only catch 0 
+roundUp2 origval = do  
+  -- Word is unsigned anyway, only catch 0 
   if origval == 0 then
     error "DeQue,roundUp2: invalid size 0 requested"
   else 
@@ -285,20 +283,6 @@ newWSDeque size = do
     assert_wsdeque_invariants q
     return q
 
-
-{-
-
-{- -----------------------------------------------------------------------------
- * freeWSDeque
- * -------------------------------------------------------------------------- -}
-
-void
-freeWSDeque (WSDeque *q)
-{
-    stgFree(q->elements);
-    stgFree(q);
-}
-
 {- -----------------------------------------------------------------------------
  * 
  * popWSDeque: remove an element from the write end of the queue.
@@ -312,60 +296,61 @@ freeWSDeque (WSDeque *q)
  *
  * -------------------------------------------------------------------------- -}
 
-void *
-popWSDeque (WSDeque *q)
-{
+popWSDeque q@WSDeque{top,bottom,topBound,moduloSize,elements} = do  
     {- also a bit tricky, has to avoid concurrent steal() calls by
        accessing top with cas, when there is only one element left -}
-    StgWord t, b;
-    long  currSize;
-    void * removed;
     
-    ASSERT_WSDEQUE_INVARIANTS(q); 
+    assert_wsdeque_invariants q
     
-    b = q->bottom;
+    b <- readCounter bottom 
 
     -- "decrement b as a test, see what happens"
-    b--;
-    q->bottom = b;
+    b <- evaluate (b - 1)
+    writeCounter bottom b
 
     -- very important that the following read of q->top does not occur
-    -- before the earlier write to q->bottom.
-    store_load_barrier();
+    -- before the earlier write to q->bottom.    
+    storeLoadBarrier
 
-    t = q->top; {- using topBound would give an *upper* bound, we
-                   need a lower bound. We use the real top here, but
-                   can update the topBound value -}
-    q->topBound = t;
-    currSize = (long)b - (long)t;
-    if (currSize < 0) { {- was empty before decrementing b, set b
-                           consistently and abort -}
-        q->bottom = t;
-        return NULL;
-    }
+    tt <- readCounterForCAS top
+          {- using topBound would give an *upper* bound, we
+             need a lower bound. We use the real top here, but
+             can update the topBound value -}
+    let t = peekCTicket tt
+    writeCounter topBound t
 
-    -- read the element at b
-    removed = q->elements[b & q->moduloSize];
+    let currSize = b - t
+    if currSize < 0 then do {- was empty before decrementing b, set b
+                                 consistently and abort -}
+        writeCounter bottom t;
+        return Nothing
+     else do    
+       ms  <- readIORef moduloSize
+       arr <- readIORef elements
+       -- read the element at b      
+       removed <- rd arr (fromIntegral ((fromIntegral b) .&. ms))
+       
+       if currSize > 0 then {- no danger, still elements in buffer after b-- -}
+           -- debugBelch("popWSDeque: t=%ld b=%ld = %ld\n", t, b, removed);
+           return (Just removed)
+        else do 
+         {- otherwise, has someone meanwhile stolen the same (last) element?
+            Check and increment top value to know  -}
+         (bl,_) <- casCounter top tt (t+1)
 
-    if (currSize > 0) { {- no danger, still elements in buffer after b-- -}
-        -- debugBelch("popWSDeque: t=%ld b=%ld = %ld\n", t, b, removed);
-        return removed;
-    } 
-    {- otherwise, has someone meanwhile stolen the same (last) element?
-       Check and increment top value to know  -}
-    if ( !(CASTOP(&(q->top),t,t+1)) ) {
-        removed = NULL; {- no success, but continue adjusting bottom -}
-    }
-    q->bottom = t+1; {- anyway, empty now. Adjust bottom consistently. -}
-    q->topBound = t+1; {- ...and cached top value as well -}
-    
-    ASSERT_WSDEQUE_INVARIANTS(q); 
-    ASSERT(q->bottom >= q->top);
-    
-    -- debugBelch("popWSDeque: t=%ld b=%ld = %ld\n", t, b, removed);
+         writeCounter bottom   (t+1) {- anyway, empty now. Adjust bottom consistently. -}
+         writeCounter topBound (t+1) {- ...and cached top value as well -}
 
-    return removed;
-}
+         assert_wsdeque_invariants q
+         b' <- readCounter bottom
+         t' <- readCounter top
+         assert (b' >= t') $ 
+          -- debugBelch("popWSDeque: t=%ld b=%ld = %ld\n", t, b, removed);
+          return $ if not bl
+                   then Nothing {- no success, but we adjusted bottom anyway -}
+                   else Just removed
+         
+{-
 
 {- -----------------------------------------------------------------------------
  * stealWSDeque
