@@ -578,3 +578,40 @@ elements popped:
     expected: 6249997500000
      but got: 6249998697052
 
+
+[2013.06.26] {Everything seems good ... except}
+
+I just got this exception.  BUT, that is surely due to sloppiness.  I
+just did several installs with the older cabal, and while I *thought*
+I disabled profiling avoiding the bug, I may have messed up.
+
+    Grow to size 65536, copying over 32767
+       [Setting # capabilities to 4 before test]
+    Segmentation fault: 11
+
+You can do a fresh build/test like this:
+
+    ./install_all.sh --enable-tests
+
+That will build normal and profiling, and exec normal.
+
+Wait a sec... that passes... including chaselev:
+
+    Test suite test-chaselev-deque: RUNNING...
+    Test suite test-chaselev-deque: PASS
+
+But then, immediately after...
+
+    cd ChaseLev
+    ./dist/build/test-chaselev-deque/test-chaselev-deque    
+    ..........
+    [Setting # capabilities to 4 before test]
+    Segmentation fault: 11
+
+Under valgrind I have this problem:
+
+    N2_standalone_pushPop2: [Failed]
+    ERROR: <stdout>: commitBuffer: invalid argument (Bad file descriptor)
+    
+    
+    
