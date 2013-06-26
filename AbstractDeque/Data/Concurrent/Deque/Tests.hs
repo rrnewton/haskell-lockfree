@@ -17,7 +17,13 @@ module Data.Concurrent.Deque.Tests
    tests_all,
 
    -- * Testing parameters
-   numElems, getNumAgents, producerRatio
+   numElems, getNumAgents, producerRatio,
+
+   -- * Utility for controlling the number of threads used by generated tests.
+   setTestThreads,
+
+   -- * Test initialization, reading common configs
+   stdTestHarness
  )
  where 
 
@@ -25,22 +31,24 @@ import Data.Concurrent.Deque.Class as C
 import qualified Data.Concurrent.Deque.Reference as R
 
 import Control.Monad
--- import qualified Data.Vector V
--- import qualified Data.Vector.Mutable as MV
 import Data.Array as A
 import Data.IORef
 import Data.Int
+import qualified Data.Set as S
 -- import System.Mem.StableName
 import Text.Printf
-import GHC.Conc (getNumCapabilities, throwTo, threadDelay, myThreadId)
+import GHC.Conc (throwTo, threadDelay, myThreadId)
 import Control.Concurrent.MVar
-import Control.Concurrent (yield, forkOS, forkIO, ThreadId)
-import Control.Exception (catch, SomeException, fromException, AsyncException(ThreadKilled))
-import System.Environment (getEnvironment)
+import Control.Concurrent (yield, forkOS, forkIO, ThreadId, setNumCapabilities, getNumCapabilities)
+import GHC.Conc (getNumProcessors)
+import Control.Exception (catch, SomeException, fromException, bracket, AsyncException(ThreadKilled))
+import System.Environment (withArgs, getArgs, getEnvironment)
 import System.IO (hPutStrLn, stderr, hFlush, stdout)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Random (randomIO, randomRIO)
-import Test.HUnit
+import qualified Test.Framework as TF
+import Test.Framework.Providers.HUnit  (hUnitTestToTests)
+import Test.HUnit as HU
 
 import Debug.Trace (trace)
 
@@ -90,6 +98,58 @@ producerRatio = case lookup "PRODUCERRATIO" theEnv of
 warnUsing :: String -> a -> a
 warnUsing str a = trace ("  [Warning]: Using environment variable "++str) a
 
+
+-- | Dig through the test constructors to find the leaf IO actions and bracket them
+--   with a thread-setting action.
+setTestThreads :: Int -> HU.Test -> HU.Test
+setTestThreads nm tst = loop False tst
+ where
+   loop flg x = 
+    case x of
+      TestLabel lb t2 -> TestLabel (decor flg lb) (loop True t2)
+      TestList ls -> TestList (map (loop flg) ls)
+      TestCase io -> TestCase (bracketThreads nm io)
+
+   -- We only need to insert the numcapabilities in the description string ONCE:
+   decor False lb = "N"++show nm++"_"++ lb
+   decor True  lb = lb
+
+   bracketThreads :: Int -> IO a -> IO a
+   bracketThreads n act =
+     bracket (getNumCapabilities)
+             setNumCapabilities
+             (\_ -> do printf "\n   [Setting # capabilities to %d before test] \n" n
+                       setNumCapabilities n
+                       act)
+
+stdTestHarness :: (IO Test) -> IO ()
+stdTestHarness genTests = do 
+  numAgents <- getNumAgents 
+  putStrLn$ "Running with numElems "++show numElems++" and numAgents "++ show numAgents
+  putStrLn "Use NUMELEMS, NUMAGENTS, NUMTHREADS to control the size of this benchmark."
+  args <- getArgs
+
+  np <- getNumProcessors
+  putStrLn $"Running on a machine with "++show np++" hardware threads."
+
+  -- We allow the user to set this directly, because the "-t" based regexp selection
+  -- of benchmarks is quite limited.
+  let all_threads = case lookup "NUMTHREADS" theEnv of
+                      Just str -> [read str]
+                      Nothing -> S.toList$ S.fromList$
+                        [1, 2, np `quot` 2, np, 2*np ]
+  putStrLn $"Running tests for these thread settings: "  ++show all_threads
+  all_tests <- genTests 
+
+  -- Don't allow concurent tests (the tests are concurrent!):
+  withArgs (args ++ ["-j1","--jxml=test-results.xml"]) $ do 
+
+    -- Hack, this shouldn't be necessary, but I'm having problems with -t:
+    tests <- case all_threads of
+              [one] -> do setNumCapabilities one
+                          return all_tests
+              _ -> return$ TestList [ setTestThreads n all_tests | n <- all_threads ]
+    TF.defaultMain$ hUnitTestToTests tests
 
 
 ----------------------------------------------------------------------------------------------------

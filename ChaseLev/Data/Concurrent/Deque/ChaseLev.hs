@@ -6,6 +6,7 @@
 --
 --   http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.170.1097&rep=rep1&type=pdf
 --
+-- TODO: local topBound optimization.
 module Data.Concurrent.Deque.ChaseLev 
   (
     -- The convention here is to directly provide the concrete
@@ -144,6 +145,7 @@ tryit msg action = action
 
 
 -- TODO: make a "grow" that uses memcpy.
+growCirc :: Int -> Int -> MV.IOVector a -> IO (MV.IOVector a)
 growCirc strt end oldarr = do  
   -- let len = MV.length oldarr
   --     strtmod = strt`mod` len 

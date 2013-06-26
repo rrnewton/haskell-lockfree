@@ -59,8 +59,8 @@ Library
                      Data.Concurrent.Deque.Reference.DequeInstance,
                      Data.Concurrent.Deque.Debugger
   build-depends:     base >= 4 && < 5, array, random,
-                     containers, HUnit
-
+                     containers, 
+                     HUnit, test-framework >= 0.6, test-framework-hunit >= 0.2.7
   if flag(useCAS) && impl( ghc >= 7.4 ) && !os(mingw32) {
     build-depends:   IORefCAS >= 0.2 
     cpp-options:  -DUSE_CAS -DDEFAULT_SIGNATURES
@@ -78,9 +78,9 @@ Source-Repository head
 Test-Suite test-abstract-deque
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
-    build-depends:  base >= 4 && < 5, containers, HUnit, array, random,
-                    test-framework >= 0.6, test-framework-hunit >= 0.2.7
+    build-depends:  base >= 4 && < 5, containers, HUnit, array, random
     ghc-options: -O2 -threaded -rtsopts
+
     -- ghc-options: -keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint
     -- ghc-options: -ddump-ds -ddump-simpl -ddump-stg -ddump-asm -ddump-bcos -ddump-cmm -ddump-opt-cmm -ddump-inlinings
 

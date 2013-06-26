@@ -3,57 +3,28 @@
   ghc --make Test.hs -o Test.exe -rtsopts -fforce-recomp
 -}
 module Main where
-import Test.Framework                  (defaultMain)
-import Test.HUnit                      
-import Test.Framework.Providers.HUnit  (hUnitTestToTests)
-import Data.Concurrent.Deque.Tests     (test_all, test_fifo)
-import Data.Concurrent.Deque.Class     (newQ, WSDeque, Queue)
-import Data.Concurrent.MegaDeque       ()
 
+import Control.Concurrent (setNumCapabilities, getNumCapabilities)
+import GHC.Conc           (getNumProcessors)
+import Control.Exception           (bracket)
+import qualified Data.Set as S
+-- import Data.Concurrent.Deque.ChaseLev  (newQ)
+import System.Environment (withArgs, getArgs, getEnvironment)
+import Test.HUnit as HU
+import Text.Printf (printf)
 
--- Constrain the type:
--- mynew :: IO (WSDeque elt)
--- mynew = newQ
--- Deque Nonthreadsafe Threadsafe DoubleEnd SingleEnd Grow Safe a
+import Data.Concurrent.Deque.Tests 
+import Data.Concurrent.Deque.Class
+import Data.Concurrent.MegaDeque 
 
-main = defaultMain$ hUnitTestToTests$ TestList 
-         -- Constrain the type to select an instance:
-        [ test_all  (newQ :: IO (WSDeque a))
-        , test_fifo (newQ :: IO (Queue a))
-        ]
-
-{-
-
--- test = 
--- --  do q <- newQueue
---   do q <- newQueue
---      pushR q 3
---      x <- tryPopR q
---      print x
---      return q
-
-
-test = do 
-     q :: Deque NT T D S Bound Safe Int <- newQ -- This will not use LinkedQueue
-     putStrLn "First pushing an element to the fallback and popping it:"
-     pushL q 33
-     x <- tryPopR q
-     print x
-
-     q2 :: Deque NT T SingleEnd SingleEnd Bound Safe Int <- newQ -- Can use LinkedQueue
-     putStrLn "Second pushing an element to a LinkedQueue and popping it:"
-     pushL q2 33
-     x <- tryPopR q2
-     print x
-
-     return (q,q2)
-
-
--- Note: I just got a SEGFAULT in GHCI on this one, EVEN THOUGH
--- LinkedQueue was using the "Fake" CAS.
-
--- That's just on MAC OS though..
-
-main = test
-
--}
+main :: IO ()
+main = stdTestHarness $ return all_tests
+ where 
+ all_tests :: HU.Test
+ all_tests = TestList $ 
+   [ TestLabel "WSDeque"  $ tests_wsqueue  (newQ :: IO (WSDeque a))
+   , TestLabel "TS_Queue" $ tests_fifo     (newQ :: IO (ConcQueue a))
+   , TestLabel "NT_Queue" $ tests_fifo     (newQ :: IO (Queue a))
+   , TestLabel "Full_TS_Deque" $ tests_all (newQ :: IO (ConcDeque a))
+--   , TestLabel "Maxed" $ tests_all       (newQ :: IO (Deque T T D D Grow Safe))
+   ]

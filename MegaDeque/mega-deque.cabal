@@ -23,11 +23,27 @@ Description:
 
 Library
   exposed-modules:   Data.Concurrent.MegaDeque
-  build-depends:     base >= 4.4.0.0,
+  build-depends:     base >= 4.6.0.0,
                      abstract-deque,
                      lockfree-queue,
                      chaselev-deque
   ghc-options: -O2
+
+
+Test-Suite test-chaselev-deque
+    type:       exitcode-stdio-1.0
+    main-is:    Test.hs
+    build-depends:  base >= 4.6.0.0,
+                    abstract-deque,
+                    lockfree-queue,
+                    chaselev-deque,
+                    HUnit
+--    base >= 4.4.0.0 && < 5, abstract-deque, 
+--                   HUnit, test-framework, test-framework-hunit,
+--                   atomic-primops, 
+--                   IORefCAS >= 0.2
+    build-depends: containers
+    ghc-options: -O2 -threaded -rtsopts 
 
 Source-Repository head
     Type:         git
