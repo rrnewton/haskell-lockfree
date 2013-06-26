@@ -613,5 +613,33 @@ Under valgrind I have this problem:
     N2_standalone_pushPop2: [Failed]
     ERROR: <stdout>: commitBuffer: invalid argument (Bad file descriptor)
     
+
+Ah, wait.... to get cleaner build I need to actually wipe out prior
+builds and force reinstall.  Ok, did that and still segfaulted even after running like this:
+
+    export CABAL=cabal-1.17.0_HEAD    
+    ./install_all.sh --enable-tests --disable-documentation --disable-library-profiling    
+    cd ChaseLev
+    ./dist/build/test-chaselev-deque/test-chaselev-deque    
     
+But nevertheless it KEEPS passing when run by cabal --enable-tests!
+(And I know it's really running based on CPU use.)  Just not when run
+manually.  Further, the --with-ghc arg seems to be correct... it's
+pointing it at ghc-7.6.2 on my laptop.
+
+How about with profiling ON?
     
+    ./install_all.sh --enable-tests --disable-documentation --enable-library-profiling --enable-executable-profiling    
+    
+Well that one doesn't segfault... But it does get to a point where it
+seems to lock up even though it is using minimal CPU....  (erk, it
+non-deterministically gets stuck like that; most time it
+passes.... and *there* it segfaulted also).
+
+I'm still thinking that this is the cabal bug rearing its head
+*somehow*, or a problem with test-framework.
+
+It is true that the recent refactoring to move the stdTestHarness code
+into AbstractDeque has moved it from an executable context to a
+library context, potentially changing its profiling status.
+
