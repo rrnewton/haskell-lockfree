@@ -7,6 +7,7 @@
 --   http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.170.1097&rep=rep1&type=pdf
 --
 -- TODO: local topBound optimization.
+-- TODO: Do the more optimized version of growCirc
 module Data.Concurrent.Deque.ChaseLev 
   (
     -- The convention here is to directly provide the concrete
@@ -130,6 +131,7 @@ wr  = MV.write
 
 
 #ifdef DEBUGCL
+-- This simply localizes exceptions better:
 tryit msg action = Control.Exception.catch action 
 	                        (\e -> do putStrLn$ "ERROR inside "++msg++" "++ show e 
                                           throw (e::SomeException))
@@ -166,11 +168,10 @@ growCirc strt end oldarr = do
   -- return newarr
   ----------------------------------------
   -- Easier version first:
+  ----------------------------------------  
   let len   = MV.length oldarr
       elems = end - strt
-
-  putStrLn$ "Grow to size "++show (len+len)++", copying over "++show elems
-
+  -- putStrLn$ "Grow to size "++show (len+len)++", copying over "++show elems
   newarr <- if dbg then
                nu (len + len)
             else  -- Better errors:
@@ -178,18 +179,22 @@ growCirc strt end oldarr = do
 							    ++" had only initialized "++show elems++" elems: "
 							    ++show(strt`mod`(len+len),end`mod`(len+len))))
   -- Strictly matches what's in the paper:
-  forM_ [strt..end - 1] $ \ind -> do 
+  for_ strt end $ \ind -> do 
     x <- getCirc oldarr ind 
     evaluate x
     putCirc newarr ind x
   return newarr
 {-# INLINE growCirc #-}
 
+getCirc :: MV.IOVector a -> Int -> IO a
 getCirc arr ind   = rd arr (ind `mod` MV.length arr)
-putCirc arr ind x = wr arr (ind `mod` MV.length arr) x
 {-# INLINE getCirc #-}
+
+putCirc :: MV.IOVector a -> Int -> a -> IO ()
+putCirc arr ind x = wr arr (ind `mod` MV.length arr) x
 {-# INLINE putCirc #-}
 
+-- Use a potentially-optimized block-copy:
 copyOffset :: MV.IOVector t -> MV.IOVector t -> Int -> Int -> Int -> IO ()
 copyOffset from to iFrom iTo len =
   cpy (slc iTo len to)
@@ -199,11 +204,11 @@ copyOffset from to iFrom iTo len =
 
 --------------------------------------------------------------------------------
 -- Queue Operations
+--------------------------------------------------------------------------------
 
--- logInitialSize
 newQ :: IO (ChaseLevDeque elt)
 newQ = do
-  -- We start as size 32 and double from there:
+  -- Arbitrary Knob: We start as size 32 and double from there:
   v  <- MV.new 32 
   r1 <- newCounter
   r2 <- newCounter
@@ -304,3 +309,13 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
            else return$ Nothing 
 
 ------------------------------------------------------------
+
+-- My own forM for numeric ranges (not requiring deforestation optimizations).
+-- Inclusive start, exclusive end.
+{-# INLINE for_ #-}
+for_ :: Monad m => Int -> Int -> (Int -> m ()) -> m ()
+for_ start end _fn | start > end = error "for_: start is greater than end"
+for_ start end fn = loop start
+  where
+   loop !i | i == end  = return ()
+	   | otherwise = do fn i; loop (i+1)

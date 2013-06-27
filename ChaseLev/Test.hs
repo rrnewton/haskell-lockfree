@@ -5,16 +5,8 @@
 -}
 module Main where
 
-import Control.Concurrent (setNumCapabilities, getNumCapabilities)
-import GHC.Conc (getNumProcessors)
-import Control.Exception (bracket)
-import qualified Data.Set as S
--- import Data.Concurrent.Deque.ChaseLev  (newQ)
-import System.Environment (withArgs, getArgs, getEnvironment)
+import System.Environment (getEnvironment)
 import Test.HUnit as HU
-import qualified Test.Framework as TF
-import Test.Framework.Providers.HUnit  (hUnitTestToTests)
-import Text.Printf (printf)
 
 import Data.Concurrent.Deque.Tests     
 import Data.Concurrent.Deque.Class
@@ -64,7 +56,7 @@ simplest_pushPop =
      pushL q "hi" 
      x <- tryPopL q
      let y = case x of
-              Just x -> x
+              Just z -> z
               Nothing -> error "Even a single push/pop in isolation did not work!"
      assertEqual "test_ws_triv1" y "hi"
 

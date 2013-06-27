@@ -580,6 +580,7 @@ elements popped:
 
 
 [2013.06.26] {Everything seems good ... except}
+-----------------------------------------------
 
 I just got this exception.  BUT, that is surely due to sloppiness.  I
 just did several installs with the older cabal, and while I *thought*
@@ -642,4 +643,20 @@ I'm still thinking that this is the cabal bug rearing its head
 It is true that the recent refactoring to move the stdTestHarness code
 into AbstractDeque has moved it from an executable context to a
 library context, potentially changing its profiling status.
+
+CONCLUSION: I think this is literally a terminal access problem as
+suggested by the valgrind error above.  I can get both the hang and
+the segfault (even without that latest refactoring), when I run from
+iTerm, but I can't get either when I pipe to a file.  Of course, cabal
+pipes to a file, so it doesn't get this problem.
+
+AHa, to be more precise... the
+"[Setting # capabilities to 2 before test]" messages are enough to
+trigger this.  If I do NUMTHREADS=4 (and ditch those messages) then I
+don't have a problem.
+
+Aha... that's a printf, not a normal Haskell putStrLn... interesting.
+But this is still weird because I'm telling test-framework "-j1".
+
+In any case, I am disabling those messages.
 
