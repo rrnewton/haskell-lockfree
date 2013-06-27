@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, RankNTypes #-}
+{-# LANGUAGE BangPatterns, RankNTypes, CPP #-}
 
 -- | This module contains a battery of simple tests for queues
 --   implementing the interface defined in
@@ -39,8 +39,7 @@ import qualified Data.Set as S
 import Text.Printf
 import GHC.Conc (throwTo, threadDelay, myThreadId)
 import Control.Concurrent.MVar
-import Control.Concurrent (yield, forkOS, forkIO, ThreadId, setNumCapabilities, getNumCapabilities)
-import GHC.Conc (getNumProcessors)
+import Control.Concurrent (yield, forkOS, forkIO, ThreadId)
 import Control.Exception (catch, SomeException, fromException, bracket, AsyncException(ThreadKilled))
 import System.Environment (withArgs, getArgs, getEnvironment)
 import System.IO (hPutStrLn, stderr, hFlush, stdout)
@@ -51,6 +50,20 @@ import Test.Framework.Providers.HUnit  (hUnitTestToTests)
 import Test.HUnit as HU
 
 import Debug.Trace (trace)
+
+#if __GLASGOW_HASKELL__ >= 704
+import GHC.Conc (getNumCapabilities, setNumCapabilities, getNumProcessors)
+#else
+import GHC.Conc (numCapabilities)
+getNumCapabilities :: IO Int
+getNumCapabilities = return numCapabilities
+
+setNumCapabilities :: Int -> IO ()
+setNumCapabilities = error "setNumCapabilities not supported in this older GHC!  Set NUMTHREADS and +RTS -N to match."
+
+getNumProcessors :: IO Int
+getNumProcessors = return 1 
+#endif    
 
 theEnv :: [(String, String)]
 theEnv = unsafePerformIO getEnvironment
@@ -118,7 +131,7 @@ setTestThreads nm tst = loop False tst
    bracketThreads n act =
      bracket (getNumCapabilities)
              setNumCapabilities
-             (\_ -> do printf "\n   [Setting # capabilities to %d before test] \n" n
+             (\_ -> do dbgPrint 1 ("\n   [Setting # capabilities to "++show n++" before test] \n")
                        setNumCapabilities n
                        act)
 
@@ -146,7 +159,8 @@ stdTestHarness genTests = do
 
     -- Hack, this shouldn't be necessary, but I'm having problems with -t:
     tests <- case all_threads of
-              [one] -> do setNumCapabilities one
+              [one] -> do cap <- getNumCapabilities
+                          unless (cap == one) $ setNumCapabilities one
                           return all_tests
               _ -> return$ TestList [ setTestThreads n all_tests | n <- all_threads ]
     TF.defaultMain$ hUnitTestToTests tests
@@ -598,10 +612,10 @@ spinPopBkoff q = loop 1
        Nothing -> do 
                      -- Every `sleepevery` times do a significant delay:
 		     if n `mod` sleepevery == 0 
-		      then do putStr "!"
+		      then do dbgPrint 1 "!"
                               threadDelay n -- 1ms after 1K fails, 2 after 2K...
 		      else when (n > hardspinfor) $ do 
-                             putStr "."
+                             dbgPrint 1 "."
                              hFlush stdout
 			     yield -- At LEAST yield... you'd think this is pretty strong backoff.
 		     loop (n+1)

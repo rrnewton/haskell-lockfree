@@ -9,7 +9,7 @@ import Data.Concurrent.Deque.Class
 
 import Test.Framework (defaultMain)
 import Test.Framework.Providers.HUnit     (hUnitTestToTests)
-import Test.HUnit (assert, assertEqual, Test(TestCase, TestList, TestLabel))
+import Test.HUnit (assert, assertEqual, Test(TestCase, TestList, TestLabel)) 
 import qualified Data.Concurrent.Deque.Tests as T
 import qualified Data.Concurrent.Deque.Reference as R
 import qualified Data.Concurrent.Deque.Class as C
@@ -38,18 +38,24 @@ test_2 = TestCase $ assert $
 
 main :: IO ()
 #if __GLASGOW_HASKELL__ >= 700
-main = do 
-  putStrLn "[ Test executable: test reference deque implementation... ]"
-  withArgs ["-j1","--jxml=test-results.xml"] $   
-    defaultMain$ hUnitTestToTests$ 
-        TestLabel "Reference_Deque" $ TestList $ 
-          [ TestLabel "test_1" test_1
-          , TestLabel "test_2" test_2 
-          , TestLabel "direct"$ T.tests_all R.newQ
-          -- Test going through the class interface as well:  
-          , TestLabel "thru_class"$ T.tests_all (C.newQ :: IO (R.SimpleDeque a))
-          , TestLabel "with_debug"$ T.tests_all (C.newQ :: IO (DebugDeque R.SimpleDeque a))
-          ]
+main = T.stdTestHarness $ return all_tests
+ where 
+ all_tests :: Test
+ all_tests = 
+   TestLabel "Reference_Deque" $ TestList $ 
+     [ TestLabel "test_1" test_1
+     , TestLabel "test_2" test_2 
+     , TestLabel "direct"$ T.tests_all R.newQ
+     -- Test going through the class interface as well:  
+     , TestLabel "thru_class"$ T.tests_all (C.newQ :: IO (R.SimpleDeque a))
+     , TestLabel "with_debug"$ T.tests_all (C.newQ :: IO (DebugDeque R.SimpleDeque a))
+     ]
+
+-- main = do 
+--   putStrLn "[ Test executable: test reference deque implementation... ]"
+--   withArgs ["-j1","--jxml=test-results.xml"] $   
+--     defaultMain$ hUnitTestToTests$
+ 
 #else
 main = putStrLn "WARNING: Tests disabled for GHC < 7"
 #endif
