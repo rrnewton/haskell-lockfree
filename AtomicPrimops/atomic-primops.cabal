@@ -1,5 +1,5 @@
 Name:                atomic-primops
-Version:             0.2
+Version:             0.2.1
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan Newton
@@ -45,11 +45,13 @@ Library
                      Data.Atomics.Counter
                      Data.Atomics.Counter.IORef
                      Data.Atomics.Counter.Reference
+                     Data.Atomics.Counter.Foreign
   ghc-options: -O2 -funbox-strict-fields
 
   -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
-  -- (base 4.5 or greater).
-  build-depends:     base >= 4.5.0.0 && < 4.7, ghc-prim, primitive, Cabal
+  -- (base 4.5 or greater). We also need the "Any" kind.
+  build-depends:     base >= 4.5.0.0 && < 4.7, ghc-prim, primitive, Cabal,
+                     bits-atomic
 
   -- TODO: Try to push support back to 7.0:
   -- Ah, but if we don't USE casMutVar# in this package we are ok:
@@ -71,7 +73,6 @@ Library
 -- -- Switching to a separate package in ./testing/ 
 -- Test-Suite test-atomic-primops
 --     type:       exitcode-stdio-1.0
-
 
 
 Source-Repository head

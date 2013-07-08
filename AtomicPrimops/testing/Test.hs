@@ -44,6 +44,8 @@ import Debug.Trace      (trace)
 
 -- import Test.Framework.TH (defaultMainGenerator)
 
+import CounterTests (counterTests)
+
 ------------------------------------------------------------------------
 
 expect_false_positive_on_GC :: Bool
@@ -89,6 +91,7 @@ main =
                       [1, numCapabilities `quot` 2, numCapabilities, 2*numCapabilities]
          , size    <- [1, 10, 100]
          , iters   <- [10000]]
+         ++ counterTests
          
 setify :: [Int] -> [Int]
 setify = S.toList . S.fromList
