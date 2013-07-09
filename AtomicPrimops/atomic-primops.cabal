@@ -1,5 +1,5 @@
 Name:                atomic-primops
-Version:             0.2.1
+Version:             0.2.2
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan Newton
@@ -17,6 +17,7 @@ HomePage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
 -- 0.1.0.0 -- initial release
 -- 0.1.0.2 -- disable profiling
 -- 0.2 -- Critical bugfix and add Counter.
+-- 0.2.2 -- Add more counters
 
 Synopsis: A safe approach to CAS and other atomic ops in Haskell.
 
