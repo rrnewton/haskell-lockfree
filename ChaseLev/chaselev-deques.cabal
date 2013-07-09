@@ -1,12 +1,12 @@
 Name:                chaselev-deque
-Version:             0.1.1
+Version:             0.1.2
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan R. Newton, Edward Kmett 
 Maintainer:          rrnewton@gmail.com
 Category:            Data, Concurrent
 Build-type:          Simple
-Cabal-version:       >=1.2
+Cabal-version:       >=1.8
 
 -- Version history:
 -- 0.1.1 -- bump for fixing bugs!  First release candidate.
@@ -28,8 +28,8 @@ Library
 --                     Data.Concurrent.Deque.ReactorDeque
   build-depends:     base >= 4.4.0.0, array, transformers, bits-atomic,
                      abstract-deque, vector,
-                     atomic-primops, 
-                     IORefCAS >= 0.2
+                     atomic-primops
+--                     IORefCAS >= 0.2
   build-depends: ghc-prim
   ghc-options: -O2
   if flag(debug)
@@ -45,8 +45,8 @@ Test-Suite test-chaselev-deque
     main-is:    Test.hs
     build-depends: base >= 4.4.0.0 && < 5, abstract-deque, 
                    HUnit, test-framework, test-framework-hunit,
-                   atomic-primops, 
-                   IORefCAS >= 0.2
+                   atomic-primops
+--                   IORefCAS >= 0.2
     build-depends: containers
     ghc-options: -O2 -threaded -rtsopts 
 
