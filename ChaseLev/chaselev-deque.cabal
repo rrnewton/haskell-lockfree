@@ -43,7 +43,7 @@ Source-Repository head
 Test-Suite test-chaselev-deque
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
-    build-depends: base >= 4.4.0.0 && < 5, abstract-deque, 
+    build-depends: base >= 4.4.0.0 && < 5, abstract-deque >= 0.2.1, 
                    HUnit, test-framework, test-framework-hunit,
                    atomic-primops
 --                   IORefCAS >= 0.2
