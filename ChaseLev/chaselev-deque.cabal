@@ -27,7 +27,7 @@ Library
 -- Disabling this [2012.03.08].  It got terrible performance anyway:
 --                     Data.Concurrent.Deque.ReactorDeque
   build-depends:     base >= 4.4.0.0 && < 5, array, transformers, bits-atomic,
-                     abstract-deque, vector, ghc-prim,
+                     abstract-deque >= 0.2.2, vector, ghc-prim,
                      atomic-primops
 --                     IORefCAS >= 0.2
   build-depends: ghc-prim
@@ -43,7 +43,7 @@ Source-Repository head
 Test-Suite test-chaselev-deque
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
-    build-depends: base >= 4.4.0.0 && < 5, abstract-deque >= 0.2.1, 
+    build-depends: base >= 4.4.0.0 && < 5, abstract-deque >= 0.2.2, 
                    HUnit, test-framework, test-framework-hunit,
                    atomic-primops, vector, ghc-prim
 --                   IORefCAS >= 0.2
