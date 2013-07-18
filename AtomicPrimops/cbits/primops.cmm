@@ -1,16 +1,20 @@
 
 #include "Cmm.h"
 
-// Duplicate some of the RTS here (CAS instruction).
-// #include "RtsDup.h"
-
-// #include "Cmm.h"
-// Problems if we try this:
-// #include "stg/SMP.h"
-// #include "Rts.h"
-
 // Defined in SMP.h: 
 // EXTERN_INLINE StgWord cas(StgVolatilePtr p, StgWord o, StgWord n);
+
+#ifdef USE_RTSDUP
+#define WHICH_CAS       DUP_cas
+#define WHICH_SLBARRIER DUP_store_load_barrier
+#define WHICH_LLBARRIER DUP_load_load_barrier
+#define WHICH_WBARRIER  DUP_write_barrier
+#else 
+#define WHICH_CAS       cas
+#define WHICH_SLBARRIER store_load_barrier
+#define WHICH_LLBARRIER load_load_barrier
+#define WHICH_WBARRIER  write_barrier
+#endif
 
 add1Op
 /* Int# -> Int# */
@@ -31,7 +35,7 @@ stg_casArrayzh
     new = R4;
 
     p = arr + SIZEOF_StgMutArrPtrs + WDS(ind);
-    (h) = foreign "C" cas(p, old, new) [];
+    (h) = foreign "C" WHICH_CAS(p, old, new) [];
     
     if (h != old) {
         // Failure, return what was there instead of 'old':
@@ -61,7 +65,7 @@ stg_casMutVar2zh
     // The "cas" function from the C runtime abstracts over
     // platform/architecture differences.  It returns the old value,
     // which, if equal to "old", means success.
-    (h) = foreign "C" cas(mv + SIZEOF_StgHeader + OFFSET_StgMutVar_var,
+    (h) = foreign "C" WHICH_CAS(mv + SIZEOF_StgHeader + OFFSET_StgMutVar_var,
                           old, new) [];
     if (h != old) {
         // Failure:
@@ -95,16 +99,16 @@ stg_readMutVar2zh
 // handles the complexity of architecture-portability.  We just need
 // to expose it here.
 stg_store_load_barrier {
-    foreign "C" store_load_barrier();
+    foreign "C" WHICH_SLBARRIER();
     RET_N(0);
 }
 
 stg_load_load_barrier {
-    foreign "C" load_load_barrier();
+    foreign "C" WHICH_LLBARRIER();
     RET_N(0);
 }
 
 stg_write_barrier {
-    foreign "C" write_barrier();
+    foreign "C" WHICH_WBARRIER();
     RET_N(0);
 }

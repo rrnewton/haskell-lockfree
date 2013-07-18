@@ -45,6 +45,12 @@ Flag debug
     Description: Enable extra internal checks.
     Default: False
 
+Flag dupRTS
+    Description: Create our own copies of certain threaded GHC RTS routines.
+                 This avoids link errors even even if the program 
+                 is NOT built with "-threaded".                 
+    Default: False
+
 Library
   exposed-modules:   Data.Atomics
                      Data.Atomics.Internal
@@ -65,7 +71,7 @@ Library
 
   Include-Dirs:     cbits
   C-Sources:        cbits/primops.cmm
-  CC-Options:       -Wall
+  CC-Options:       -Wall 
   ghc-prof-options: -DGHC_PROFILING_ON
   -- if( cabal-version < 1.17 ) {
   --   ghc-prof-options: ERROR_DO_NOT_BUILD_THIS_WITH_PROFILING_YET__SEE_CABAL_ISSUE_1284
@@ -73,6 +79,10 @@ Library
 
   if flag(debug)
     cpp-options: -DDEBUG_ATOMICS
+
+  if flag(dupRTS)
+    C-Sources:    cbits/RtsDup.c
+    cpp-options: -DUSE_RTSDUP
 
 -- -- [2013.04.08] This isn't working presently:
 -- -- I'm having problems with building it along with the library; see DEVLOG.
