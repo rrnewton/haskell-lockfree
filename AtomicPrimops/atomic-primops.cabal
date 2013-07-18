@@ -45,12 +45,6 @@ Flag debug
     Description: Enable extra internal checks.
     Default: False
 
-Flag dupRTS
-    Description: Create our own copies of certain threaded GHC RTS routines.
-                 This avoids link errors even even if the program 
-                 is NOT built with "-threaded".                 
-    Default: False
-
 Library
   exposed-modules:   Data.Atomics
                      Data.Atomics.Internal
@@ -80,9 +74,9 @@ Library
   if flag(debug)
     cpp-options: -DDEBUG_ATOMICS
 
-  if flag(dupRTS)
-    C-Sources:    cbits/RtsDup.c
-    cpp-options: -DUSE_RTSDUP
+  -- Duplicate RTS functionality: 
+  C-Sources:    cbits/RtsDup.c
+
 
 -- -- [2013.04.08] This isn't working presently:
 -- -- I'm having problems with building it along with the library; see DEVLOG.

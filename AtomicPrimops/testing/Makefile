@@ -1,0 +1,34 @@
+
+GHC=ghc
+
+all: simple full
+
+simple: hello
+hello:
+	$(GHC) -fforce-recomp hello.hs -o hello_regular.exe 
+	$(GHC) -fforce-recomp hello.hs -o hello_threaded.exe -threaded
+	$(GHC) -fforce-recomp hello.hs -o hello_prof.exe -prof
+	$(GHC) -fforce-recomp hello.hs -o hello_prof_threaded.exe -prof -threaded
+	./hello_regular.exe 
+	./hello_threaded.exe
+	./hello_prof.exe
+	./hello_prof_threaded.exe
+
+NOPROF= --disable-library-profiling --disable-executable-profiling
+PROF= --enable-library-profiling --enable-executable-profiling
+
+CBL= rm -rf dist/; cabal install --enable-tests
+
+# Try all combinations of profiling, optimization, and threading:
+full:
+	$(CBL) $(NOPROF) -fopt  -fthreaded  # --builddir=dist_reg_opt_thrd
+	$(CBL) $(PROF)   -fopt  -fthreaded  # --builddir=dist_prof_opt_thrd
+
+	$(CBL) $(NOPROF) -f-opt -fthreaded  # --builddir=dist_reg__thrd
+	$(CBL) $(PROF)   -f-opt -fthreaded  # --builddir=dist_prof__thrd
+
+	$(CBL) $(NOPROF) -fopt  -f-threaded # --builddir=dist_reg_opt_
+	$(CBL) $(PROF)   -fopt  -f-threaded # --builddir=dist_prof_opt_
+
+	$(CBL) $(NOPROF) -f-opt  -f-threaded # --builddir=dist_reg__
+	$(CBL) $(PROF)   -f-opt  -f-threaded # --builddir=dist_prof__

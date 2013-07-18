@@ -1,20 +1,18 @@
 
 #include "Cmm.h"
 
-// Defined in SMP.h: 
-// EXTERN_INLINE StgWord cas(StgVolatilePtr p, StgWord o, StgWord n);
-
-#ifdef USE_RTSDUP
-#define WHICH_CAS       DUP_cas
+#warning "Duplicating functionality from the GHC RTS..."
+#define WHICH_CAS       cas
 #define WHICH_SLBARRIER DUP_store_load_barrier
 #define WHICH_LLBARRIER DUP_load_load_barrier
 #define WHICH_WBARRIER  DUP_write_barrier
-#else 
-#define WHICH_CAS       cas
-#define WHICH_SLBARRIER store_load_barrier
-#define WHICH_LLBARRIER load_load_barrier
-#define WHICH_WBARRIER  write_barrier
-#endif
+
+/* #define WHICH_CAS       cas */
+/* #define WHICH_SLBARRIER store_load_barrier */
+/* #define WHICH_LLBARRIER load_load_barrier */
+/* #define WHICH_WBARRIER  write_barrier */
+
+// ================================================================================
 
 add1Op
 /* Int# -> Int# */

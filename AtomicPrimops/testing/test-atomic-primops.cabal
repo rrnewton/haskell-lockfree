@@ -6,10 +6,23 @@ Version:             0.1.0.0
 Build-type:          Simple
 Cabal-version:       >=1.8
 
+Flag opt
+    Description: Enable GHC optimization.
+    Default: True
+
+Flag threaded
+    Description: Enable GHC threaded RTS.
+    Default: True
+
 Executable test-atomic-primops
     main-is:    Test.hs
-    ghc-options: -O2 -threaded -rtsopts
+    ghc-options: -rtsopts
 
+    if flag(opt)
+       ghc-options: -O2 
+    if flag(threaded)
+       ghc-options: -threaded 
+       
     build-depends: base, ghc-prim, primitive, containers, random,
     -- For Testing:
                    atomic-primops,
