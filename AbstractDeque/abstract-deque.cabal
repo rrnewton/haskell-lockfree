@@ -1,5 +1,5 @@
 Name:                abstract-deque
-Version:             0.2.2
+Version:             0.2.2.1 
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan R. Newton
@@ -20,7 +20,8 @@ Homepage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
 -- 0.1.6: Make useCAS default FALSE.
 -- 0.1.7: Add leftThreadSafe / rightThreadSafe
 -- 0.2:   [breaking] Refactor names of exposed Tests
--- 0.2.2: Add Debugger
+-- 0.2.2:   Add Debugger
+-- 0.2.2.1: Add some extra testing helpers.
 
 Synopsis: Abstract, parameterized interface to mutable Deques.
 

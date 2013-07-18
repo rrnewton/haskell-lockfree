@@ -5,7 +5,6 @@ License-file:        LICENSE
 Author:              Ryan Newton
 Maintainer:          rrnewton@gmail.com
 Category:            Data
-Stability:           Provisional
 -- Portability:         non-portabile (x86_64)
 Build-type:          Custom
 -- TODO: This requirement needs to be bumped to 1.17 when the latest cabal is
@@ -41,7 +40,7 @@ Description:
 
 
 Extra-Source-Files:  DEVLOG.md,
-                     testing/runTest.hs, testing/Test.hs, testing/test-atomic-primops.cabal
+                     testing/Test.hs, testing/test-atomic-primops.cabal
 --                    Makefile, Test.hs, README.md
 
 Flag debug

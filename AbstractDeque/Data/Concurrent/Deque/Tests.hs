@@ -26,7 +26,7 @@ module Data.Concurrent.Deque.Tests
    stdTestHarness, Elt,
 
    -- * Misc helpers
-   forkJoin
+   forkJoin, timeit
  )
  where 
 
