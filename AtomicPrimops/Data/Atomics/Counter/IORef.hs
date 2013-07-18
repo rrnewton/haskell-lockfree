@@ -42,18 +42,22 @@ incrCounter bump cntr =
 readCounterForCAS :: AtomicCounter -> IO CTicket
 readCounterForCAS (AtomicCounter r) = readForCAS r
 
+{-# INLINE peekCTicket #-}
 -- | Opaque tickets cannot be constructed, but they can be destructed into values.
 peekCTicket :: CTicket -> Int
 peekCTicket = peekTicket 
 
+{-# INLINE readCounter #-}
 -- | Equivalent to `readCounterForCAS` followed by `peekCTicket`.
 readCounter :: AtomicCounter -> IO Int
 readCounter (AtomicCounter r) = readIORef r
 
+{-# INLINE writeCounter #-}
 -- | Make a non-atomic write to the counter.  No memory-barrier.
 writeCounter :: AtomicCounter -> Int -> IO ()
 writeCounter (AtomicCounter r) !new = writeIORef r new
 
+{-# INLINE casCounter #-}
 -- | Compare and swap for the counter ADT.
 casCounter :: AtomicCounter -> CTicket -> Int -> IO (Bool, CTicket)
 casCounter (AtomicCounter r) tick !new = casIORef r tick new

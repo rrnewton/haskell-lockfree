@@ -209,20 +209,34 @@ The foreign/unboxed counter is the fasted for single thread repeated incr:
     Timing readIORef/writeIORef on one thread
     SELFTIMED: 0.137 sec
     Final value: 10000000
-    Timing CAS increments on one thread without retries
+    RAW_single_thread_repeat_incr: [OK]    
 
-    RAW_single_thread_repeat_incr: [OK]
+    Timing CAS increments on one thread without retries
     SELFTIMED: 0.220 sec
     Final value: 10000000
-    CAS_single_thread_repeat_incr: [Running]
-
     CAS_single_thread_repeat_incr: [OK]
+    
     SELFTIMED: 0.510 sec
-    CounterReference_single_thread_repeat_incr: [Running]
-
     CounterReference_single_thread_repeat_incr: [OK]
+    
     SELFTIMED: 0.187 sec
-
     CounterIORef_single_thread_repeat_incr: [OK]
+    
     SELFTIMED: 0.119 sec
+    CounterForeign_single_thread_repeat_incr: [OK]
+
+With max contention on four threads (all threads hammering counter),
+the atomicModifyIORef version falls apart.  E.g. for 1M total
+increments here are the numbers:
+
+    SELFTIMED: 45.768 sec
+    CounterReference_concurrent_repeat_incr: [OK]
+    
+    SELFTIMED: 0.348 sec
+    CounterIORef_concurrent_repeat_incr: [OK]
+
+    SELFTIMED: 0.060 sec
+    CounterForeign_concurrent_repeat_incr: [OK]
+    
+MASSIVE difference between the foreign fetchAndAdd version and the atomicModifyIORef.
 
