@@ -14,7 +14,8 @@ Flag threaded
     Description: Enable GHC threaded RTS.
     Default: True
 
-Executable test-atomic-primops
+Test-Suite test-atomic-primops
+    type:       exitcode-stdio-1.0
     main-is:    Test.hs
     ghc-options: -rtsopts
 
@@ -29,7 +30,7 @@ Executable test-atomic-primops
                    time, HUnit, test-framework, test-framework-hunit
 --                   test-framework-th
 
-Test-Suite test-atomic-primops-runner
-    type:       exitcode-stdio-1.0
-    main-is:    runTest.hs
-    build-depends: base, process
+
+Executable hello-world-atomic-primops
+  main-is: hello.hs
+  build-depends: base >= 4.5, atomic-primops

@@ -59,7 +59,13 @@ getGCCount | expect_false_positive_on_GC =
 #if 1
 -- main = $(defaultMainGenerator)
 main :: IO ()
-main =        
+main = do
+       -- TEMP: Fixing this at four processors because it takes a REALLY long time at larger numbers:
+       -- It does 248 test cases and takes 55s at -N16...
+       -- numcap <- getNumProcessors
+       let numcap = 4
+       setNumCapabilities numcap
+       
        defaultMain $ 
          [ testCase "casTicket1"              case_casTicket1
          , testCase "create_and_read"         case_create_and_read
@@ -79,7 +85,7 @@ main =
          -- Test several configurations of this one:
          [ testCase ("test_all_hammer_one_"++show threads++"_"++show iters ++":")
                     (test_all_hammer_one threads iters (0::Int))
-         | threads <- [1 .. 2*numCapabilities]
+         | threads <- [1 .. 2*numcap]
          , iters   <- [1, 10, 100, 1000, 10000, 100000, 500000]] ++
          [ testCase ("test_hammer_many_threads_1000_10000:")
                     (test_all_hammer_one 1000 10000 (0::Int)) ]  ++
@@ -88,7 +94,7 @@ main =
          [ testCase ("test_random_array_comm_"++show threads++"_"++show size++"_"++show iters ++":")
                     (test_random_array_comm threads size iters)
          | threads <- filter (>0) $ setify $
-                      [1, numCapabilities `quot` 2, numCapabilities, 2*numCapabilities]
+                      [1, numcap `quot` 2, numcap, 2*numcap]
          , size    <- [1, 10, 100]
          , iters   <- [10000]]
          ++ counterTests

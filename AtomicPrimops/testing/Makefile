@@ -17,18 +17,28 @@ hello:
 NOPROF= --disable-library-profiling --disable-executable-profiling
 PROF= --enable-library-profiling --enable-executable-profiling
 
-CBL= rm -rf dist/; cabal install --enable-tests
+# CBL= echo "\n\n============================================================"; cabal install --enable-tests
+CBL= echo "\n\n"; cabal install --enable-tests
 
 # Try all combinations of profiling, optimization, and threading:
 full:
-	$(CBL) $(NOPROF) -fopt  -fthreaded  # --builddir=dist_reg_opt_thrd
-	$(CBL) $(PROF)   -fopt  -fthreaded  # --builddir=dist_prof_opt_thrd
+	$(CBL) $(NOPROF) -fopt  -fthreaded  --builddir=dist_reg_opt_thrd
+	$(CBL) $(PROF)   -fopt  -fthreaded  --builddir=dist_prof_opt_thrd
 
-	$(CBL) $(NOPROF) -f-opt -fthreaded  # --builddir=dist_reg__thrd
-	$(CBL) $(PROF)   -f-opt -fthreaded  # --builddir=dist_prof__thrd
+	$(CBL) $(NOPROF) -f-opt -fthreaded  --builddir=dist_reg__thrd
+	$(CBL) $(PROF)   -f-opt -fthreaded  --builddir=dist_prof__thrd
 
-	$(CBL) $(NOPROF) -fopt  -f-threaded # --builddir=dist_reg_opt_
-	$(CBL) $(PROF)   -fopt  -f-threaded # --builddir=dist_prof_opt_
+	$(CBL) $(NOPROF) -fopt  -f-threaded --builddir=dist_reg_opt_
+	$(CBL) $(PROF)   -fopt  -f-threaded --builddir=dist_prof_opt_
 
-	$(CBL) $(NOPROF) -f-opt  -f-threaded # --builddir=dist_reg__
-	$(CBL) $(PROF)   -f-opt  -f-threaded # --builddir=dist_prof__
+	$(CBL) $(NOPROF) -f-opt  -f-threaded --builddir=dist_reg__
+	$(CBL) $(PROF)   -f-opt  -f-threaded --builddir=dist_prof__
+
+# These shoud be redundant with the above, but we run them anyway:
+	for f in `ls dist_*/build/hello-world-atomic-primops/hello-world-atomic-primops`; do ./$f; done
+
+	tail dist_*/test/test-atomic-primops-*-test-atomic-primops.log
+
+
+clean:
+	rm -rf ./dist/ ./dist_*/
