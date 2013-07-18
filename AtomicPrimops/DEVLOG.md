@@ -262,7 +262,6 @@ The numbers for boolean-flipping (nots) are different than adds:
     CAS_single_thread_repeat_flip: [OK]
 
 
-
 --------------------------------------------------
 
 With max contention on four threads (all threads hammering counter),

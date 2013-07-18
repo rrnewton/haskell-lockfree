@@ -1,5 +1,5 @@
 Name:                chaselev-deque
-Version:             0.1.3
+Version:             0.3
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan R. Newton, Edward Kmett 
@@ -10,7 +10,9 @@ Cabal-version:       >=1.8
 
 -- Version history:
 -- 0.1.1 -- bump for fixing bugs!  First release candidate.
+-- 0.1.2
 -- 0.1.3 -- small release to fix version deps before atomic-primops api change
+-- 0.3   -- bump to go along with atomic-primops 0.3
 
 Homepage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
 
@@ -29,7 +31,7 @@ Library
 --                     Data.Concurrent.Deque.ReactorDeque
   build-depends:     base >= 4.4.0.0 && < 5, array, transformers, bits-atomic,
                      abstract-deque >= 0.2.2, vector, ghc-prim,
-                     atomic-primops >= 0.2 && < 0.3
+                     atomic-primops >= 0.3 && < 0.4
 --                     IORefCAS >= 0.2
   build-depends: ghc-prim
   ghc-options: -O2
@@ -40,13 +42,12 @@ Source-Repository head
     Type:         git
     Location:     git://github.com/rrnewton/haskell-lockfree-queue.git
 
-
 Test-Suite test-chaselev-deque
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
     build-depends: base >= 4.4.0.0 && < 5, abstract-deque >= 0.2.2, 
                    HUnit, test-framework, test-framework-hunit,
-                   atomic-primops >= 0.2 && < 0.3, vector, ghc-prim
+                   atomic-primops >= 0.3 && < 0.4, vector, ghc-prim, array
 --                   IORefCAS >= 0.2
     build-depends: containers
     ghc-options: -O2 -threaded -rtsopts 

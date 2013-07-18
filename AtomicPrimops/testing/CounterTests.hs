@@ -15,7 +15,7 @@ import qualified Data.Atomics.Counter.Reference as C1
 import qualified Data.Atomics.Counter.IORef     as C2
 import qualified Data.Atomics.Counter.Foreign   as C3
 
-import CommonTesting (numElems, forkJoin)
+import CommonTesting (numElems, forkJoin, timeit)
 
 --------------------------------------------------------------------------------
 
@@ -99,28 +99,28 @@ counterTests =
    ----------------------------------------
    testCase "RAW_single_thread_repeat_flip" $ do 
      putStrLn "Timing readIORef/writeIORef on one thread"
-     cputime (normal default_seq_tries)   
+     timeit (normal default_seq_tries)   
  , testCase "CAS_single_thread_repeat_flip" $ do 
      putStrLn "Timing CAS boolean flips on one thread without retries"
-     fin <- cputime (casBased default_seq_tries)
+     fin <- timeit (casBased default_seq_tries)
      putStrLn$"Final value: "++show fin
    ----------------------------------------
  , testCase "RAW_single_thread_repeat_incr" $ do 
      putStrLn "Timing readIORef/writeIORef on one thread"
-     fin <- cputime (normalIncr default_seq_tries)
+     fin <- timeit (normalIncr default_seq_tries)
      putStrLn$"Final value: "++show fin      
  , testCase "CAS_single_thread_repeat_incr" $ do 
      putStrLn "Timing CAS increments on one thread without retries"
-     fin <- cputime (casBasedIncr default_seq_tries)
+     fin <- timeit (casBasedIncr default_seq_tries)
      putStrLn$"Final value: "++show fin 
    ----------------------------------------
- , testCase "CounterReference_single_thread_repeat_incr" $ cputime (incrloop1 default_seq_tries)
- , testCase "CounterIORef_single_thread_repeat_incr"     $ cputime (incrloop2 default_seq_tries)   
- , testCase "CounterForeign_single_thread_repeat_incr"   $ cputime (incrloop3 default_seq_tries)   
+ , testCase "CounterReference_single_thread_repeat_incr" $ timeit (incrloop1 default_seq_tries)
+ , testCase "CounterIORef_single_thread_repeat_incr"     $ timeit (incrloop2 default_seq_tries)   
+ , testCase "CounterForeign_single_thread_repeat_incr"   $ timeit (incrloop3 default_seq_tries)   
    ----------------------------------------
 
    -- Parallel versions:
- , testCase "CounterReference_concurrent_repeat_incr" $ void$ cputime (parIncrloop1 default_conc_tries)
- , testCase "CounterIORef_concurrent_repeat_incr"     $ void$ cputime (parIncrloop2 default_conc_tries)
- , testCase "CounterForeign_concurrent_repeat_incr"   $ void$ cputime (parIncrloop3 default_conc_tries)
+ , testCase "CounterReference_concurrent_repeat_incr" $ void$ timeit (parIncrloop1 default_conc_tries)
+ , testCase "CounterIORef_concurrent_repeat_incr"     $ void$ timeit (parIncrloop2 default_conc_tries)
+ , testCase "CounterForeign_concurrent_repeat_incr"   $ void$ timeit (parIncrloop3 default_conc_tries)
  ]

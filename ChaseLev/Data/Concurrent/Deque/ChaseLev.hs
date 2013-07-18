@@ -29,10 +29,10 @@ import qualified Data.Vector as V
 import Text.Printf (printf)
 import Control.Exception (catch, SomeException, throw, evaluate,try)
 import Control.Monad (when, unless, forM_)
---import Data.Atomics (readArrayElem, readForCAS, casIORef, Ticket, peekTicket)
--- import Data.Atomics.Counter.IORef
+
 import Data.Atomics (storeLoadBarrier, writeBarrier, loadLoadBarrier)
-import Data.Atomics.Counter.Reference
+-- TODO: Use whichever counter is exported as the DEFAULT:
+import Data.Atomics.Counter
        (AtomicCounter, newCounter, readCounter, writeCounter, casCounter, readCounterForCAS, peekCTicket)
 
 -- Debugging:
@@ -210,8 +210,8 @@ newQ :: IO (ChaseLevDeque elt)
 newQ = do
   -- Arbitrary Knob: We start as size 32 and double from there:
   v  <- MV.new 32 
-  r1 <- newCounter
-  r2 <- newCounter
+  r1 <- newCounter 0
+  r2 <- newCounter 0
   r3 <- newIORef v
   return$ CLD r1 r2 r3
 

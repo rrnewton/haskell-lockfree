@@ -664,3 +664,20 @@ In any case, I am disabling those messages.
 [2013.07.17] {Do some performance measurements...}
 ===================================================
 
+
+
+
+[2013.07.18] {Uh oh, what's this}
+---------------------------------
+
+Deja vu, I just started seeing this on hive (but not on limestone):
+
+    time DEBUG=1 NUMELEMS=500000 NUMTHREADS=4 ./dist/build/test-chaselev-deque/test-chaselev-deque -j1 -t :ChaseLev_work-stealing-deque-tests_test_random_work_stealing
+
+    Final sum: 62500481741, producer/consumer/leftover sums: ([(181612,22662208533),(140427,16071400039)],[(101389,13641612581),(76576,10125260588)],[(0,0),(0,0)])
+    Total pop events: 500004 should be 500000
+    Checking that queue is finally null...
+    :ChaseLev_work-stealing-deque-tests_test_random_work_stealing: [Failed]
+
+It happens constently at four threads and not at all at 2 or 3.
+

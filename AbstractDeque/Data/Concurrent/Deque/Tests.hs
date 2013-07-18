@@ -19,23 +19,23 @@ module Data.Concurrent.Deque.Tests
    -- * Testing parameters
    numElems, getNumAgents, producerRatio,
 
-   -- * Utility for controlling the number of threads used by generated tests.
-   setTestThreads,
+   -- * Utility for tweaking test suites
+   setTestThreads, appendLabels, appendLabel,
 
    -- * Test initialization, reading common configs
-   stdTestHarness
+   stdTestHarness, Elt,
+
+   -- * Misc helpers
+   forkJoin
  )
  where 
 
-import Data.Concurrent.Deque.Class as C
-import qualified Data.Concurrent.Deque.Reference as R
-
 import Control.Monad
-import Data.Array as A
-import Data.IORef
-import Data.Int
+import           Data.Time.Clock
+import           Data.Array as A
+import           Data.IORef
+import           Data.Int
 import qualified Data.Set as S
--- import System.Mem.StableName
 import Text.Printf
 import GHC.Conc (throwTo, threadDelay, myThreadId)
 import Control.Concurrent.MVar
@@ -46,10 +46,14 @@ import System.IO (hPutStrLn, stderr, hFlush, stdout)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Random (randomIO, randomRIO)
 import qualified Test.Framework as TF
-import Test.Framework.Providers.HUnit  (hUnitTestToTests)
-import Test.HUnit as HU
+import           Test.Framework.Providers.HUnit  (hUnitTestToTests)
+import           Test.HUnit as HU
 
 import Debug.Trace (trace)
+
+import           Data.Concurrent.Deque.Class as C
+import qualified Data.Concurrent.Deque.Reference as R
+
 
 #if __GLASGOW_HASKELL__ >= 704
 import GHC.Conc (getNumCapabilities, setNumCapabilities, getNumProcessors)
@@ -95,7 +99,9 @@ forkThread = case lookup "OSTHREADS" theEnv of
 -- thread used by the RTS.
 getNumAgents :: IO Int
 getNumAgents = case lookup "NUMAGENTS" theEnv of 
-                Nothing  -> getNumCapabilities
+                Nothing  -> do x <- getNumCapabilities
+                               putStrLn$"Defaulting numAgents to numCapabilities: "++show x
+                               return x
                 Just str -> warnUsing ("NUMAGENTS = "++str) $ 
                             return (read str)
 
@@ -135,10 +141,25 @@ setTestThreads nm tst = loop False tst
                        setNumCapabilities n
                        act)
 
+-- | Dig through the test constructors and add a new string to the first label found.
+-- If no such label exists, add one.   
+appendLabel :: String -> HU.Test -> HU.Test
+appendLabel newLab tst = loop tst
+ where
+   loop x = 
+    case x of
+      TestLabel lb t2 -> TestLabel (newLab ++"_"++ lb) t2
+      TestList ls     -> TestList (map loop ls)
+      TestCase io     -> TestLabel newLab x
+
+-- | This version has the option of being smarter about how it handles uniformly
+-- labeling many tests.
+appendLabels :: String -> [HU.Test] -> HU.Test
+appendLabels newLab tst = TestList $ map (appendLabel newLab) tst
+
 stdTestHarness :: (IO Test) -> IO ()
 stdTestHarness genTests = do 
-  numAgents <- getNumAgents 
-  putStrLn$ "Running with numElems "++show numElems++" and numAgents "++ show numAgents
+  putStrLn$ "Running with numElems "++show numElems
   putStrLn "Use NUMELEMS, NUMAGENTS, NUMTHREADS to control the size of this benchmark."
   args <- getArgs
 
@@ -313,7 +334,7 @@ test_contention_free_parallel doBackoff total newqueue =
        else assertFailure "Queue was not empty!!"
 
 
-
+{-# INLINE test_random_array_comm #-}
 -- | This test uses a number of producer and consumer threads which push and pop
 -- elements from random positions in an array of FIFOs.
 test_random_array_comm :: DequeClass d => Int -> Int -> IO (d Elt) -> IO ()
@@ -384,29 +405,33 @@ expectedSum n = (n * (n - 1)) `quot` 2
 -- | This creates an HUnit test list to perform all the tests that apply to a
 --   single-ended (threadsafe) queue.  It requires thread safety at /both/ ends.
 tests_fifo :: DequeClass d => (forall elt. IO (d elt)) -> Test
-tests_fifo newq = TestLabel "single-ended-queue-tests"$ TestList $
+tests_fifo newq = appendLabels "single-ended-queue-tests" $ 
   tests_basic newq ++ 
   tests_fifo_exclusive newq
   
+{-# INLINE tests_fifo_exclusive #-}
 -- | Tests exclusive to single-ended (threadsafe) queues:
 tests_fifo_exclusive :: DequeClass d => (forall elt. IO (d elt)) -> [Test]
 tests_fifo_exclusive newq = 
-  [ TestLabel "test_fifo_OneBottleneck_backoff" (TestCase$ assert $ newq >>= test_fifo_OneBottleneck True  numElems)
+  [ TestLabel "test_fifo_OneBottleneck_backoff" (TestCase$ assertT $ newq >>= test_fifo_OneBottleneck True  numElems)
 --  , TestLabel "test_fifo_OneBottleneck_aggressive" (TestCase$ assert $ newq >>= test_fifo_OneBottleneck False numElems)
 --  , TestLabel "test the tests" (TestCase$ assert $ assertFailure "This SHOULD fail.")
   ] ++
   [ TestLabel ("test_random_array_comm_"++show size)
-              (TestCase$ assert $ test_random_array_comm size numElems newq)
+              (TestCase$ assertT $ test_random_array_comm size numElems newq)
   | size <- [10,100]
   ]
 
-
+{-# INLINE tests_basic #-}
 -- | Tests that don't require thread safety at either end.
 tests_basic :: DequeClass d => (forall elt. IO (d elt)) -> [Test]
 tests_basic newq =
-  [ TestLabel "test_fifo_filldrain"  (TestCase$ assert $ newq >>= test_fifo_filldrain)
-  , TestLabel "test_contention_free_parallel" (TestCase$ assert $ test_contention_free_parallel True numElems newq)
+  [ TestLabel "test_fifo_filldrain"           (TestCase$ assertT $ newq >>= test_fifo_filldrain)
+  , TestLabel "test_contention_free_parallel" (TestCase$ assertT $ test_contention_free_parallel True numElems newq)
   ]
+
+assertT :: IO () -> IO ()
+assertT = timeit . assert
 
 ----------------------------------------------------------------------------------------------------
 -- Test a Work-stealing queue:
@@ -433,7 +458,7 @@ test_ws_triv2 q = do
     [Just "one",Just "two",Just "four",Just "three",Nothing,Nothing]
 
 
-
+{-# INLINE test_random_work_stealing #-}
 -- | This test uses a number of worker threads which randomly either push or pop work
 -- to their local work stealing deque.  Also, there are consumer (always thief)
 -- threads which never produce and only consume.
@@ -530,20 +555,20 @@ test_random_work_stealing total newqueue = do
      else assertFailure "Queue was not empty!!"
 
 
-
+{-# INLINE tests_wsqueue #-}
 -- | Aggregate tests for work stealing queues.  None of these require thread-safety
 -- on the left end.  There is some duplication with tests_fifo.
 tests_wsqueue :: (PopL d) => (forall elt. IO (d elt)) -> Test
-tests_wsqueue newq = TestLabel "work-stealing-deque-tests"$ TestList $
+tests_wsqueue newq = appendLabels "work-stealing-deque-tests"$ 
  tests_wsqueue_exclusive newq ++
  tests_basic newq 
 
 -- Internal: factoring this out.
 tests_wsqueue_exclusive :: (PopL d) => (forall elt. IO (d elt)) -> [Test]
 tests_wsqueue_exclusive newq = 
- [ TestLabel "test_ws_triv1"  (TestCase$ assert $ newq >>= test_ws_triv1)
- , TestLabel "test_ws_triv2"  (TestCase$ assert $ newq >>= test_ws_triv2)
- , TestLabel "test_random_work_stealing" (TestCase$ assert $ test_random_work_stealing numElems newq)
+ [ TestLabel "test_ws_triv1"             (TestCase$ assertT $ newq >>= test_ws_triv1)
+ , TestLabel "test_ws_triv2"             (TestCase$ assertT $ newq >>= test_ws_triv2)
+ , TestLabel "test_random_work_stealing" (TestCase$ assertT $ test_random_work_stealing numElems newq)
  ]
 
 ----------------------------------------------------------------------------------------------------
@@ -552,7 +577,7 @@ tests_wsqueue_exclusive newq =
 
 -- | This requires double ended queues that are threadsafe on BOTH ends.
 tests_all :: (PopL d) => (forall elt. IO (d elt)) -> Test
-tests_all newq = TestLabel "full-deque-tests"$ TestList $ 
+tests_all newq = appendLabels "full-deque-tests" $  
   tests_basic newq ++
   tests_fifo_exclusive newq ++
   tests_wsqueue_exclusive newq 
@@ -687,3 +712,11 @@ dbgPrint lvl str = if dbg < lvl then return () else do
 
 dbgPrintLn :: Int -> String -> IO ()
 dbgPrintLn lvl str = dbgPrint lvl (str++"\n")
+
+timeit :: IO a -> IO a 
+timeit ioact = do 
+   start <- getCurrentTime
+   res <- ioact
+   end   <- getCurrentTime
+   putStrLn$ "SELFTIMED: " ++ show (diffUTCTime end start)
+   return res

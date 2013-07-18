@@ -42,13 +42,13 @@ main = T.stdTestHarness $ return all_tests
  where 
  all_tests :: Test
  all_tests = 
-   TestLabel "Reference_Deque" $ TestList $ 
-     [ TestLabel "test_1" test_1
-     , TestLabel "test_2" test_2 
-     , TestLabel "direct"$ T.tests_all R.newQ
+   T.appendLabels "Reference_Deque" $ 
+     [ T.appendLabel "test_1" test_1
+     , T.appendLabel "test_2" test_2 
+     , T.appendLabel "direct"$ T.tests_all R.newQ
      -- Test going through the class interface as well:  
-     , TestLabel "thru_class"$ T.tests_all (C.newQ :: IO (R.SimpleDeque a))
-     , TestLabel "with_debug"$ T.tests_all (C.newQ :: IO (DebugDeque R.SimpleDeque a))
+     , T.appendLabel "thru_class"$ T.tests_all (C.newQ :: IO (R.SimpleDeque a))
+     , T.appendLabel "with_debug"$ T.tests_all (C.newQ :: IO (DebugDeque R.SimpleDeque a))
      ]
 
 -- main = do 
