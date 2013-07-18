@@ -151,6 +151,7 @@ of my own.
 
 
 [2013.04.20] {Debugging}
+------------------------
 
 I fixed a major bug in the primop.  I also verified that GC is what is
 causing all_hammer_one to observe fewer successes than ideal.
@@ -197,4 +198,31 @@ STRANGE -- it looks like it was based on extra double quotes in the args to GHC:
     cabal-dev install "-v --enable-library-profiling --ghc-options=-prof" -s cabal-dev/ghc-7.6.2_prof --disable-documentation --with-ghc=ghc-7.6.2 --program-suffix=_ghc-7.6.2 .
     
 How did that cause it to compile and yet run with an internal failure?
+
+
+
+[2013.07.18] {Timing atomic Counter ops}
+================================================================================
+
+The foreign/unboxed counter is the fasted for single thread repeated incr:
+
+    Timing readIORef/writeIORef on one thread
+    SELFTIMED: 0.137 sec
+    Final value: 10000000
+    Timing CAS increments on one thread without retries
+
+    RAW_single_thread_repeat_incr: [OK]
+    SELFTIMED: 0.220 sec
+    Final value: 10000000
+    CAS_single_thread_repeat_incr: [Running]
+
+    CAS_single_thread_repeat_incr: [OK]
+    SELFTIMED: 0.510 sec
+    CounterReference_single_thread_repeat_incr: [Running]
+
+    CounterReference_single_thread_repeat_incr: [OK]
+    SELFTIMED: 0.187 sec
+
+    CounterIORef_single_thread_repeat_incr: [OK]
+    SELFTIMED: 0.119 sec
 

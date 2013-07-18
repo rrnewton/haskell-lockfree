@@ -642,7 +642,7 @@ I'm still thinking that this is the cabal bug rearing its head
 
 It is true that the recent refactoring to move the stdTestHarness code
 into AbstractDeque has moved it from an executable context to a
-library context, potentially changing its profiling status.
+library context, potentially changing its profiling status.chas
 
 CONCLUSION: I think this is literally a terminal access problem as
 suggested by the valgrind error above.  I can get both the hang and
@@ -659,4 +659,8 @@ Aha... that's a printf, not a normal Haskell putStrLn... interesting.
 But this is still weird because I'm telling test-framework "-j1".
 
 In any case, I am disabling those messages.
+
+
+[2013.07.17] {Do some performance measurements...}
+===================================================
 

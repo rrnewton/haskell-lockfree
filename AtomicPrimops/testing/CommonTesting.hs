@@ -86,10 +86,20 @@ dbg = case lookup "DEBUG" unsafeEnv of
        Just ""  -> defaultDbg
        Just "0" -> defaultDbg
        Just s   ->
-         trace (" ! Responding to env Var: DEBUG="++s)$
+         warnUsing (" DEBUG="++s)$
          case reads s of
            ((n,_):_) -> n
            [] -> error$"Attempt to parse DEBUG env var as Int failed: "++show s
+
+-- | How many elements or iterations should the test use?
+numElems :: Int
+numElems = case lookup "NUMELEMS" unsafeEnv of 
+             Nothing  -> 10 * 1000 * 1000 -- 500000
+             Just str -> warnUsing ("NUMELEMS = "++str) $ 
+                         read str
+
+warnUsing :: String -> a -> a
+warnUsing str a = trace ("  [Warning]: Using environment variable "++str) a
 
 defaultDbg :: Int
 defaultDbg = 0

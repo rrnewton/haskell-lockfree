@@ -1,7 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
 
 -- | This reference version is implemented with atomicModifyIORef and can be a useful
--- fallback if one of the other implementations needs to be debugged.
+-- fallback if one of the other implementations needs to be debugged for a given
+-- architecture.
 module Data.Atomics.Counter.Reference
        where
 
@@ -16,19 +17,31 @@ newtype AtomicCounter = AtomicCounter (IORef Int)
 
 type CTicket = Int
 
--- | Create a new counter initialized to zero.
-newCounter :: IO AtomicCounter
-newCounter = fmap AtomicCounter $ newIORef 0
+-- | Create a new counter initialized to the given value.
+newCounter :: Int -> IO AtomicCounter
+newCounter !n = fmap AtomicCounter $ newIORef n
 
--- | Try repeatedly until we successfully increment the counter.
--- incrCounter =
-
+-- | Try repeatedly until we successfully increment the counter by a given amount.
+-- Returns the original value of the counter (pre-increment).
+incrCounter :: Int -> AtomicCounter -> IO Int
+incrCounter !bump !cntr =
+    loop =<< readCounterForCAS cntr
+  where
+    loop tick = do
+      (b,tick') <- casCounter cntr tick (peekCTicket tick + bump)
+      if b then return (peekCTicket tick')
+           else loop tick'
+                
+-- | Just like the "Data.Atomics" CAS interface, this routine returns an opaque
+-- ticket that can be used in CAS operations.
 readCounterForCAS :: AtomicCounter -> IO CTicket
 readCounterForCAS = readCounter
 
+-- | Opaque tickets cannot be constructed, but they can be destructed into values.
 peekCTicket :: CTicket -> Int
-peekCTicket x = x
+peekCTicket !x = x
 
+-- | Equivalent to `readCounterForCAS` followed by `peekCTicket`.
 readCounter :: AtomicCounter -> IO Int
 readCounter (AtomicCounter r) = readIORef r
 
@@ -36,6 +49,7 @@ readCounter (AtomicCounter r) = readIORef r
 writeCounter :: AtomicCounter -> Int -> IO ()
 writeCounter (AtomicCounter r) !new = writeIORef r new
 
+-- | Compare and swap for the counter ADT.
 casCounter :: AtomicCounter -> CTicket -> Int -> IO (Bool, CTicket)
 casCounter (AtomicCounter r) oldT !new =
 
