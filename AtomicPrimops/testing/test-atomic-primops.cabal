@@ -20,16 +20,13 @@ Test-Suite test-atomic-primops
     ghc-options: -rtsopts
 
     if flag(opt)
-       ghc-options: -O2 
+       ghc-options: -O2 -funbox-strict-fields
     if flag(threaded)
        ghc-options: -threaded 
        
-    build-depends: base, ghc-prim, primitive, containers, random,
-    -- For Testing:
-                   atomic-primops,
+    build-depends: base, ghc-prim, primitive, containers, random, atomic-primops,
+                   -- For Testing:
                    time, HUnit, test-framework, test-framework-hunit
---                   test-framework-th
-
 
 Executable hello-world-atomic-primops
   main-is: hello.hs

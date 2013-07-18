@@ -206,6 +206,10 @@ How did that cause it to compile and yet run with an internal failure?
 
 The foreign/unboxed counter is the fasted for single thread repeated incr:
 
+  Laptop, Macbook Retina  (4 physical core w/ hyperthreading):
+  
+    $ ./dist/build/test-atomic-primops/test-atomic-primops -j 1 +RTS -N4 -RTS -t single
+  
     Timing readIORef/writeIORef on one thread
     SELFTIMED: 0.137 sec
     Final value: 10000000
@@ -225,10 +229,46 @@ The foreign/unboxed counter is the fasted for single thread repeated incr:
     SELFTIMED: 0.119 sec
     CounterForeign_single_thread_repeat_incr: [OK]
 
+  Desktop, veronica 2 core at 4 threads:
+
+    SELFTIMED: 1.403 sec
+    Final value: 10000000
+    Timing CAS increments on one thread without retries
+    RAW_single_thread_repeat_incr: [OK]
+    
+    SELFTIMED: 1.045 sec
+    Final value: 10000000
+    CAS_single_thread_repeat_incr: [OK]
+    
+    SELFTIMED: 5.237 sec
+    CounterReference_single_thread_repeat_incr: [OK]
+    
+    SELFTIMED: 1.441 sec
+    CounterIORef_single_thread_repeat_incr: [OK]
+    
+    SELFTIMED: 0.782 sec
+    CounterForeign_single_thread_repeat_incr: [OK]
+    
+The numbers for boolean-flipping (nots) are different than adds:
+
+    Timing readIORef/writeIORef on one thread
+    SELFTIMED: 0.118 sec
+    Timing CAS boolean flips on one thread without retries
+    RAW_single_thread_repeat_flip: [OK]
+    
+    SELFTIMED: 0.214 sec
+    Final value: True
+    Timing readIORef/writeIORef on one thread
+    CAS_single_thread_repeat_flip: [OK]
+
+
+--------------------------------------------------
+
 With max contention on four threads (all threads hammering counter),
 the atomicModifyIORef version falls apart.  E.g. for 1M total
 increments here are the numbers:
 
+  Laptop, Macbook Retina  (4 physical core w/ hyperthreading):
     SELFTIMED: 45.768 sec
     CounterReference_concurrent_repeat_incr: [OK]
     
@@ -237,6 +277,20 @@ increments here are the numbers:
 
     SELFTIMED: 0.060 sec
     CounterForeign_concurrent_repeat_incr: [OK]
+
+  Desktop, veronica 2 core at 4 threads:
+
+    SELFTIMED: 1.982 sec
+    CounterReference_concurrent_repeat_incr: [OK]
     
-MASSIVE difference between the foreign fetchAndAdd version and the atomicModifyIORef.
+    SELFTIMED: 0.241 sec
+    CounterIORef_concurrent_repeat_incr: [OK]
+
+    SELFTIMED: 0.137 sec
+    CounterForeign_concurrent_repeat_incr: [OK]
+    
+MASSIVE difference between the foreign fetchAndAdd version and the
+atomicModifyIORef.  But the difference is MUCH worse on my laptop.
+The laptop has hyperthreading, but in the benchmark we only use four
+unpinned threads, not eight.
 
