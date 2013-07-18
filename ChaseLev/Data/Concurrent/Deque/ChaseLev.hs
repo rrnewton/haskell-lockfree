@@ -13,6 +13,7 @@ module Data.Concurrent.Deque.ChaseLev
     -- The convention here is to directly provide the concrete
     -- operations as well as providing the class instances.
     ChaseLevDeque(), newQ, nullQ, pushL, tryPopL, tryPopR,
+    approxSize, 
     dbgInspectCLD
   )
  where
@@ -32,7 +33,7 @@ import Control.Monad (when, unless, forM_)
 
 import Data.Atomics (storeLoadBarrier, writeBarrier, loadLoadBarrier)
 -- TODO: Use whichever counter is exported as the DEFAULT:
-import Data.Atomics.Counter
+import Data.Atomics.Counter.IORef
        (AtomicCounter, newCounter, readCounter, writeCounter, casCounter, readCounterForCAS, peekCTicket)
 
 -- Debugging:
@@ -148,7 +149,7 @@ tryit msg action = action
 
 -- TODO: make a "grow" that uses memcpy.
 growCirc :: Int -> Int -> MV.IOVector a -> IO (MV.IOVector a)
-growCirc strt end oldarr = do  
+growCirc !strt !end !oldarr = do  
   -- let len = MV.length oldarr
   --     strtmod = strt`mod` len 
   --     endmod  = end `mod` len
@@ -183,20 +184,20 @@ growCirc strt end oldarr = do
     x <- getCirc oldarr ind 
     evaluate x
     putCirc newarr ind x
-  return newarr
+  return $! newarr
 {-# INLINE growCirc #-}
 
 getCirc :: MV.IOVector a -> Int -> IO a
-getCirc arr ind   = rd arr (ind `mod` MV.length arr)
+getCirc !arr !ind   = rd arr (ind `mod` MV.length arr)
 {-# INLINE getCirc #-}
 
 putCirc :: MV.IOVector a -> Int -> a -> IO ()
-putCirc arr ind x = wr arr (ind `mod` MV.length arr) x
+putCirc !arr !ind x = wr arr (ind `mod` MV.length arr) x
 {-# INLINE putCirc #-}
 
 -- Use a potentially-optimized block-copy:
 copyOffset :: MV.IOVector t -> MV.IOVector t -> Int -> Int -> Int -> IO ()
-copyOffset from to iFrom iTo len =
+copyOffset !from !to !iFrom !iTo !len =
   cpy (slc iTo len to)
       (slc iFrom len from)
 {-# INLINE copyOffset #-}
@@ -213,16 +214,26 @@ newQ = do
   r1 <- newCounter 0
   r2 <- newCounter 0
   r3 <- newIORef v
-  return$ CLD r1 r2 r3
+  return $! CLD r1 r2 r3
 
+{-# INLINE newQ #-}
 nullQ :: ChaseLevDeque elt -> IO Bool
 nullQ CLD{top,bottom} = do
+  -- This should get a LOWER bound on size at some point in logic time, right?
   b   <- readCounter bottom
   t   <- readCounter top  
---  return (b == t)
   let size = b - t  
-  return (size <= 0)
+  return $! size <= 0
 
+{-# INLINE approxSize #-}
+-- | Return a lower bound on the size at some point in the recent past.
+approxSize :: ChaseLevDeque elt -> IO Int
+approxSize CLD{top,bottom} = do
+  b   <- readCounter bottom
+  t   <- readCounter top  
+  return $! b - t
+
+{-# INLINE pushL #-}
 -- | For a work-stealing queue `pushL` is the ``local'' push.  Thus
 --   only a single thread should perform this operation.
 pushL :: ChaseLevDeque a -> a  -> IO ()
@@ -255,6 +266,7 @@ pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
   writeCounter bottom (b+1)
   return ()
 
+-- {-# INLINE tryPopR #-}
 -- | This is the steal operation.  Multiple threads may concurrently
 -- attempt steals from the same thread.
 tryPopR :: ChaseLevDeque elt -> IO (Maybe elt)
@@ -275,10 +287,11 @@ tryPopR CLD{top,bottom,activeArr} =  tryit "tryPopR" $ do
     obj   <- getCirc  arr t
     (b,_) <- casCounter top tt (t+1)
     if b then 
-      return (Just obj)
+      return $! Just obj
      else 
       return Nothing -- Someone beat us, abort
 
+{-# INLINE tryPopL #-}
 tryPopL  :: ChaseLevDeque elt -> IO (Maybe elt)
 tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
   b   <- readCounter bottom
@@ -301,12 +314,12 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
    else do
     obj <- getCirc arr b
     if size > 0 then do
-      return (Just obj)
+      return $! Just obj
      else do
       (b,ol) <- casCounter top tt (t+1)
       writeCounter bottom (t+1)
-      if b then return$ Just obj
-           else return$ Nothing 
+      if b then return $! Just obj
+           else return $  Nothing 
 
 ------------------------------------------------------------
 
@@ -314,8 +327,8 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
 -- Inclusive start, exclusive end.
 {-# INLINE for_ #-}
 for_ :: Monad m => Int -> Int -> (Int -> m ()) -> m ()
-for_ start end _fn | start > end = error "for_: start is greater than end"
-for_ start end fn = loop start
+for_ !start !end _fn | start > end = error "for_: start is greater than end"
+for_ !start !end fn = loop start
   where
    loop !i | i == end  = return ()
 	   | otherwise = do fn i; loop (i+1)

@@ -44,6 +44,8 @@ main =do
           , appendLabel "ChaseLev"            $ tests_wsqueue newReg 
           , TestLabel "parfib" $ TestCase $ timeit$
             print =<< test_parfib_work_stealing fibSize newReg
+          , TestLabel "parfib_specialized" $ TestCase $ timeit$
+            print =<< test_parfib_work_stealing_specialized fibSize 
           ]
     return all_tests
 
@@ -108,6 +110,47 @@ test_parfib_work_stealing origInput newqueue = do
   
   return (sum partial_sums)
 
+
+test_parfib_work_stealing_specialized :: Elt -> IO Elt
+test_parfib_work_stealing_specialized origInput = do
+  putStrLn$ " [parfib] Computing fib("++show origInput++")"
+  numAgents <- getNumAgents
+  qs <- sequence (replicate numAgents CL.newQ)
+  let arr = A.listArray (0,numAgents - 1) qs 
+  
+  let parfib !myId !myQ !mySum !num
+        | num <= 2  =
+          do x <- CL.tryPopL myQ
+             case x of
+               Nothing -> trySteal myId myQ (mySum+1)
+               Just n  -> parfib myId myQ   (mySum+1) n
+        | otherwise = do 
+          CL.pushL    myQ       (num-1)
+          parfib myId myQ mySum (num-2)
+          
+      trySteal !myId !myQ !mySum =
+        let loop ind
+              -- After we finish one sweep... we're completely done.
+              | ind == myId     = return mySum
+              | ind == size arr = loop 0
+              | otherwise = do
+                  x <- CL.tryPopR (arr ! ind)
+                  case x of
+                    Just n  -> parfib myId myQ mySum n
+                    Nothing -> do yield
+                                  loop (ind+1)
+        in loop (myId+1)
+
+      size a = let (st,en) = A.bounds a in en - st + 1 
+  
+  partial_sums <- forkJoin numAgents $ \ myId ->
+    if myId == 0
+    then parfib   myId (arr ! myId) 0 origInput
+    else trySteal myId (arr ! myId) 0 
+  
+  return (sum partial_sums)
+
+
 {-
 NOTES ON PARFIB PERFORMANCE
 ===========================
@@ -156,5 +199,28 @@ On a 3.1 Ghz 4-core westmere desktop, running with +RTS -qa:
 
   fib(43) 1 threads: 28.7s    (99.6% prod)
   fib(43) 4 threads: 10.2s    (63% productivity, 20.8 GB alloc)
+
+Experimenting with a few optimizations...
+Hmm, when I was running parfib_specialized on 4 threads I noticed it using 300% cpu if I used -qa.
+Oops, since this isn't using forkOn it should NOT be using -qa.
+
+Aha!  With the specialized version we can get it down to this:
+
+  fib(42) 1 threads: 13.6   
+  fib(42) 4 threads: 5.46    (69% prod, 8.5G alloc)
+
+WEIRD! Switching back to Counter.Reference actually gets a SPEEDUP at this point,
+bringing the above down to as low as 4.48s, in spite of a whopping 23GB allocation
+and 50% productivity.  While Counter.Foreign dominates in the highest contention
+scenarious, the FFI tax must be hurting in this lower-contention example.
+Perhaps if we exposed primops to perf atomic ops directly on byte arrays...
+
+Hmm... I think the variance is higher in this mode.  Let's try Counter.IORef.
+That one is actually SLOWER than atomicModifyIORef.  How can that be?
+
+With a bit more optimization/INLINING I can get fib(42) down to 4.19s (Reference).
+Still high variance and 19.2G allocation though...  I get as low as 5.17s for Foreign
+and 4.2G alloc.  Actually, now IORef is doing almost as well as Reference, and it is
+better under high contention.  So making that the default for now.
 
 -}
