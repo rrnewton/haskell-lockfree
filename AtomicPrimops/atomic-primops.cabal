@@ -1,5 +1,5 @@
 Name:                atomic-primops
-Version:             0.2.2.1
+Version:             0.3
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan Newton
@@ -19,15 +19,12 @@ HomePage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
 -- 0.2 -- Critical bugfix and add Counter.
 -- 0.2.2 -- Add more counters
 -- 0.2.2.1 -- Minor, add warning.
+-- 0.3 -- Major internal change.  Duplicate GHC RTS barriers and support non -threaded.
 
 Synopsis: A safe approach to CAS and other atomic ops in Haskell.
 
 Description:
 
-  WARNING: Your program MUST be built with "ghc -threaded" if you depend on this library.
-           The library depends on threaded Haskell RTS, which is only conditionally linked.
-           If you don't do this you will see an error at link time about "cas" being missing.
-  . 
   After GHC 7.4 a new `casMutVar#` primop became available, but it's
   difficult to use safely, because pointer equality is a highly
   unstable property in Haskell.  This library provides a safer method
@@ -36,6 +33,12 @@ Description:
   Also, this library uses the "foreign primop" capability of GHC to
   add access to other variants that may be of
   interest, specifically, compare and swap inside an array.
+ .
+ Changes in 0.3:
+ .
+ * Major internal change.  Duplicate the barrier code from the GHC RTS and thus 
+   enable support for executables that are NOT built with '-threaded'.
+
 
 Extra-Source-Files:  DEVLOG.md,
                      testing/runTest.hs, testing/Test.hs, testing/test-atomic-primops.cabal
