@@ -36,6 +36,7 @@ incrCounter bump cntr =
            else loop tick'
 -- </DUPLICATED CODE FROM Reference.hs>
 
+{-# INLINE readCounterForCAS #-}
 -- | Just like the "Data.Atomics" CAS interface, this routine returns an opaque
 -- ticket that can be used in CAS operations.
 readCounterForCAS :: AtomicCounter -> IO CTicket

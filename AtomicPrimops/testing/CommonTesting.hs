@@ -94,7 +94,7 @@ dbg = case lookup "DEBUG" unsafeEnv of
 -- | How many elements or iterations should the test use?
 numElems :: Int
 numElems = case lookup "NUMELEMS" unsafeEnv of 
-             Nothing  -> 10 * 1000 * 1000 -- 500000
+             Nothing  -> 1000 * 1000 
              Just str -> warnUsing ("NUMELEMS = "++str) $ 
                          read str
 

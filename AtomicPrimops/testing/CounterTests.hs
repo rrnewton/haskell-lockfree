@@ -3,9 +3,11 @@
 
 module CounterTests where
 
+import Control.Monad
+import GHC.Conc
+import System.CPUTime
 import Test.Framework.Providers.HUnit (testCase)
 import Text.Printf
-import System.CPUTime  
 import Data.IORef  
 
 import Data.Atomics
@@ -13,7 +15,7 @@ import qualified Data.Atomics.Counter.Reference as C1
 import qualified Data.Atomics.Counter.IORef     as C2
 import qualified Data.Atomics.Counter.Foreign   as C3
 
-import CommonTesting (numElems)
+import CommonTesting (numElems, forkJoin)
 
 --------------------------------------------------------------------------------
 
@@ -22,8 +24,8 @@ nTimes :: Int -> IO a -> IO ()
 nTimes 0 c = return ()
 nTimes n c = c >> nTimes (n-1) c
 
-time :: IO t -> IO t
-time a = do
+cputime :: IO t -> IO t
+cputime a = do
     start <- getCPUTime
     v <- a
     end   <- getCPUTime
@@ -71,35 +73,54 @@ incrloop2 tries = do
 incrloop3 tries = do
   r <- C3.newCounter 0
   nTimes tries $ C3.incrCounter 1 r
-  
+
+{-# INLINE parIncrloop #-} 
+parIncrloop new incr iters = do
+  numcap <- getNumCapabilities
+  let each = iters `quot` numcap
+  putStrLn$ "Concurrently incrementing counter from all "++show numcap++" threads, incrs per thread: "++show each
+  r <- new 0
+  forkJoin numcap $ \ _ ->    
+    nTimes each $ incr 1 r
+  return r
+
+parIncrloop1 = parIncrloop C1.newCounter C1.incrCounter
+parIncrloop2 = parIncrloop C2.newCounter C2.incrCounter
+parIncrloop3 = parIncrloop C3.newCounter C3.incrCounter
+
 --------------------------------------------------------------------------------
 
--- default_tries = 10 *1000*1000
-default_tries = numElems
+default_seq_tries  = 10 * numElems
+-- Things are MUCH slower with contention:
+default_conc_tries = numElems
 
 counterTests = 
  [
    ----------------------------------------
    testCase "RAW_single_thread_repeat_flip" $ do 
      putStrLn "Timing readIORef/writeIORef on one thread"
-     time (normal default_tries)   
+     cputime (normal default_seq_tries)   
  , testCase "CAS_single_thread_repeat_flip" $ do 
      putStrLn "Timing CAS boolean flips on one thread without retries"
-     fin <- time (casBased default_tries)
+     fin <- cputime (casBased default_seq_tries)
      putStrLn$"Final value: "++show fin
    ----------------------------------------
  , testCase "RAW_single_thread_repeat_incr" $ do 
      putStrLn "Timing readIORef/writeIORef on one thread"
-     fin <- time (normalIncr default_tries)
+     fin <- cputime (normalIncr default_seq_tries)
      putStrLn$"Final value: "++show fin      
  , testCase "CAS_single_thread_repeat_incr" $ do 
      putStrLn "Timing CAS increments on one thread without retries"
-     fin <- time (casBasedIncr default_tries)
+     fin <- cputime (casBasedIncr default_seq_tries)
      putStrLn$"Final value: "++show fin 
    ----------------------------------------
- , testCase "CounterReference_single_thread_repeat_incr" $ time (incrloop1 default_tries)
- , testCase "CounterIORef_single_thread_repeat_incr"     $ time (incrloop2 default_tries)   
- , testCase "CounterForeign_single_thread_repeat_incr"   $ time (incrloop3 default_tries)   
-   
- ]
+ , testCase "CounterReference_single_thread_repeat_incr" $ cputime (incrloop1 default_seq_tries)
+ , testCase "CounterIORef_single_thread_repeat_incr"     $ cputime (incrloop2 default_seq_tries)   
+ , testCase "CounterForeign_single_thread_repeat_incr"   $ cputime (incrloop3 default_seq_tries)   
+   ----------------------------------------
 
+   -- Parallel versions:
+ , testCase "CounterReference_concurrent_repeat_incr" $ void$ cputime (parIncrloop1 default_conc_tries)
+ , testCase "CounterIORef_concurrent_repeat_incr"     $ void$ cputime (parIncrloop2 default_conc_tries)
+ , testCase "CounterForeign_concurrent_repeat_incr"   $ void$ cputime (parIncrloop3 default_conc_tries)
+ ]
