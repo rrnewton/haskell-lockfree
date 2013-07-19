@@ -49,6 +49,22 @@ stg_casArrayzh
 }
 
 
+stg_casByteArrayIntzh
+/* MutableByteArray# s -> Int# -> Int# -> Int# -> State# s -> (# State# s, Int#, Int# #) */
+{
+    W_ arr, p, ind, old, new, h, len;
+    arr = R1; // anything else?
+    ind = R2;
+    old = R3;
+    new = R4;
+
+    p = arr + SIZEOF_StgArrWords + WDS(ind);
+    (h) = foreign "C" WHICH_CAS(p, old, new) [];
+
+    RET_NN(h != old,h);
+}
+
+
 // One difference from casMutVar# is that this version returns the NEW
 // pointer in the case of success, NOT the old one.
 stg_casMutVar2zh

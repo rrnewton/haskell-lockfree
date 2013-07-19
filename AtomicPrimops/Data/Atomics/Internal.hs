@@ -4,7 +4,7 @@
 -- | This module provides only the raw primops (and necessary types) for atomic
 -- operations.  
 module Data.Atomics.Internal 
-   (casArray#, 
+   (casArray#, casByteArrayInt#,
     readForCAS#, casMutVarTicketed#, 
     Ticket,
     stg_storeLoadBarrier#, stg_loadLoadBarrier#, stg_writeBarrier# )
@@ -12,7 +12,9 @@ module Data.Atomics.Internal
 
 import GHC.Base (Int(I#))
 import GHC.Word (Word(W#))
-import GHC.Prim (RealWorld, Int#, Word#, State#, MutableArray#, unsafeCoerce#, MutVar#, reallyUnsafePtrEquality#) 
+import GHC.Prim (RealWorld, Int#, Word#, State#, MutableArray#, MutVar#,
+                 MutableByteArray#, 
+                 unsafeCoerce#, reallyUnsafePtrEquality#) 
 #if MIN_VERSION_base(4,5,0)
 -- Any is only in GHC 7.6!!!  We want 7.4 support.
 import GHC.Prim (readMutVar#, casMutVar#, Any)
@@ -128,3 +130,6 @@ foreign import prim "stg_casMutVar2zh" casMutVar_TypeErased#
 --   :: MutVar# RealWorld () -> 
 --      State# RealWorld -> (# State# RealWorld, Any () #)
 
+foreign import prim "stg_casByteArrayIntzh" casByteArrayInt#
+  :: MutableByteArray# s -> Int# -> Int# -> Int# ->
+     State# s -> (# State# s, Int#, Int# #) 

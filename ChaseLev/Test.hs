@@ -7,6 +7,7 @@ module Main where
 
 import System.Environment (getEnvironment)
 import Test.HUnit as HU
+import Data.Int
 import Data.Array as A
 import GHC.Conc (setNumCapabilities, yield)
 
@@ -41,8 +42,9 @@ main =do
           , appendLabel "standalone_pushPop"  $ TestCase $ timeit standalone_pushPop
           , appendLabel "standalone_pushPop2" $ TestCase $ timeit RegressionTests.Issue5B.standalone_pushPop
           , appendLabel "ChaseLev_DbgWrapper" $ tests_wsqueue newDeb
-          , appendLabel "ChaseLev"            $ tests_wsqueue newReg 
-          , TestLabel "parfib" $ TestCase $ timeit$
+          , appendLabel "ChaseLev"            $ tests_wsqueue newReg
+            -- Even with inlining this isn't working:
+          , TestLabel "parfib_generic" $ TestCase $ timeit$
             print =<< test_parfib_work_stealing fibSize newReg
           , TestLabel "parfib_specialized" $ TestCase $ timeit$
             print =<< test_parfib_work_stealing_specialized fibSize 
@@ -68,47 +70,6 @@ simplest_pushPop =
               Just z -> z
               Nothing -> error "Even a single push/pop in isolation did not work!"
      assertEqual "test_ws_triv1" y "hi"
-
-
-{-# INLINE test_parfib_work_stealing #-}
-test_parfib_work_stealing :: (DequeClass d, PopL d) => Elt -> IO (d Elt) -> IO Elt
-test_parfib_work_stealing origInput newqueue = do
-  putStrLn$ " [parfib] Computing fib("++show origInput++")"
-  numAgents <- getNumAgents
-  qs <- sequence (replicate numAgents newqueue)
-  let arr = A.listArray (0,numAgents - 1) qs 
-  
-  let parfib !myId !myQ !mySum !num
-        | num <= 2  =
-          do x <- tryPopL myQ
-             case x of
-               Nothing -> trySteal myId myQ (mySum+1)
-               Just n  -> parfib myId myQ   (mySum+1) n
-        | otherwise = do 
-          pushL       myQ       (num-1)
-          parfib myId myQ mySum (num-2)
-          
-      trySteal !myId !myQ !mySum =
-        let loop ind
-              -- After we finish one sweep... we're completely done.
-              | ind == myId     = return mySum
-              | ind == size arr = loop 0
-              | otherwise = do
-                  x <- tryPopR (arr ! ind)
-                  case x of
-                    Just n  -> parfib myId myQ mySum n
-                    Nothing -> do yield
-                                  loop (ind+1)
-        in loop (myId+1)
-
-      size a = let (st,en) = A.bounds a in en - st + 1 
-  
-  partial_sums <- forkJoin numAgents $ \ myId ->
-    if myId == 0
-    then parfib   myId (arr ! myId) 0 origInput
-    else trySteal myId (arr ! myId) 0 
-  
-  return (sum partial_sums)
 
 
 test_parfib_work_stealing_specialized :: Elt -> IO Elt
@@ -222,5 +183,8 @@ With a bit more optimization/INLINING I can get fib(42) down to 4.19s (Reference
 Still high variance and 19.2G allocation though...  I get as low as 5.17s for Foreign
 and 4.2G alloc.  Actually, now IORef is doing almost as well as Reference, and it is
 better under high contention.  So making that the default for now.
+
+The Data.Seq based reference implementatio in abstract-deque takes 6.6 seconds for
+fib(42).  
 
 -}

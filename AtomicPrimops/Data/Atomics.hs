@@ -17,6 +17,9 @@ module Data.Atomics
    -- * Atomic operations on mutable arrays
    casArrayElem, casArrayElem2, readArrayElem, 
 
+   -- * Atomic operations on byte arrays
+   casByteArrayInt, 
+   
    -- * Atomic operations on IORefs
    readForCAS, casIORef, casIORef2, 
    
@@ -29,6 +32,7 @@ module Data.Atomics
 
 import Control.Monad.ST (stToIO)
 import Data.Primitive.Array (MutableArray(MutableArray))
+import Data.Primitive.ByteArray (MutableByteArray(MutableByteArray))
 import Data.Atomics.Internal
 import Data.Int -- TEMPORARY
 
@@ -83,13 +87,26 @@ casArrayElem2 (MutableArray arr#) (I# i#) old new = IO$ \s1# ->
  case casArray# arr# i# old new s1# of 
    (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, res) #)
 
-
 readArrayElem :: forall a . MutableArray RealWorld a -> Int -> IO (Ticket a)
 -- readArrayElem = unsafeCoerce# readArray#
 readArrayElem (MutableArray arr#) (I# i#) = IO $ \ st -> unsafeCoerce# (fn st)
   where
     fn :: State# RealWorld -> (# State# RealWorld, a #)
     fn = readArray# arr# i#
+
+
+casByteArrayInt ::  MutableByteArray RealWorld -> Int -> Int -> Int -> IO (Bool, Int)
+casByteArrayInt (MutableByteArray mba#) (I# ix#) (I# old#) (I# new#) =
+  IO$ \s1# ->
+  -- It would be nice to avoid allocating a tuple result here.
+  -- Further, it will probably not be possible or the compiler to unbox the integer
+  -- result either with the current arrangement:
+  -- case casByteArrayInt# mba# ix# old# new# s1# of
+  --   (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, I# res) #)
+
+  let (# s2#, x#, res #) = casByteArrayInt# mba# ix# old# new# s1# in
+  (# s2#, (x# ==# 0#, I# res) #)
+  -- I don't know if a let will mak any difference here... hopefully not.
 
 
 --------------------------------------------------------------------------------
@@ -149,7 +166,6 @@ casMutVar2 !mv !tick !new = IO$ \st ->
       (# st, (flag ==# 0#, tick') #)
 --      (# st, if flag ==# 0# then Succeed tick' else Fail tick' #)
 --      if flag ==# 0#    then       else (# st, Fail (W# tick')  #)
-
 
 --------------------------------------------------------------------------------
 -- Memory barriers

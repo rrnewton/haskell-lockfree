@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, RankNTypes, CPP #-}
+{-# LANGUAGE BangPatterns, RankNTypes, CPP, BangPatterns #-}
 
 -- | This module contains a battery of simple tests for queues
 --   implementing the interface defined in
@@ -26,7 +26,7 @@ module Data.Concurrent.Deque.Tests
    stdTestHarness, Elt,
 
    -- * Misc helpers
-   forkJoin, timeit
+   forkJoin, timeit, fibSize
  )
  where 
 
@@ -83,6 +83,10 @@ numElems = case lookup "NUMELEMS" theEnv of
              Nothing  -> 100 * 1000 -- 500000
              Just str -> warnUsing ("NUMELEMS = "++str) $ 
                          read str
+fibSize :: Int64
+fibSize = case lookup "FIBSIZE" theEnv of
+            Just s  -> read s
+            Nothing -> 38
 
 forkThread :: IO () -> IO ThreadId
 forkThread = case lookup "OSTHREADS" theEnv of 
@@ -555,6 +559,47 @@ test_random_work_stealing total newqueue = do
      else assertFailure "Queue was not empty!!"
 
 
+{-# INLINE test_parfib_work_stealing #-}
+test_parfib_work_stealing :: (DequeClass d, PopL d) => Elt -> IO (d Elt) -> IO ()
+test_parfib_work_stealing origInput newqueue = do
+  putStrLn$ " [parfib] Computing fib("++show origInput++")"
+  numAgents <- getNumAgents
+  qs <- sequence (replicate numAgents newqueue)
+  let arr = A.listArray (0,numAgents - 1) qs 
+  
+  let parfib !myId !myQ !mySum !num
+        | num <= 2  =
+          do x <- tryPopL myQ
+             case x of
+               Nothing -> trySteal myId myQ (mySum+1)
+               Just n  -> parfib myId myQ   (mySum+1) n
+        | otherwise = do 
+          pushL       myQ       (num-1)
+          parfib myId myQ mySum (num-2)
+          
+      trySteal !myId !myQ !mySum =
+        let loop ind
+              -- After we finish one sweep... we're completely done.
+              | ind == myId     = return mySum
+              | ind == size arr = loop 0
+              | otherwise = do
+                  x <- tryPopR (arr ! ind)
+                  case x of
+                    Just n  -> parfib myId myQ mySum n
+                    Nothing -> do yield
+                                  loop (ind+1)
+        in loop (myId+1)
+
+      size a = let (st,en) = A.bounds a in en - st + 1 
+  
+  partial_sums <- forkJoin numAgents $ \ myId ->
+    if myId == 0
+    then parfib   myId (arr ! myId) 0 origInput
+    else trySteal myId (arr ! myId) 0 
+
+  putStrLn$ " [parfib] fib("++show origInput++") = "++show (sum partial_sums)
+
+
 {-# INLINE tests_wsqueue #-}
 -- | Aggregate tests for work stealing queues.  None of these require thread-safety
 -- on the left end.  There is some duplication with tests_fifo.
@@ -563,12 +608,14 @@ tests_wsqueue newq = appendLabels "work-stealing-deque-tests"$
  tests_wsqueue_exclusive newq ++
  tests_basic newq 
 
+{-# INLINE tests_wsqueue_exclusive #-}
 -- Internal: factoring this out.
 tests_wsqueue_exclusive :: (PopL d) => (forall elt. IO (d elt)) -> [Test]
 tests_wsqueue_exclusive newq = 
  [ TestLabel "test_ws_triv1"             (TestCase$ assertT $ newq >>= test_ws_triv1)
  , TestLabel "test_ws_triv2"             (TestCase$ assertT $ newq >>= test_ws_triv2)
  , TestLabel "test_random_work_stealing" (TestCase$ assertT $ test_random_work_stealing numElems newq)
+ , TestLabel "test_parfib_generic"       (TestCase$ assertT $ test_parfib_work_stealing fibSize newq)
  ]
 
 ----------------------------------------------------------------------------------------------------

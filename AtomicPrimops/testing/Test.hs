@@ -131,6 +131,10 @@ case_casmutarray1 = do
  assertBool "2nd should fail: " (not res2)
 
 
+-- case_casbytearray1 :: IO ()
+-- case_casbytearray1 = do 
+--  putStrLn "Perform a CAS within a MutableByteArray#"
+
 -- | This test uses a number of producer and consumer threads which push and pop
 -- elements from random positions in an array.
 test_random_array_comm :: Int -> Int -> Int -> IO ()
