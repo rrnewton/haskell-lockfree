@@ -20,6 +20,11 @@
 // #include "stg/SMP.h"
 //--------------------------------------------------------------------------------
 
+// A prototype for the function defined in th RTS:
+extern StgWord cas(StgVolatilePtr p, StgWord o, StgWord n);
+
+//--------------------------------------------------------------------------------
+
 /*
  * We need to tell both the compiler AND the CPU about the barriers.
  * It's no good preventing the CPU from reordering the operations if
@@ -92,6 +97,8 @@ DUP_load_load_barrier(void) {
 // #define VOLATILE_LOAD(p) (*((StgVolatilePtr)(p)))
 
 
+// Copied from atomic_inc in the GHC RTS, except tweaked to allow
+// arbitrary increments (other than 1).
 EXTERN_INLINE StgWord
 atomic_inc_with(StgWord incr, StgVolatilePtr p)
 {
