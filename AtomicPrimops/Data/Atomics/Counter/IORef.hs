@@ -5,8 +5,12 @@
 -- atomicModifyIORef.
 
 module Data.Atomics.Counter.IORef
+       (AtomicCounter, CTicket,
+        newCounter, readCounterForCAS, readCounter, peekCTicket,
+        writeCounter, casCounter, incrCounter, incrCounter_)
        where
 
+import Control.Monad (void)
 import Data.IORef
 import Data.Atomics as A
 
@@ -34,6 +38,9 @@ incrCounter bump cntr =
       (b,tick') <- casCounter cntr tick (peekCTicket tick + bump)
       if b then return (peekCTicket tick')
            else loop tick'
+{-# INLINE incrCounter_ #-}
+incrCounter_ :: Int -> AtomicCounter -> IO ()
+incrCounter_ b c = void (incrCounter b c)
 -- </DUPLICATED CODE FROM Reference.hs>
 
 {-# INLINE readCounterForCAS #-}

@@ -3,12 +3,13 @@
 -- | This reference version is implemented with atomicModifyIORef and can be a useful
 -- fallback if one of the other implementations needs to be debugged for a given
 -- architecture.
-module Data.Atomics.Counter.Reference
+module Data.Atomics.Counter.Reference       
        (AtomicCounter, CTicket,
         newCounter, readCounterForCAS, readCounter, peekCTicket,
-        writeCounter, casCounter, incrCounter)
+        writeCounter, casCounter, incrCounter, incrCounter_)
        where
 
+import Control.Monad (void)
 import Data.IORef
 -- import Data.Atomics
 import System.IO.Unsafe (unsafePerformIO)
@@ -36,7 +37,11 @@ incrCounter !bump !cntr =
       (b,tick') <- casCounter cntr tick (peekCTicket tick + bump)
       if b then return (peekCTicket tick')
            else loop tick'
-                
+
+{-# INLINE incrCounter_ #-}
+incrCounter_ :: Int -> AtomicCounter -> IO ()
+incrCounter_ b c = void (incrCounter b c)
+
 {-# INLINE readCounterForCAS #-}
 -- | Just like the "Data.Atomics" CAS interface, this routine returns an opaque
 -- ticket that can be used in CAS operations.
