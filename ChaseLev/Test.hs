@@ -258,7 +258,7 @@ Unboxed version on a bigger, 32 core machine, lower clock speed (2.13ghz):
     fib(42) 8 threads:  2.7s - 3.2s (100%prod)  (whoa, some runs up to 7.87s! very random)
     fib(42) 16 threads: 1.28s
     fib(42) 24 threads: 1.85s
-    fib(42) 32 threads: 4.8s
+    fib(42) 32 threads: 4.8s (high variance)
 
 As usual, without pinning, which cores get hit is kind of random (same socket,
 different socket).  I can confirm that just by watching htop.
