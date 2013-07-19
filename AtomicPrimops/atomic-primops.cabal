@@ -49,7 +49,8 @@ Description:
 
 
 Extra-Source-Files:  DEVLOG.md,
-                     testing/Test.hs, testing/test-atomic-primops.cabal
+                     testing/Test.hs, testing/test-atomic-primops.cabal,
+                     testing/Makefile, testing/CommonTesting.hs, testing/CounterTests.hs, testing/hello.hs
 --                    Makefile, Test.hs, README.md
 
 Flag debug
