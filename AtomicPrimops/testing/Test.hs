@@ -245,6 +245,8 @@ case_create_and_mutate_twice = do
   assertBool "Does the value after the first mutate equal 5?" (peekTicket tick2 == 5)
   assertBool "Does the value after the second mutate equal 120?" (valf == 120)
 
+
+-- [2013.07.19] I just saw an isolated failure of this one:
 case_n_threads_mutate :: Assertion
 case_n_threads_mutate = do
   dbgPrint 1$ "   Creating 120 threads and having each increment a counter value."
