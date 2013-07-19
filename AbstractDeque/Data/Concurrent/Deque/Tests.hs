@@ -12,6 +12,7 @@ module Data.Concurrent.Deque.Tests
 
    -- * Tests for Work-stealing queues.
    test_ws_triv1, test_ws_triv2, tests_wsqueue,
+   test_parfib_work_stealing,
 
    -- * All deque tests, aggregated.
    tests_all,

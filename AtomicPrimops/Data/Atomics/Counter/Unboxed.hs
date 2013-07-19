@@ -20,30 +20,41 @@ import Data.Atomics.Internal (casByteArrayInt#)
 data AtomicCounter = AtomicCounter (MutableByteArray# RealWorld)
 type CTicket = Int
 
-newCounter :: IO AtomicCounter
-readCounter :: AtomicCounter -> IO Int
-writeCounter :: AtomicCounter -> Int -> IO ()
+{-# INLINE newCounter #-}
+newCounter :: Int -> IO AtomicCounter
+newCounter n = do
+  c <- newRawCounter
+  writeCounter c 0
+  return c
 
-newCounter = IO $ \s ->
+{-# INLINE newRawCounter #-}
+newRawCounter :: IO AtomicCounter  
+newRawCounter = IO $ \s ->
   case newByteArray# size s of { (# s, arr #) ->
   (# s, AtomicCounter arr #) }
   where !(I# size) = SIZEOF_HSINT
 
+{-# INLINE readCounter #-}
+readCounter :: AtomicCounter -> IO Int
 readCounter (AtomicCounter arr) = IO $ \s ->
   case readIntArray# arr 0# s of { (# s, i #) ->
   (# s, I# i #) }
 
+{-# INLINE writeCounter #-}
+writeCounter :: AtomicCounter -> Int -> IO ()
 writeCounter (AtomicCounter arr) (I# i) = IO $ \s ->
   case writeIntArray# arr 0# i s of { s ->
   (# s, () #) }
 
-
+{-# INLINE readCounterForCAS #-}
 readCounterForCAS :: AtomicCounter -> IO CTicket
 readCounterForCAS = readCounter
 
+{-# INLINE peekCTicket #-}
 peekCTicket :: CTicket -> Int
 peekCTicket !x = x
 
+{-# INLINE casCounter #-}
 casCounter :: AtomicCounter -> CTicket -> Int -> IO (Bool, CTicket)
 -- casCounter (AtomicCounter barr) !old !new =
 casCounter (AtomicCounter mba#) (I# old#) (I# new#) = IO$ \s1# ->

@@ -98,7 +98,8 @@ test_parfib_work_stealing_specialized origInput = do
                   x <- CL.tryPopR (arr ! ind)
                   case x of
                     Just n  -> parfib myId myQ mySum n
-                    Nothing -> do yield
+                    Nothing -> do -- yield
+                                  -- threaDelay 1000
                                   loop (ind+1)
         in loop (myId+1)
 
