@@ -5,16 +5,17 @@ Contents of this Repository
 This is a multi-package repository.  The following directories
 correspond to the following packages:
 
-    CAS            - IORefCAS
     AbstractDeque  - abstract-deque
     MichaelScott   - lockfree-queue
     ChaseLev       - chaselev-deques
-    MegaDeque      - mega-deque
+    MegaDeque      - mega-deques    
+    CAS            - IORefCAS legacy IORefCAS, subsumed by atomic-primops
+    atomic-primops - atomic-primops 
 
 Please see the .cabal files for descriptions of each package.  Here's
 a brief summary:
 
-  * CAS - Compare and swap operations for 
+
   * AbstractDeque - abstract interface for single and double ended
     queues, plus reference implementation in pure Haskell
   * MichaelScott - classic Michael & Scott algorithm for single ended
@@ -22,13 +23,15 @@ a brief summary:
   * ChaseLev - Work-stealing "1.5" ended deques.
   * MegaDeque - a package that picks the best implementation for the
     interface constraints, which are expressed at the type level.
-  
+
+  * AtomicPrimops - *safe* CAS/FAA on various kinds of mutable locations     
+  * CAS - Compare and swap operations for 
 
 How to Test and Install
 ================================================================================
 
-First, to really use compare-and-swap based data structures, you
-should be using GHC 7.4.1 or later.  These libaries will be force to
+First, to use compare-and-swap based data structures, you should be
+using GHC 7.4.1 or later.  Some of these libaries will be forced to
 "fake it" on earlier versions of GHC.
 
 You can install all of the packages in your user's .cabal directory
@@ -83,19 +86,8 @@ repeat.
 
 
 
-
-
 KNOWN PROBLEMS
 ================================================================================
-
-  * [2012.02.29] The tests for abstract-deque currently stack overflow, but pass
-    with an increased (100M) stack size.
-  
-  * [2012.02.29] ChaseLev deques exhibit nondeterministic failures
-    still.  Hopefully this is due to a bug in the implementation and
-    not further problems in Haskell's CAS (there was a fix AFTER
-    ghc-7.2.1).
-  
 
                 TODO
 ----------------------------------------

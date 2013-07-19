@@ -24,13 +24,13 @@ Test-Suite test-atomic-primops
     if flag(threaded)
        ghc-options: -threaded 
        
-    build-depends: base, ghc-prim, primitive, containers, random, atomic-primops,
+    build-depends: base, ghc-prim, primitive, containers, random, atomic-primops >= 0.4,
                    -- For Testing:
                    time, HUnit, test-framework, test-framework-hunit
 
     -- Debugging generated code:
-    ghc-options: -keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint
-    ghc-options: -ddump-ds -ddump-simpl -ddump-stg -ddump-asm -ddump-bcos -ddump-cmm -ddump-opt-cmm -ddump-inlinings
+--    ghc-options: -keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint
+--    ghc-options: -ddump-ds -ddump-simpl -ddump-stg -ddump-asm -ddump-bcos -ddump-cmm -ddump-opt-cmm -ddump-inlinings
 
 Executable hello-world-atomic-primops
   main-is: hello.hs

@@ -1,5 +1,5 @@
 Name:                atomic-primops
-Version:             0.3
+Version:             0.4
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan Newton
@@ -19,6 +19,7 @@ HomePage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
 -- 0.2.2 -- Add more counters
 -- 0.2.2.1 -- Minor, add warning.
 -- 0.3 -- Major internal change.  Duplicate GHC RTS barriers and support non -threaded.
+-- 0.4 -- Duplicate 'cas' as well as barriers.  Add fetchAdd on ByteArray, Counter.Unboxed.
 
 Synopsis: A safe approach to CAS and other atomic ops in Haskell.
 
@@ -37,6 +38,14 @@ Description:
  .
  * Major internal change.  Duplicate the barrier code from the GHC RTS and thus 
    enable support for executables that are NOT built with '-threaded'.
+ .
+ Changes in 0.4:
+ . 
+ * Further internal changes, duplicate 'cas' routine well as barriers.  
+ .
+ * Add `fetchAddByteArrayInt`
+ .
+ * Add an `Unboxed` counter variant that uses movable "ByteArray"s on the GHC heap.
 
 
 Extra-Source-Files:  DEVLOG.md,

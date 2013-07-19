@@ -2,7 +2,7 @@
 #include "Cmm.h"
 
 #warning "Duplicating functionality from the GHC RTS..."
-#define WHICH_CAS       cas
+#define WHICH_CAS       DUP_cas
 #define WHICH_SLBARRIER DUP_store_load_barrier
 #define WHICH_LLBARRIER DUP_load_load_barrier
 #define WHICH_WBARRIER  DUP_write_barrier
