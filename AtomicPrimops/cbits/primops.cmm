@@ -50,10 +50,10 @@ stg_casArrayzh
 
 
 stg_casByteArrayIntzh
-/* MutableByteArray# s -> Int# -> Int# -> Int# -> State# s -> (# State# s, Int#, Int# #) */
+/* MutableByteArray# s -> Int# -> Int# -> Int# -> State# s -> (# State# s, Int# #) */
 {
     W_ arr, p, ind, old, new, h, len;
-    arr = R1; // anything else?
+    arr = R1; 
     ind = R2;
     old = R3;
     new = R4;
@@ -61,7 +61,21 @@ stg_casByteArrayIntzh
     p = arr + SIZEOF_StgArrWords + WDS(ind);
     (h) = foreign "C" WHICH_CAS(p, old, new) [];
 
-    RET_NN(h != old,h);
+    RET_N(h);
+}
+
+stg_fetchAddByteArrayIntzh
+/* MutableByteArray# s -> Int# -> Int# -> State# s -> (# State# s, Int# #) */
+{
+    W_ arr, p, ind, incr, h, len;
+    arr  = R1; 
+    ind  = R2;
+    incr = R3;
+
+    p = arr + SIZEOF_StgArrWords + WDS(ind);
+    (h) = foreign "C" atomic_inc_with(incr, p) [];
+
+    RET_N(h);
 }
 
 

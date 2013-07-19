@@ -4,7 +4,7 @@
 -- | This module provides only the raw primops (and necessary types) for atomic
 -- operations.  
 module Data.Atomics.Internal 
-   (casArray#, casByteArrayInt#,
+   (casArray#, casByteArrayInt#, fetchAddByteArrayInt#, 
     readForCAS#, casMutVarTicketed#, 
     Ticket,
     stg_storeLoadBarrier#, stg_loadLoadBarrier#, stg_writeBarrier# )
@@ -132,4 +132,7 @@ foreign import prim "stg_casMutVar2zh" casMutVar_TypeErased#
 
 foreign import prim "stg_casByteArrayIntzh" casByteArrayInt#
   :: MutableByteArray# s -> Int# -> Int# -> Int# ->
-     State# s -> (# State# s, Int#, Int# #) 
+     State# s -> (# State# s, Int# #) 
+
+foreign import prim "stg_fetchAddByteArrayIntzh" fetchAddByteArrayInt#
+  :: MutableByteArray# s -> Int# -> Int# -> State# s -> (# State# s, Int# #) 

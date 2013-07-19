@@ -4,6 +4,9 @@
 -- fallback if one of the other implementations needs to be debugged for a given
 -- architecture.
 module Data.Atomics.Counter.Reference
+       (AtomicCounter, CTicket,
+        newCounter, readCounterForCAS, readCounter, peekCTicket,
+        writeCounter, casCounter, incrCounter)
        where
 
 import Data.IORef

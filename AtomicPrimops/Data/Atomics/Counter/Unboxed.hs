@@ -1,12 +1,15 @@
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples, CPP #-}
 
 module Data.Atomics.Counter.Unboxed
+       (AtomicCounter, CTicket,
+        newCounter, readCounterForCAS, readCounter, peekCTicket,
+        writeCounter, casCounter, incrCounter, incrCounter_)
        where
 
 import GHC.Base
 import GHC.Ptr
 import Data.Atomics (casByteArrayInt)
-import Data.Atomics.Internal (casByteArrayInt#)
+import Data.Atomics.Internal (casByteArrayInt#, fetchAddByteArrayInt#)
 
 #ifndef __GLASGOW_HASKELL__
 #error "Unboxed Counter: this library is not portable to other Haskell's"
@@ -24,7 +27,7 @@ type CTicket = Int
 newCounter :: Int -> IO AtomicCounter
 newCounter n = do
   c <- newRawCounter
-  writeCounter c 0
+  writeCounter c n
   return c
 
 {-# INLINE newRawCounter #-}
@@ -55,11 +58,27 @@ peekCTicket :: CTicket -> Int
 peekCTicket !x = x
 
 {-# INLINE casCounter #-}
-casCounter :: AtomicCounter -> CTicket -> Int -> IO (Bool, CTicket)
+casCounter :: AtomicCounter -> CTicket -> Int -> IO CTicket
 -- casCounter (AtomicCounter barr) !old !new =
 casCounter (AtomicCounter mba#) (I# old#) (I# new#) = IO$ \s1# ->
-  -- case casByteArrayInt# mba# ix# old# new# s1# of
-  --   (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, I# res) #)
+  let (# s2#, res #) = casByteArrayInt# mba# 0# old# new# s1# in
+  (# s2#, I# res #)
 
-  let (# s2#, x#, res #) = casByteArrayInt# mba# 0# old# new# s1# in
-  (# s2#, (x# ==# 0#, I# res) #)
+{-# INLINE sameCTicket #-}
+sameCTicket :: CTicket -> CTicket -> Bool
+sameCTicket = (==)
+
+{-# INLINE incrCounter #-}
+-- | Try repeatedly until we successfully increment the counter by a given amount.
+-- Returns the original value of the counter (pre-increment).
+--
+incrCounter :: Int -> AtomicCounter -> IO Int
+incrCounter (I# incr#) (AtomicCounter mba#) = IO $ \ s1# -> 
+  let (# s2#, res #) = fetchAddByteArrayInt# mba# 0# incr# s1# in
+  (# s2#, (I# res) #)
+
+-- | An alternate version in which we don't care about the old value.
+incrCounter_ :: Int -> AtomicCounter -> IO ()
+incrCounter_ (I# incr#) (AtomicCounter mba#) = IO $ \ s1# -> 
+  let (# s2#, res #) = fetchAddByteArrayInt# mba# 0# incr# s1# in
+  (# s2#, () #)

@@ -90,3 +90,25 @@ DUP_load_load_barrier(void) {
 // multiple loads of the memory location, as it might otherwise do in
 // a busy wait loop for example.
 // #define VOLATILE_LOAD(p) (*((StgVolatilePtr)(p)))
+
+
+EXTERN_INLINE StgWord
+atomic_inc_with(StgWord incr, StgVolatilePtr p)
+{
+#if defined(i386_HOST_ARCH) || defined(x86_64_HOST_ARCH)
+    StgWord r;
+    r = incr;
+    __asm__ __volatile__ (
+        "lock\nxadd %0,%1":
+            "+r" (r), "+m" (*p):
+    );
+    return r + incr;
+#else
+    StgWord old, new;
+    do {
+        old = *p;
+        new = old + incr;
+    } while (cas(p, old, new) != old);
+    return new;
+#endif
+}

@@ -68,6 +68,8 @@ Library
 
   Include-Dirs:     cbits
   C-Sources:        cbits/primops.cmm
+  -- Duplicate RTS functionality: 
+  C-Sources:        cbits/RtsDup.c
   CC-Options:       -Wall 
   ghc-prof-options: -DGHC_PROFILING_ON
   -- if( cabal-version < 1.17 ) {
@@ -76,9 +78,6 @@ Library
 
   if flag(debug)
     cpp-options: -DDEBUG_ATOMICS
-
-  -- Duplicate RTS functionality: 
-  C-Sources:    cbits/RtsDup.c
 
 
 -- -- [2013.04.08] This isn't working presently:

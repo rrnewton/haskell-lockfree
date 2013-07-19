@@ -18,7 +18,7 @@ module Data.Atomics
    casArrayElem, casArrayElem2, readArrayElem, 
 
    -- * Atomic operations on byte arrays
-   casByteArrayInt, 
+   casByteArrayInt, fetchAddByteArrayInt,
    
    -- * Atomic operations on IORefs
    readForCAS, casIORef, casIORef2, 
@@ -94,20 +94,24 @@ readArrayElem (MutableArray arr#) (I# i#) = IO $ \ st -> unsafeCoerce# (fn st)
     fn :: State# RealWorld -> (# State# RealWorld, a #)
     fn = readArray# arr# i#
 
-
-casByteArrayInt ::  MutableByteArray RealWorld -> Int -> Int -> Int -> IO (Bool, Int)
+casByteArrayInt ::  MutableByteArray RealWorld -> Int -> Int -> Int -> IO Int
 casByteArrayInt (MutableByteArray mba#) (I# ix#) (I# old#) (I# new#) =
   IO$ \s1# ->
   -- It would be nice to avoid allocating a tuple result here.
   -- Further, it will probably not be possible or the compiler to unbox the integer
   -- result either with the current arrangement:
+
   -- case casByteArrayInt# mba# ix# old# new# s1# of
   --   (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, I# res) #)
 
-  let (# s2#, x#, res #) = casByteArrayInt# mba# ix# old# new# s1# in
-  (# s2#, (x# ==# 0#, I# res) #)
+  let (# s2#, res #) = casByteArrayInt# mba# ix# old# new# s1# in
+  (# s2#, (I# res) #)
   -- I don't know if a let will mak any difference here... hopefully not.
 
+fetchAddByteArrayInt ::  MutableByteArray RealWorld -> Int -> Int -> IO Int
+fetchAddByteArrayInt (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1# -> 
+  let (# s2#, res #) = fetchAddByteArrayInt# mba# offset# incr# s1# in
+  (# s2#, (I# res) #)
 
 --------------------------------------------------------------------------------
 
