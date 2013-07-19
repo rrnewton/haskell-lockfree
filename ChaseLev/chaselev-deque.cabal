@@ -36,6 +36,8 @@ Library
 --                     Data.Concurrent.Deque.ChaseLev2
 -- Disabling this [2012.03.08].  It got terrible performance anyway:
 --                     Data.Concurrent.Deque.ReactorDeque
+  other-modules:     Data.Concurrent.Deque.ChaseLevUnboxed
+
   build-depends:     base >= 4.4.0.0 && < 5, array, transformers, bits-atomic,
                      abstract-deque >= 0.2.2, vector, ghc-prim,
                      atomic-primops >= 0.3 && < 0.4

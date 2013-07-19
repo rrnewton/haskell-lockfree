@@ -87,7 +87,7 @@ numElems = case lookup "NUMELEMS" theEnv of
 fibSize :: Int64
 fibSize = case lookup "FIBSIZE" theEnv of
             Just s  -> read s
-            Nothing -> 38
+            Nothing -> 32
 
 forkThread :: IO () -> IO ThreadId
 forkThread = case lookup "OSTHREADS" theEnv of 

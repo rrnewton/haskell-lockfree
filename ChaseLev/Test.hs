@@ -16,6 +16,7 @@ import Data.Concurrent.Deque.Tests
 import Data.Concurrent.Deque.Class
 import Data.Concurrent.Deque.Debugger  (DebugDeque)
 import qualified Data.Concurrent.Deque.ChaseLev as CL
+import qualified Data.Concurrent.Deque.ChaseLevUnboxed as CU
 
 import qualified Data.Atomics.Counter as C
 
@@ -29,10 +30,6 @@ main =do
 --    setNumCapabilities 4
     theEnv <- getEnvironment    
 
-    let fibSize = case lookup "FIBSIZE" theEnv of
-                   Just s  -> read s
-                   Nothing -> 38
-
     let newReg = (newQ :: IO (CL.ChaseLevDeque a))
         newDeb = (newQ :: IO (DebugDeque CL.ChaseLevDeque a))
         
@@ -41,13 +38,15 @@ main =do
           [ appendLabel "simplest_pushPop"  $ TestCase simplest_pushPop
           , appendLabel "standalone_pushPop"  $ TestCase $ timeit standalone_pushPop
           , appendLabel "standalone_pushPop2" $ TestCase $ timeit RegressionTests.Issue5B.standalone_pushPop
-          , appendLabel "ChaseLev_DbgWrapper" $ tests_wsqueue newDeb
+--          , appendLabel "ChaseLev_DbgWrapper" $ tests_wsqueue newDeb
           , appendLabel "ChaseLev"            $ tests_wsqueue newReg
             -- Even with inlining this isn't working:
-          , TestLabel "parfib_generic" $ TestCase $ timeit$
-            print =<< test_parfib_work_stealing fibSize newReg
-          , TestLabel "parfib_specialized" $ TestCase $ timeit$
-            print =<< test_parfib_work_stealing_specialized fibSize 
+          -- , TestLabel "parfib_generic" $ TestCase $ timeit$
+          --   print =<< test_parfib_work_stealing fibSize newReg
+          , TestLabel "parfib_specialized_boxed" $ TestCase $ timeit$
+            print =<< test_parfib_work_stealing_specialized fibSize
+          , TestLabel "parfib_specialized_unboxed" $ TestCase $ timeit$
+            print =<< test_parfib_work_stealing_specialized_unboxed fibSize             
           ]
     return all_tests
 
@@ -111,6 +110,48 @@ test_parfib_work_stealing_specialized origInput = do
     else trySteal myId (arr ! myId) 0 
   
   return (sum partial_sums)
+
+-- DUPLICATED CODE:
+test_parfib_work_stealing_specialized_unboxed :: Elt -> IO Elt
+test_parfib_work_stealing_specialized_unboxed origInput = do
+  putStrLn$ " [parfib] Computing fib("++show origInput++")"
+  numAgents <- getNumAgents
+  qs <- sequence (replicate numAgents CU.newQ)
+  let arr = A.listArray (0,numAgents - 1) qs 
+  
+  let parfib !myId !myQ !mySum !num
+        | num <= 2  =
+          do x <- CU.tryPopL myQ
+             case x of
+               Nothing -> trySteal myId myQ (mySum+1)
+               Just n  -> parfib myId myQ   (mySum+1) n
+        | otherwise = do 
+          CU.pushL    myQ       (num-1)
+          parfib myId myQ mySum (num-2)
+          
+      trySteal !myId !myQ !mySum =
+        let loop ind
+              -- After we finish one sweep... we're completely done.
+              | ind == myId     = return mySum
+              | ind == size arr = loop 0
+              | otherwise = do
+                  x <- CU.tryPopR (arr ! ind)
+                  case x of
+                    Just n  -> parfib myId myQ mySum n
+                    Nothing -> do -- yield
+                                  -- threaDelay 1000
+                                  loop (ind+1)
+        in loop (myId+1)
+
+      size a = let (st,en) = A.bounds a in en - st + 1 
+  
+  partial_sums <- forkJoin numAgents $ \ myId ->
+    if myId == 0
+    then parfib   myId (arr ! myId) 0 origInput
+    else trySteal myId (arr ! myId) 0 
+  
+  return (sum partial_sums)
+
 
 
 {-
@@ -185,7 +226,68 @@ Still high variance and 19.2G allocation though...  I get as low as 5.17s for Fo
 and 4.2G alloc.  Actually, now IORef is doing almost as well as Reference, and it is
 better under high contention.  So making that the default for now.
 
-The Data.Seq based reference implementatio in abstract-deque takes 6.6 seconds for
+The Data.Seq based reference implementation in abstract-deque takes 6.6 seconds for
 fib(42).  
+
+[2013.07.19] {A few more updates}
+------------------------------------
+
+Ok, with the final "Data.Atomics.Counter.Unboxed" implementation, the fib(42) test
+now takes as little as 3.12 seconds.  That is competitive with Cilk and Haskell
+sparks, however, its not a fair comparison, because we are literally pushing numbers
+through the queue, not continuations/thunks.  Although its not as far off as it might
+be because currently our ChaseLev deque works with lifted/thunked values anyway, so
+our "numbers" are not hugely dissimilar from continuations.
+
+(Ideally we could use closed type families to transparently optimize for the unboxed case.)
+
+If I COPY PASTE the ChaseLev implementation to produce an Unboxed version... it runs
+a little quicker, 3.0 seconds.  And, nicely, it eliminates almost all allocation,
+from 4GB to a few MB.
+
+I still need to do the "local topBound" optimization.
+
+Testing on Hive
+---------------
+
+Unboxed version on a bigger, 32 core machine, lower clock speed (2.13ghz):
+
+    fib(42) 1 threads:  21s
+    fib(42) 2 threads:  10.1s
+    fib(42) 4 threads:  5.2s (100%prod)
+    fib(42) 8 threads:  2.7s - 3.2s (100%prod)  (whoa, some runs up to 7.87s! very random)
+    fib(42) 16 threads: 1.28s
+    fib(42) 24 threads: 1.85s
+    fib(42) 32 threads: 4.8s
+
+As usual, without pinning, which cores get hit is kind of random (same socket,
+different socket).  I can confirm that just by watching htop.
+
+I wonder why scaling is falling off given that it's 100% productivity even at 32
+cores.  The BOXED version actually isn't much worse though at 32 cores:
+
+    (boxed) REALTIME 1.470864s 3.526944s 4.890355s
+
+The "Counter.Unboxed" implementation does help though... if we do
+ChaselevUnboxed/Counter.Foreign, then we see vastly worse times:
+
+    (hive/foreignCounter) fib(42) 32 threads: 14.4s
+
+And double the time on the 4-core as well:
+
+    (travertine/foreignCounter) fib(42) 4 threads: 6.6s
+
+And needless to say the reference implementation (IORef Data.Seq) doesn't scale.
+Let's call this the "legacy" implementation:
+
+    (travertine/legacy) fib(42) 4 threads: 6.6s
+
+    (hive) fib(42) 1 threads:  41.8s  (95% prod)
+    (hive) fib(42) 2 threads:  25.2s  (66% prod)
+    (hive) fib(42) 4 threads:  14.6s  (27% prod, 135GB alloc)
+    (hive) fib(42) 8 threads:  17.1s  (26% prod)
+    (hive) fib(42) 16 threads: 16.3s  (13% prod)
+    (hive) fib(42) 24 threads: 21.2s  (30% prod)
+    (hive) fib(42) 32 threads: 29.3s  (33% prod)
 
 -}
