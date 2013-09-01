@@ -8,8 +8,10 @@ module Data.Atomics.Counter.Unboxed
 
 import GHC.Base
 import GHC.Ptr
-import Data.Atomics (casByteArrayInt)
-import Data.Atomics.Internal (casByteArrayInt#, fetchAddByteArrayInt#)
+import Data.Atomics          (casByteArrayInt)
+-- import Data.Atomics.Internal (casIntArray#, fetchAddIntArray#)
+import Data.Atomics.Internal
+import GHC.Prim
 
 #ifndef __GLASGOW_HASKELL__
 #error "Unboxed Counter: this library is not portable to other Haskell's"
@@ -69,7 +71,7 @@ peekCTicket !x = x
 casCounter :: AtomicCounter -> CTicket -> Int -> IO (Bool, CTicket)
 -- casCounter (AtomicCounter barr) !old !new =
 casCounter (AtomicCounter mba#) (I# old#) (I# new#) = IO$ \s1# ->
-  let (# s2#, res# #) = casByteArrayInt# mba# 0# old# new# s1# in
+  let (# s2#, res# #) = casIntArray# mba# 0# old# new# s1# in
   (# s2#, (res# ==# old#, I# res#) #)
 
 {-# INLINE sameCTicket #-}
@@ -85,12 +87,12 @@ sameCTicket = (==)
 --   loop like CAS.
 incrCounter :: Int -> AtomicCounter -> IO Int
 incrCounter (I# incr#) (AtomicCounter mba#) = IO $ \ s1# -> 
-  let (# s2#, res #) = fetchAddByteArrayInt# mba# 0# incr# s1# in
+  let (# s2#, res #) = fetchAddIntArray# mba# 0# incr# s1# in
   (# s2#, (I# res) #)
 
 {-# INLINE incrCounter_ #-}
 -- | An alternate version for when you don't care about the old value.
 incrCounter_ :: Int -> AtomicCounter -> IO ()
 incrCounter_ (I# incr#) (AtomicCounter mba#) = IO $ \ s1# -> 
-  let (# s2#, res #) = fetchAddByteArrayInt# mba# 0# incr# s1# in
+  let (# s2#, res #) = fetchAddIntArray# mba# 0# incr# s1# in
   (# s2#, () #)

@@ -294,3 +294,13 @@ atomicModifyIORef.  But the difference is MUCH worse on my laptop.
 The laptop has hyperthreading, but in the benchmark we only use four
 unpinned threads, not eight....
 
+
+[2013.08.02] {Just observed a failure}
+
+On machine basalt, ghc 7.6.3.  But is it reproducible?
+
+    create_and_mutate_twice: [OK]
+    n_threads_mutate: [Failed]
+    Did the sum end up equal to 120?
+    run_barriers: [OK]
+

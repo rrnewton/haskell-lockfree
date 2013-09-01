@@ -69,19 +69,23 @@ Library
 
   -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
   -- (base 4.5 or greater). We also need the "Any" kind.
-  build-depends:     base >= 4.5.0.0 && < 4.7, ghc-prim, primitive, Cabal,
+  build-depends:     base >= 4.5.0.0 && <= 4.7.0.0, ghc-prim, primitive, Cabal,
                      bits-atomic
 
   -- TODO: Try to push support back to 7.0:
   -- Ah, but if we don't USE casMutVar# in this package we are ok:
   -- build-depends:     base >= 4.3, ghc-prim, primitive
 
-  Include-Dirs:     cbits
-  C-Sources:        cbits/primops.cmm
-  -- Duplicate RTS functionality: 
-  C-Sources:        cbits/RtsDup.c
+  if impl(ghc < 7.7) {
+     Include-Dirs:     cbits
+     C-Sources:        cbits/primops.cmm
+     -- Duplicate RTS functionality: 
+     C-Sources:        cbits/RtsDup.c
+  }
   CC-Options:       -Wall 
+  -- Let the code know that profiling is on:
   ghc-prof-options: -DGHC_PROFILING_ON
+
   -- if( cabal-version < 1.17 ) {
   --   ghc-prof-options: ERROR_DO_NOT_BUILD_THIS_WITH_PROFILING_YET__SEE_CABAL_ISSUE_1284
   -- }

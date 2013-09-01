@@ -71,6 +71,13 @@ import GHC.Word (Word(W#))
 {-# INLINE casMutVar2 #-}
 #endif
 
+
+-- GHC 7.8 changed some primops
+#if MIN_VERSION_base(4,7,0)
+(==#) :: Int# -> Int# -> Bool
+(==#) x y = case x ==$# y of { 0# -> False; _ -> True }
+#endif
+
 --------------------------------------------------------------------------------
 
 -- | Compare-and-swap 
@@ -84,7 +91,7 @@ casArrayElem arr i old new = casArrayElem2 arr i old (seal new)
 -- arbitrary, lifted, Haskell value.
 casArrayElem2 :: MutableArray RealWorld a -> Int -> Ticket a -> Ticket a -> IO (Bool, Ticket a)
 casArrayElem2 (MutableArray arr#) (I# i#) old new = IO$ \s1# ->
- case casArray# arr# i# old new s1# of 
+ case casArrayTicketed# arr# i# old new s1# of 
    (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, res) #)
 
 readArrayElem :: forall a . MutableArray RealWorld a -> Int -> IO (Ticket a)
@@ -104,13 +111,13 @@ casByteArrayInt (MutableByteArray mba#) (I# ix#) (I# old#) (I# new#) =
   -- case casByteArrayInt# mba# ix# old# new# s1# of
   --   (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, I# res) #)
 
-  let (# s2#, res #) = casByteArrayInt# mba# ix# old# new# s1# in
+  let (# s2#, res #) = casIntArray# mba# ix# old# new# s1# in
   (# s2#, (I# res) #)
   -- I don't know if a let will mak any difference here... hopefully not.
 
 fetchAddByteArrayInt ::  MutableByteArray RealWorld -> Int -> Int -> IO Int
 fetchAddByteArrayInt (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1# -> 
-  let (# s2#, res #) = fetchAddByteArrayInt# mba# offset# incr# s1# in
+  let (# s2#, res #) = fetchAddIntArray# mba# offset# incr# s1# in
   (# s2#, (I# res) #)
 
 --------------------------------------------------------------------------------

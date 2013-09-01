@@ -1,11 +1,18 @@
 {-# LANGUAGE CPP, TypeSynonymInstances, BangPatterns #-}
 {-# LANGUAGE ForeignFunctionInterface, GHCForeignImportPrim, MagicHash, UnboxedTuples, UnliftedFFITypes #-}
 
+#define CASTFUN
+
 -- | This module provides only the raw primops (and necessary types) for atomic
 -- operations.  
 module Data.Atomics.Internal 
-   (casArray#, casByteArrayInt#, fetchAddByteArrayInt#, 
-    readForCAS#, casMutVarTicketed#, 
+   (
+-- From GHC 7.8 onward these are built into the compiler:
+#if MIN_VERSION_base(4,7,0) 
+#else
+    casIntArray#, fetchAddIntArray#, 
+#endif
+    readForCAS#, casMutVarTicketed#, casArrayTicketed#, 
     Ticket,
     stg_storeLoadBarrier#, stg_loadLoadBarrier#, stg_writeBarrier# )
   where 
@@ -15,6 +22,11 @@ import GHC.Word (Word(W#))
 import GHC.Prim (RealWorld, Int#, Word#, State#, MutableArray#, MutVar#,
                  MutableByteArray#, 
                  unsafeCoerce#, reallyUnsafePtrEquality#) 
+
+#if MIN_VERSION_base(4,7,0)
+import GHC.Prim (casArray#, casIntArray#, fetchAddIntArray#)    
+#endif
+    
 #if MIN_VERSION_base(4,5,0)
 -- Any is only in GHC 7.6!!!  We want 7.4 support.
 import GHC.Prim (readMutVar#, casMutVar#, Any)
@@ -23,30 +35,39 @@ import GHC.Prim (readMutVar#, casMutVar#, Any)
 -- type Any a = Word#
 #endif    
 
-#ifdef DEBUG_ATOMICS
-{-# NOINLINE readForCAS# #-}
-{-# NOINLINE casArray# #-}
-{-# NOINLINE casMutVarTicketed# #-}
-#define CASTFUN
+
+#if MIN_VERSION_base(4,7,0) 
 #else
-{-# INLINE casMutVarTicketed# #-}
-{-# INLINE casArray# #-}
--- I *think* inlining may be ok here as long as casting happens on the arrow types:
-#define CASTFUN
-#endif
 
 --------------------------------------------------------------------------------
 -- CAS and friendsa
 --------------------------------------------------------------------------------
 
--- | Unsafe, machine-level atomic compare and swap on an element within an Array.  
-casArray# :: MutableArray# RealWorld a -> Int# -> Ticket a -> Ticket a 
-          -> State# RealWorld -> (# State# RealWorld, Int#, Ticket a #)
-#ifdef CASTFUN
--- WARNING: cast of a function -- need to verify these are safe or eta expand.
-casArray# = unsafeCoerce# casArrayTypeErased#
+#ifdef DEBUG_ATOMICS
+{-# NOINLINE readForCAS# #-}
+{-# NOINLINE casArrayTicketed# #-}
+{-# NOINLINE casMutVarTicketed# #-}
+#else
+{-# INLINE casMutVarTicketed# #-}
+{-# INLINE casArrayTicketed# #-}
+-- I *think* inlining may be ok here as long as casting happens on the arrow types:
 #endif
 
+#endif
+-- End GHC >7.6
+
+-- | Unsafe, machine-level atomic compare and swap on an element within an Array.  
+casArrayTicketed# :: MutableArray# RealWorld a -> Int# -> Ticket a -> Ticket a 
+          -> State# RealWorld -> (# State# RealWorld, Int#, Ticket a #)
+-- WARNING: cast of a function -- need to verify these are safe or eta expand.
+casArrayTicketed# = unsafeCoerce#
+#if MIN_VERSION_base(4,7,0)
+   -- In GHC 7.8 onward we just want to expose the existing primop with a different type:
+   casArray#
+#else
+   casArrayTypeErased#
+#endif
+    
 -- | When performing compare-and-swaps, the /ticket/ encapsulates proof
 -- that a thread observed a specific previous value of a mutable
 -- variable.  It is provided in lieu of the "old" value to
@@ -55,12 +76,6 @@ type Ticket a = Any a
 -- If we allow tickets to be a pointer type, then the garbage collector will update
 -- the pointer when the object moves.
 
-#if 0
--- This technique is UNSAFE.  False negatives are tolerable, but it may also
--- introduce the possibility of false positives.
-type Ticket = Word
-type Ticket# = Word# 
-#endif
 
 instance Show (Ticket a) where
   show _ = "<CAS_ticket>"
@@ -90,8 +105,11 @@ readForCAS# mv rw =
 casMutVarTicketed# :: MutVar# RealWorld a -> Ticket a -> Ticket a ->
                State# RealWorld -> (# State# RealWorld, Int#, Ticket a #)
 -- WARNING: cast of a function -- need to verify these are safe or eta expand:
-#ifdef CASTFUN
-casMutVarTicketed# = unsafeCoerce# casMutVar_TypeErased#
+casMutVarTicketed# =
+#if MIN_VERSION_base(4,7,0) 
+  unsafeCoerce# casMutVar#
+#else
+  unsafeCoerce# casMutVar_TypeErased#
 #endif
 
 --------------------------------------------------------------------------------
@@ -114,6 +132,9 @@ foreign import prim "stg_write_barrier" stg_writeBarrier#
 -- polymorphic signature for the below functions.  So we lie to the type system
 -- instead.
 
+#if MIN_VERSION_base(4,7,0) 
+#else
+
 foreign import prim "stg_casArrayzh" casArrayTypeErased#
   :: MutableArray# RealWorld () -> Int# -> Any () -> Any () -> 
      State# RealWorld  -> (# State# RealWorld, Int#, Any () #) 
@@ -130,9 +151,11 @@ foreign import prim "stg_casMutVar2zh" casMutVar_TypeErased#
 --   :: MutVar# RealWorld () -> 
 --      State# RealWorld -> (# State# RealWorld, Any () #)
 
-foreign import prim "stg_casByteArrayIntzh" casByteArrayInt#
+foreign import prim "stg_casByteArrayIntzh" casIntArray#
   :: MutableByteArray# s -> Int# -> Int# -> Int# ->
      State# s -> (# State# s, Int# #) 
 
-foreign import prim "stg_fetchAddByteArrayIntzh" fetchAddByteArrayInt#
+foreign import prim "stg_fetchAddByteArrayIntzh" fetchAddIntArray#
   :: MutableByteArray# s -> Int# -> Int# -> State# s -> (# State# s, Int# #) 
+
+#endif

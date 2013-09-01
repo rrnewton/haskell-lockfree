@@ -1,4 +1,8 @@
 
+// ============================================================
+// NOTE: We only use this file for GHC < 7.8.
+// ============================================================
+
 #include "Cmm.h"
 
 #warning "Duplicating functionality from the GHC RTS..."
@@ -44,7 +48,7 @@ stg_casArrayzh
 	len = StgMutArrPtrs_ptrs(arr);
 	// The write barrier.  We must write a byte into the mark table:
 	I8[arr + SIZEOF_StgMutArrPtrs + WDS(len) + (ind >> MUT_ARR_PTRS_CARD_BITS )] = 1;
-        RET_NP(0,h);
+        RET_NP(0,new);
     }
 }
 
@@ -77,7 +81,6 @@ stg_fetchAddByteArrayIntzh
 
     RET_N(h);
 }
-
 
 // One difference from casMutVar# is that this version returns the NEW
 // pointer in the case of success, NOT the old one.
@@ -140,3 +143,4 @@ stg_write_barrier {
     foreign "C" WHICH_WBARRIER();
     RET_N(0);
 }
+

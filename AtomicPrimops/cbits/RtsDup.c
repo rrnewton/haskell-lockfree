@@ -1,3 +1,10 @@
+
+// ============================================================
+// NOTE: We only use this file for GHC < 7.8.
+// ============================================================
+
+// This file duplicates certain functionality from the GHC runtime system (SMP.h).
+
 #define THREADED_RTS
 #undef  KEEP_INLINES
 
