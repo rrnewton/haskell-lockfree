@@ -1,5 +1,5 @@
 Name:                atomic-primops
-Version:             0.4
+Version:             0.4.1
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan Newton
@@ -20,6 +20,7 @@ HomePage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
 -- 0.2.2.1 -- Minor, add warning.
 -- 0.3 -- Major internal change.  Duplicate GHC RTS barriers and support non -threaded.
 -- 0.4 -- Duplicate 'cas' as well as barriers.  Add fetchAdd on ByteArray, Counter.Unboxed.
+-- 0.4.1 -- Add advance support for GHC 7.8
 
 Synopsis: A safe approach to CAS and other atomic ops in Haskell.
 

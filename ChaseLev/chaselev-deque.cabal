@@ -56,7 +56,7 @@ Test-Suite test-chaselev-deque
     main-is:    Test.hs
     build-depends: base >= 4.4.0.0 && < 5, abstract-deque >= 0.2.2, 
                    HUnit, test-framework, test-framework-hunit,
-                   atomic-primops >= 0.3 && < 0.4, vector, ghc-prim, array
+                   atomic-primops >= 0.4 && < 0.5, vector, ghc-prim, array
 --                   IORefCAS >= 0.2
     build-depends: containers
     ghc-options: -O2 -threaded -rtsopts 
