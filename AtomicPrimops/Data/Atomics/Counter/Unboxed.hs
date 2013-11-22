@@ -79,8 +79,9 @@ sameCTicket :: CTicket -> CTicket -> Bool
 sameCTicket = (==)
 
 {-# INLINE incrCounter #-}
--- | Increment the counter by a given amount.
---   Returns the original value before the increment.
+-- | Increment the counter by a given amount.  Returns the value AFTER the increment
+--   (in contrast with the behavior of the underlying instruction on architectures
+--   like x86.)
 --                 
 --   Note that UNLIKE with boxed implementations of counters, where increment is
 --   based on CAS, this increment is /O(1)/.  Fetch-and-add does not require a retry
