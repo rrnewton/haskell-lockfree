@@ -1,5 +1,5 @@
 Name:                atomic-primops
-Version:             0.4.1
+Version:             0.5
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan Newton
@@ -21,6 +21,7 @@ HomePage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
 -- 0.3 -- Major internal change.  Duplicate GHC RTS barriers and support non -threaded.
 -- 0.4 -- Duplicate 'cas' as well as barriers.  Add fetchAdd on ByteArray, Counter.Unboxed.
 -- 0.4.1 -- Add advance support for GHC 7.8
+-- 0.5 -- Nix Data.Atomics.Counter.Foreign and the bits-atomic dependency.
 
 Synopsis: A safe approach to CAS and other atomic ops in Haskell.
 
@@ -64,14 +65,14 @@ Library
                      Data.Atomics.Counter
                      Data.Atomics.Counter.IORef
                      Data.Atomics.Counter.Reference
-                     Data.Atomics.Counter.Foreign
                      Data.Atomics.Counter.Unboxed
+--                     Data.Atomics.Counter.Foreign                     
   ghc-options: -O2 -funbox-strict-fields
 
   -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
   -- (base 4.5 or greater). We also need the "Any" kind.
-  build-depends:     base >= 4.5.0.0 && <= 4.7.0.0, ghc-prim, primitive, Cabal,
-                     bits-atomic
+  build-depends:     base >= 4.5.0.0 && <= 4.7.0.0, ghc-prim, primitive, Cabal
+--                     bits-atomic
 
   -- TODO: Try to push support back to 7.0:
   -- Ah, but if we don't USE casMutVar# in this package we are ok:
