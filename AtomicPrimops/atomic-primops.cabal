@@ -48,6 +48,10 @@ Description:
  * Add `fetchAddByteArrayInt`
  .
  * Add an `Unboxed` counter variant that uses movable "ByteArray"s on the GHC heap.
+ .
+ Changes in 0.5:
+ . 
+ * Remove dependency on bits-atomic unless a flag is turned on.
 
 
 Extra-Source-Files:  DEVLOG.md,
@@ -59,6 +63,12 @@ Flag debug
     Description: Enable extra internal checks.
     Default: False
 
+-- The bits-atomic based modules are causing problems [2014.01.23] 
+Flag foreign
+    Description: Enable a dependency on bits-atomic and in turn provide a 
+                 foreign implementation of Counter.
+    Default: False
+
 Library
   exposed-modules:   Data.Atomics
                      Data.Atomics.Internal
@@ -66,13 +76,16 @@ Library
                      Data.Atomics.Counter.IORef
                      Data.Atomics.Counter.Reference
                      Data.Atomics.Counter.Unboxed
---                     Data.Atomics.Counter.Foreign                     
   ghc-options: -O2 -funbox-strict-fields
+
+  if flag (foreign) { 
+    exposed-modules: Data.Atomics.Counter.Foreign
+    build-depends: bits-atomic
+  }
 
   -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
   -- (base 4.5 or greater). We also need the "Any" kind.
   build-depends:     base >= 4.5.0.0 && <= 4.7.0.0, ghc-prim, primitive, Cabal
---                     bits-atomic
 
   -- TODO: Try to push support back to 7.0:
   -- Ah, but if we don't USE casMutVar# in this package we are ok:
