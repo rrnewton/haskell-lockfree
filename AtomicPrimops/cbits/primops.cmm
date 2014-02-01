@@ -87,20 +87,22 @@ stg_fetchAddByteArrayIntzh
 stg_casMutVar2zh
  /* MutVar# s a -> Word# -> a -> State# s -> (# State#, Int#, a #) */
 {
-    W_ mv, old, new, h;
+    W_ mv, old, new, h, addr;
     // Calling convention: Up to 8 registers contain arguments.
     mv  = R1;
     old = R2;
     new = R3;
+    addr = mv + SIZEOF_StgHeader + OFFSET_StgMutVar_var;
 
     // The "cas" function from the C runtime abstracts over
-    // platform/architecture differences.  It returns the old value,
-    // which, if equal to "old", means success.
-    (h) = foreign "C" WHICH_CAS(mv + SIZEOF_StgHeader + OFFSET_StgMutVar_var,
-                          old, new) [];
-    if (h != old) {
+    // platform/architecture differences.  It returns the old value.
+    // (h) = foreign "C" WHICH_CAS(addr,old,new) []; 
+    (h) = foreign "C" cas_bool(addr, old, new) [];
+
+    if (h == 0) {
         // Failure:
-        RET_NP(1,h);
+        old = W_[addr];
+        RET_NP(1, old);
     } else {
         // Success means a mutation and thus GC write barrier:
         if (GET_INFO(mv) == stg_MUT_VAR_CLEAN_info) {

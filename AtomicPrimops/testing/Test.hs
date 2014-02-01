@@ -18,6 +18,7 @@ import GHC.Stats (getGCStats, GCStats(..))
 import Data.Primitive.Array
 import Data.Word
 import qualified Data.Set as S
+import Data.List ((\\))
 import System.Random (randomIO, randomRIO)
 
 import Data.Atomics as A
@@ -29,7 +30,7 @@ import Test.Framework.Providers.HUnit (testCase)
 
 import GHC.IO (unsafePerformIO)
 import System.Mem (performGC)
-import System.Mem.StableName (makeStableName, hashStableName)
+import System.Mem.StableName (makeStableName, hashStableName, StableName)
 import System.Environment (getEnvironment)
 import System.IO        (stdout, stderr, hPutStrLn, hFlush)
 import Debug.Trace      (trace)
@@ -54,7 +55,7 @@ main = do
        -- It does 248 test cases and takes 55s at -N16...
        -- numcap <- getNumProcessors
        let numcap = 4
-       setNumCapabilities numcap
+       when (numCapabilities /= numcap) $ setNumCapabilities numcap
        
        defaultMain $ 
          [ testCase "casTicket1"              case_casTicket1
@@ -247,18 +248,38 @@ case_create_and_mutate_twice = do
 
 
 -- [2013.07.19] I just saw an isolated failure of this one:
+-- [2014.01.31] I saw another failure of this on -N1 (0e0d64c3d7), observing 118 sum.
 case_n_threads_mutate :: Assertion
 case_n_threads_mutate = do
   dbgPrint 1$ "   Creating 120 threads and having each increment a counter value."
   counter <- newIORef (0::Int)
-  let work :: IORef Int -> IO ()
-      work = (\counter -> do
-                        tick <- A.readForCAS(counter)
-                        (b,_) <- A.casIORef counter tick (peekTicket tick + 1)
-                        unless b $ work counter)
-  arr <- forkJoin 120 (\_ -> work counter) 
+--  let work :: Int -> IORef Int -> IO (Int,StableName Int,Int,StableName Int,Int)
+  let work :: Int -> IORef Int -> IO (Int,Int,Int,Int,Int)
+      work ix counter = do
+        tick <- A.readForCAS(counter)
+        let nxt = peekTicket tick + 1
+        (b,was) <- A.casIORef counter tick nxt
+        if b then do 
+          putStr $ show (peekTicket was) ++ "_"
+          assertEqual "Check that the value written was the one we put in." nxt (peekTicket was)
+          return (ix, unsafeName tick, unsafeName was, peekTicket tick, nxt)
+         else do 
+          when (peekTicket was == peekTicket tick) $ 
+             putStrLn ("(Spoofed by boxing, old val was indeed "++show was++")")
+          putStr "!"
+--          putStrLn $ "("++ show ix ++ ": Fail when putting "++show nxt
+--                     ++", was already "++show (peekTicket was) ++")"
+          work ix counter
+  arr <- forkJoin 120 (\i -> work i counter) 
   ans <- readIORef counter
-  assertBool "Did the sum end up equal to 120?" (ans == 120)
+
+  let dups = [ n | (_,_,_,_,n) <- arr] \\ [1..120]
+  putStrLn $ "\n Duplicates were "++show dups++", Array:"
+  print arr
+
+  -- assertBool "Did the 120 threads CASing yield a valid sum" (1 <= ans && ans <= 120)
+  -- The retry loop should ensure that each thread increments ONCE:
+  assertEqual "Did the 120 threads CASing all succeed?" 120 ans
 
 -- | Just make sure these link and run properly:
 case_run_barriers :: Assertion

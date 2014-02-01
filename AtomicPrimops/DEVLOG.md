@@ -296,6 +296,7 @@ unpinned threads, not eight....
 
 
 [2013.08.02] {Just observed a failure}
+----------------------------------------
 
 On machine basalt, ghc 7.6.3.  But is it reproducible?
 
@@ -304,3 +305,35 @@ On machine basalt, ghc 7.6.3.  But is it reproducible?
     Did the sum end up equal to 120?
     run_barriers: [OK]
 
+
+[2014.01.31]  
+----------------------------------------
+
+Now n_threads_mutate is failing consistently.  It seems that I'm
+getting false POSITIVES when attempting a CAS.
+
+    1 0: Fail when putting 1, was already 1
+    2 3 2: Fail when putting 2, was already 3
+    4 5 6 6: Fail when putting 6, was already 6
+    7 3: Fail when putting 4, was already 5
+    8 9 10 11 12 13 14 15 15 16 14: Fail when putting 11, was already 16
+    17 18 19 20 21 22 23 24 25 26 27 28 29 31 30 33 34 35 32 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 106 105 107 108 109 110 111 112 113 114 115 116 117 118 119
+    n_threads_mutate: [Failed]
+    Did the 120 threads CASing all succeed?
+    expected: 120
+     but got: 119
+
+Here are the "successes":
+
+    1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 15 16 17 18 19 20 21 22 23 24
+    25 26 27 28 29 31 30 33 34 35 32 36 37 38 39 40 41 42 43 44 45 46
+    47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68
+    69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90
+    91 92 93 94 95 96 97 98 99 100 101 102 103 104 106 105 107 108 109
+    110 111 112 113 114 115 116 117 118 119
+
+Notice that 15 occurs TWICE.  Two threads think that they successfully
+incremented 14 into 15.
+
+Could that somehow happen if there were two different (boxed) objects
+representing 14?  

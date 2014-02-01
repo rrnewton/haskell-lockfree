@@ -2,7 +2,7 @@
 -- Trying a completely separate .cabal for testing.
 
 Name:                test-atomic-primops
-Version:             0.1.0.0
+Version:             0.5
 Build-type:          Simple
 Cabal-version:       >=1.8
 
@@ -27,8 +27,11 @@ Test-Suite test-atomic-primops
        ghc-options: -O2 -funbox-strict-fields
     if flag(threaded)
        ghc-options: -threaded 
+
+    -- Set it to always run with some parallelism.
+    ghc-options: -rtsopts -with-rtsopts=-N4
        
-    build-depends: base, ghc-prim, primitive, containers, random, atomic-primops >= 0.4,
+    build-depends: base, ghc-prim, primitive, containers, random, atomic-primops >= 0.5,
                    -- For Testing:
                    time, HUnit, test-framework, test-framework-hunit
 
@@ -36,9 +39,9 @@ Test-Suite test-atomic-primops
 --    ghc-options: -keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint
 --    ghc-options: -ddump-ds -ddump-simpl -ddump-stg -ddump-asm -ddump-bcos -ddump-cmm -ddump-opt-cmm -ddump-inlinings
 
-Executable hello-world-atomic-primops
-  main-is: hello.hs
-  build-depends: base >= 4.5, atomic-primops
+-- Executable hello-world-atomic-primops
+--   main-is: hello.hs
+--   build-depends: base >= 4.5, atomic-primops
 
 Executable template-haskell-atomic-primops
   main-is: ghci-test.hs
@@ -46,6 +49,6 @@ Executable template-haskell-atomic-primops
     Buildable: True
   else
     Buildable: False
-  build-depends: base >= 4.5, atomic-primops >= 0.4, template-haskell,
+  build-depends: base >= 4.5, atomic-primops >= 0.5, template-haskell,
                  -- For Testing:
                  test-framework, test-framework-hunit

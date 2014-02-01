@@ -1,5 +1,7 @@
 {-# LANGUAGE MagicHash, UnboxedTuples, BangPatterns, ScopedTypeVariables, NamedFieldPuns, CPP #-}
 
+-- Various utilities used during testing.
+
 module CommonTesting  where
 
 import Control.Monad
