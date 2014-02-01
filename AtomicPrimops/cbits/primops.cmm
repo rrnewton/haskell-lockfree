@@ -37,11 +37,12 @@ stg_casArrayzh
     new = R4;
 
     p = arr + SIZEOF_StgMutArrPtrs + WDS(ind);
-    (h) = foreign "C" WHICH_CAS(p, old, new) [];
+    (h) = foreign "C" cas_bool(p, old, new) [];
     
-    if (h != old) {
+    if (h == 0) {
         // Failure, return what was there instead of 'old':
-        RET_NP(1,h);
+        old = W_[p];
+        RET_NP(1,old);
     } else {
         // Compare and Swap Succeeded:
 	SET_HDR(arr, stg_MUT_ARR_PTRS_DIRTY_info, CCCS);
@@ -96,7 +97,6 @@ stg_casMutVar2zh
 
     // The "cas" function from the C runtime abstracts over
     // platform/architecture differences.  It returns the old value.
-    // (h) = foreign "C" WHICH_CAS(addr,old,new) []; 
     (h) = foreign "C" cas_bool(addr, old, new) [];
 
     if (h == 0) {
