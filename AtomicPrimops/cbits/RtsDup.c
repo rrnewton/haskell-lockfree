@@ -3,28 +3,24 @@
 // NOTE: We only use this file for GHC < 7.8.
 // ============================================================
 
-// This file duplicates certain functionality from the GHC runtime system (SMP.h).
+// If I #include "stg/SMP.h", then in I get duplicated symbols.
+// Rather, instead this file duplicates certain functionality from the
+// GHC runtime system (SMP.h).
 
 #define THREADED_RTS
+#define WITHSMP
 #undef  KEEP_INLINES
-
-// Stg.h will pull in SMP.h:
-// #include "Stg.h"
-// Also having some problems with Regs.h.
-// This is probably too big a chunk to suck in.
 
 //--------------------------------------------------------------------------------
 // #define EXTERN_INLINE inline
 #define EXTERN_INLINE 
 
+// These are includes from the GHC implementation:
 #include "MachDeps.h"
 #include "stg/Types.h"
+// Grab the HOST_ARCH from here:
+#include "ghcplatform.h"
 
-// Force the GHC RTS code to provide the desired symbols:
-// #define IN_STGCRUN 1
-
-// If I pull this in I get duplicated symbols:
-// #include "stg/SMP.h"
 //--------------------------------------------------------------------------------
 
 /*
@@ -99,7 +95,6 @@ DUP_load_load_barrier(void) {
 // #define VOLATILE_LOAD(p) (*((StgVolatilePtr)(p)))
 
 
-
 /* 
  * CMPXCHG - the single-word atomic compare-and-exchange instruction.  Used 
  * in the STM implementation.
@@ -107,29 +102,12 @@ DUP_load_load_barrier(void) {
 EXTERN_INLINE StgWord
 DUP_cas(StgVolatilePtr p, StgWord o, StgWord n)
 {
-  // This fixes the bug
-  //    return __sync_val_compare_and_swap(p,o,n);
 #if i386_HOST_ARCH || x86_64_HOST_ARCH
     __asm__ __volatile__ (
           "lock\ncmpxchg %3,%1"
-          :"=a"(o), "=m" (*(volatile StgWord *)p)
+          :"=a"(o), "=m" (*(volatile unsigned int *)p)
           :"0" (o), "r" (n));
     return o;
-
-    /* unsigned long old = o; */
-    /* unsigned long new = n; */
-    /* unsigned long* ptr = p; */
-    /* __asm__ __volatile__ ( */
-    /*       "lock\ncmpxchg %3,%1" */
-    /*       :"=a"(old), "=m" (*ptr) */
-    /*       :"0" (old), "r" (new)); */
-    /* return old; */
-
-    /* __asm__ __volatile__ ( */
-    /*       "lock\ncmpxchg %3,%1" */
-    /*       :"=a"(o), "=m" (*(volatile unsigned int *)p)  */
-    /*       :"0" (o), "r" (n)); */
-    /* return o; */
 #elif powerpc_HOST_ARCH
     StgWord result;
     __asm__ __volatile__ (
