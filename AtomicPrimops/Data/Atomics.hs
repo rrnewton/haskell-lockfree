@@ -1,4 +1,5 @@
 {-# LANGUAGE  MagicHash, UnboxedTuples, BangPatterns, ScopedTypeVariables, CPP #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
 
 -- | Provides atomic memory operations on IORefs and Mutable Arrays.
 --
@@ -187,36 +188,36 @@ casMutVar2 !mv !tick !new = IO$ \st ->
 -- Memory barriers
 --------------------------------------------------------------------------------
 
+-- | Memory barrier implemented by the GHC rts (SMP.h).
+storeLoadBarrier :: IO ()
+
+-- | Memory barrier implemented by the GHC rts (SMP.h).
+loadLoadBarrier :: IO ()
+
+-- | Memory barrier implemented by the GHC rts (SMP.h).
+writeBarrier :: IO ()
+
+-- GHC 7.8 consistently exposes these symbols while linking:
 #if MIN_VERSION_base(4,7,0) 
+foreign import ccall  unsafe "store_load_barrier" storeLoadBarrier
+  :: IO () 
 
--- | Memory barrier implemented by the GHC rts (SMP.h).
-storeLoadBarrier :: IO ()
-storeLoadBarrier =  stg_storeLoadBarrier#
+foreign import ccall unsafe "load_load_barrier" loadLoadBarrier
+  :: IO ()
 
--- | Memory barrier implemented by the GHC rts (SMP.h).
-loadLoadBarrier :: IO ()
-loadLoadBarrier =  stg_loadLoadBarrier# 
--- | Memory barrier implemented by the GHC rts (SMP.h).
-writeBarrier :: IO ()
-writeBarrier =   stg_writeBarrier# 
+foreign import ccall unsafe "write_barrier" writeBarrier
+  :: IO ()
 
-#else 
+#else
+-- GHC 7.6 did not consistently expose them (e.g. in the non-threaded RTS),
+-- so rather we grab this functionality from RtsDup.c:
+foreign import ccall  unsafe "DUP_store_load_barrier" storeLoadBarrier
+  :: IO () 
 
- -- | Memory barrier implemented by the GHC rts (SMP.h).
-storeLoadBarrier :: IO ()
-storeLoadBarrier = IO$ \st ->
-  case stg_storeLoadBarrier# st of
-    (# st', _ #) -> (# st', () #)
+foreign import ccall unsafe "DUP_load_load_barrier" loadLoadBarrier
+  :: IO ()
 
--- | Memory barrier implemented by the GHC rts (SMP.h).
-loadLoadBarrier :: IO ()
-loadLoadBarrier = IO$ \st ->
-  case stg_loadLoadBarrier# st of
-    (# st', _ #) -> (# st', () #)
+foreign import ccall unsafe "DUP_write_barrier" writeBarrier
+  :: IO ()
+#endif
 
--- | Memory barrier implemented by the GHC rts (SMP.h).
-writeBarrier :: IO ()
-writeBarrier = IO$ \st ->
-  case stg_writeBarrier# st of
-    (# st', _ #) -> (# st', () #)
-#endif 
