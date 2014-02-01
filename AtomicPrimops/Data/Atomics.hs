@@ -40,7 +40,12 @@ import Data.IORef
 import GHC.IORef
 import GHC.STRef
 import GHC.ST
+#if MIN_VERSION_base(4,7,0)
+import GHC.Prim hiding ((==#))
+import qualified GHC.PrimopWrappers as GPW
+#else
 import GHC.Prim
+#endif
 import GHC.Arr 
 import GHC.Base (Int(I#))
 import GHC.IO (IO(IO))
@@ -75,7 +80,7 @@ import GHC.Word (Word(W#))
 -- GHC 7.8 changed some primops
 #if MIN_VERSION_base(4,7,0)
 (==#) :: Int# -> Int# -> Bool
-(==#) x y = case x ==$# y of { 0# -> False; _ -> True }
+(==#) x y = case x GPW.==# y of { 0# -> False; _ -> True }
 #endif
 
 --------------------------------------------------------------------------------
@@ -182,8 +187,22 @@ casMutVar2 !mv !tick !new = IO$ \st ->
 -- Memory barriers
 --------------------------------------------------------------------------------
 
+#if MIN_VERSION_base(4,7,0) 
 
 -- | Memory barrier implemented by the GHC rts (SMP.h).
+storeLoadBarrier :: IO ()
+storeLoadBarrier =  stg_storeLoadBarrier#
+
+-- | Memory barrier implemented by the GHC rts (SMP.h).
+loadLoadBarrier :: IO ()
+loadLoadBarrier =  stg_loadLoadBarrier# 
+-- | Memory barrier implemented by the GHC rts (SMP.h).
+writeBarrier :: IO ()
+writeBarrier =   stg_writeBarrier# 
+
+#else 
+
+ -- | Memory barrier implemented by the GHC rts (SMP.h).
 storeLoadBarrier :: IO ()
 storeLoadBarrier = IO$ \st ->
   case stg_storeLoadBarrier# st of
@@ -200,3 +219,4 @@ writeBarrier :: IO ()
 writeBarrier = IO$ \st ->
   case stg_writeBarrier# st of
     (# st', _ #) -> (# st', () #)
+#endif 

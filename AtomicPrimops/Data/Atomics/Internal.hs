@@ -115,15 +115,28 @@ casMutVarTicketed# =
 --------------------------------------------------------------------------------
 -- Memory barriers
 --------------------------------------------------------------------------------
+#if MIN_VERSION_base(4,7,0) 
+foreign import ccall  unsafe "store_load_barrier" stg_storeLoadBarrier#
+  :: IO () 
 
+foreign import ccall unsafe "load_load_barrier" stg_loadLoadBarrier#
+  :: IO ()
+
+foreign import ccall unsafe "write_barrier" stg_writeBarrier#
+  :: IO ()
+
+#else
 foreign import prim "stg_store_load_barrier" stg_storeLoadBarrier#
   :: State# RealWorld -> (# State# RealWorld, Int# #)
 
 foreign import prim "stg_load_load_barrier" stg_loadLoadBarrier#
   :: State# RealWorld -> (# State# RealWorld, Int# #)
 
+
 foreign import prim "stg_write_barrier" stg_writeBarrier#
   :: State# RealWorld -> (# State# RealWorld, Int# #)
+#endif
+
 
 --------------------------------------------------------------------------------
 -- Type-erased versions that call the raw foreign primops:
