@@ -200,6 +200,14 @@ cas_bool(StgVolatilePtr p, StgWord o, StgWord n)
   return __sync_bool_compare_and_swap(p,o,n);
 }
 
+// Wrapper around __sync_val_compare_and_swap.  This SHOULD be the
+// same function as DUP_cas above.
+EXTERN_INLINE StgWord
+cas_val(StgVolatilePtr p, StgWord o, StgWord n)
+{
+  return __sync_val_compare_and_swap(p,o,n);
+}
+
 
 
 // Copied from atomic_inc in the GHC RTS, except tweaked to allow

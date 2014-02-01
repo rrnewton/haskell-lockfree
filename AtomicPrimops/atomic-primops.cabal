@@ -96,6 +96,7 @@ Library
      C-Sources:        cbits/primops.cmm
      -- Duplicate RTS functionality: 
      C-Sources:        cbits/RtsDup.c
+     cpp-options: -DGCC_VAL_CAS
   }
   CC-Options:       -Wall 
   -- Let the code know that profiling is on:
@@ -106,7 +107,7 @@ Library
   -- }
 
   if flag(debug)
-    cpp-options: -DDEBUG_ATOMICS
+    cpp-options: -DDEBUG_ATOMICS 
 
 
 -- -- [2013.04.08] This isn't working presently:
