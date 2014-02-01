@@ -35,20 +35,25 @@ Test-Suite test-atomic-primops
                    -- For Testing:
                    time, HUnit, test-framework, test-framework-hunit
 
-    -- Debugging generated code:
---    ghc-options: -keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint
---    ghc-options: -ddump-ds -ddump-simpl -ddump-stg -ddump-asm -ddump-bcos -ddump-cmm -ddump-opt-cmm -ddump-inlinings
+    -- Optional: Debugging generated code:
+    --    ghc-options: -keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint
+    --    ghc-options: -ddump-ds -ddump-simpl -ddump-stg -ddump-asm -ddump-bcos -ddump-cmm -ddump-opt-cmm -ddump-inlinings
 
--- Executable hello-world-atomic-primops
---   main-is: hello.hs
---   build-depends: base >= 4.5, atomic-primops
+-- Cabal can get confused if there is no executable or library... so here's a dummy executable.
+-- Also it provides a good test of compile/link issues, apart from everything else.
+Executable hello-world-atomic-primops
+  main-is: hello.hs
+  build-depends: base >= 4.5, atomic-primops
 
-Executable template-haskell-atomic-primops
+-- This is separated out, because a bug in GHC 7.6 make this fail on Linux.
+Test-suite template-haskell-atomic-primops
+  type:       exitcode-stdio-1.0
   main-is: ghci-test.hs
-  if flag(withTH)
+  if flag(withTH) {
     Buildable: True
-  else
+    build-depends: base >= 4.5, atomic-primops >= 0.5, template-haskell,
+                   -- For Testing:
+                   test-framework, test-framework-hunit
+  } else {
     Buildable: False
-  build-depends: base >= 4.5, atomic-primops >= 0.5, template-haskell,
-                 -- For Testing:
-                 test-framework, test-framework-hunit
+  }
