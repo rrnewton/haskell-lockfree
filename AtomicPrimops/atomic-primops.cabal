@@ -96,7 +96,7 @@ Library
      C-Sources:        cbits/primops.cmm
      -- Duplicate RTS functionality: 
      C-Sources:        cbits/RtsDup.c
-     cpp-options: -DGCC_VAL_CAS
+     -- cpp-options: -DGCC_VAL_CAS
   }
   CC-Options:       -Wall 
   -- Let the code know that profiling is on:

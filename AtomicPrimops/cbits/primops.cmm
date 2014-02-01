@@ -5,9 +5,9 @@
 
 #include "Cmm.h"
 
-#define GCC_VAL_CAS
+// #define GCC_VAL_CAS
 // #define GCC_BOOL_CAS
-// #define GHC_CAS
+#define GHC_CAS
 
 #warning "Duplicating functionality from the GHC RTS..."
 #define WHICH_CAS       DUP_cas

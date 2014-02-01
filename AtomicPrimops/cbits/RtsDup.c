@@ -107,12 +107,29 @@ DUP_load_load_barrier(void) {
 EXTERN_INLINE StgWord
 DUP_cas(StgVolatilePtr p, StgWord o, StgWord n)
 {
+  // This fixes the bug
+  //    return __sync_val_compare_and_swap(p,o,n);
 #if i386_HOST_ARCH || x86_64_HOST_ARCH
     __asm__ __volatile__ (
- 	  "lock\ncmpxchg %3,%1"
-          :"=a"(o), "=m" (*(volatile unsigned int *)p) 
+          "lock\ncmpxchg %3,%1"
+          :"=a"(o), "=m" (*(volatile StgWord *)p)
           :"0" (o), "r" (n));
     return o;
+
+    /* unsigned long old = o; */
+    /* unsigned long new = n; */
+    /* unsigned long* ptr = p; */
+    /* __asm__ __volatile__ ( */
+    /*       "lock\ncmpxchg %3,%1" */
+    /*       :"=a"(old), "=m" (*ptr) */
+    /*       :"0" (old), "r" (new)); */
+    /* return old; */
+
+    /* __asm__ __volatile__ ( */
+    /*       "lock\ncmpxchg %3,%1" */
+    /*       :"=a"(o), "=m" (*(volatile unsigned int *)p)  */
+    /*       :"0" (o), "r" (n)); */
+    /* return o; */
 #elif powerpc_HOST_ARCH
     StgWord result;
     __asm__ __volatile__ (
