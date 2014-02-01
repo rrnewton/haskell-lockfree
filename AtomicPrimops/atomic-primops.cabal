@@ -94,9 +94,8 @@ Library
   if impl(ghc < 7.7) {
      Include-Dirs:     cbits
      C-Sources:        cbits/primops.cmm
-     -- Duplicate RTS functionality: 
+     -- Duplicate RTS functionality for GHC 7.6:
      C-Sources:        cbits/RtsDup.c
-     -- cpp-options: -DGCC_VAL_CAS
   }
   CC-Options:       -Wall 
   -- Let the code know that profiling is on:

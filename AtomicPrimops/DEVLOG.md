@@ -306,8 +306,8 @@ On machine basalt, ghc 7.6.3.  But is it reproducible?
     run_barriers: [OK]
 
 
-[2014.01.31]  
-----------------------------------------
+[2014.01.31] {Working on debugging CAS problems wiht n_threads_mutate test}
+---------------------------------------------------------------------------
 
 Now n_threads_mutate is failing consistently.  It seems that I'm
 getting false POSITIVES when attempting a CAS.
@@ -337,3 +337,5 @@ incremented 14 into 15.
 
 Could that somehow happen if there were two different (boxed) objects
 representing 14?  
+
+

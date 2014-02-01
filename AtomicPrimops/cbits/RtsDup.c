@@ -169,41 +169,6 @@ DUP_cas(StgVolatilePtr p, StgWord o, StgWord n)
 #endif
 }
 
-// This version ALSO sets a boolean indicating whether the compare and swap succeeded.
-/* EXTERN_INLINE StgWord */
-/* cas2(StgVolatilePtr p, StgWord o, StgWord n, StgVolatilePtr bl) */
-/* { */
-/* #if i386_HOST_ARCH || x86_64_HOST_ARCH */
-/*     __asm__ __volatile__ ( */
-/*  	  "lock\ncmpxchg %3,%1" */
-/*           :"=a"(o), "=m" (*(volatile unsigned int *)p)  */
-/*           :"0" (o), "r" (n)); */
-/*     __asm__ __volatile__ ( */
-/*           "sete %0" */
-/*           :"=m" (*(volatile unsigned int *)&bl) */
-/*           ); */
-/*     return o; */
-/* #else */
-/* #error cas() unimplemented on this architecture */
-/* #endif */
-/* } */
-
-// Wrapper around __sync_bool_compare_and_swap
-EXTERN_INLINE StgWord
-cas_bool(StgVolatilePtr p, StgWord o, StgWord n)
-{
-  return __sync_bool_compare_and_swap(p,o,n);
-}
-
-// Wrapper around __sync_val_compare_and_swap.  This SHOULD be the
-// same function as DUP_cas above.
-EXTERN_INLINE StgWord
-cas_val(StgVolatilePtr p, StgWord o, StgWord n)
-{
-  return __sync_val_compare_and_swap(p,o,n);
-}
-
-
 
 // Copied from atomic_inc in the GHC RTS, except tweaked to allow
 // arbitrary increments (other than 1).

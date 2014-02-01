@@ -5,16 +5,13 @@
 
 #include "Cmm.h"
 
-// #define GCC_VAL_CAS
-// #define GCC_BOOL_CAS
-#define GHC_CAS
-
 #warning "Duplicating functionality from the GHC RTS..."
 #define WHICH_CAS       DUP_cas
 #define WHICH_SLBARRIER DUP_store_load_barrier
 #define WHICH_LLBARRIER DUP_load_load_barrier
 #define WHICH_WBARRIER  DUP_write_barrier
 
+// These versions are linked directly from the RTS:
 /* #define WHICH_CAS       cas */
 /* #define WHICH_SLBARRIER store_load_barrier */
 /* #define WHICH_LLBARRIER load_load_barrier */
@@ -41,12 +38,10 @@ stg_casArrayzh
     new = R4;
 
     p = arr + SIZEOF_StgMutArrPtrs + WDS(ind);
-    (h) = foreign "C" cas_bool(p, old, new) [];
-    
-    if (h == 0) {
+    (h) = foreign "C" WHICH_CAS(p, old, new) [];
+    if (h != old) {
         // Failure, return what was there instead of 'old':
-        old = W_[p];
-        RET_NP(1,old);
+        RET_NP(1,h);
     } else {
         // Compare and Swap Succeeded:
 	SET_HDR(arr, stg_MUT_ARR_PTRS_DIRTY_info, CCCS);
@@ -101,27 +96,11 @@ stg_casMutVar2zh
 
     // The "cas" function from the C runtime abstracts over
     // platform/architecture differences.  It returns the old value.
-#ifdef GCC_BOOL_CAS
-    (h) = foreign "C" cas_bool(addr, old, new) [];
-    if (h == 0) {
-        // Failure:
-        old = W_[addr];
-        RET_NP(1, old);
-    } 
-#else
-# if defined(GCC_VAL_CAS)
-    (h) = foreign "C" cas_val(addr, old, new) [];
-# elif defined(GHC_CAS)
-# warning "Using GHC version of cas() that may be broken."
     (h) = foreign "C" WHICH_CAS(addr, old, new) [];
-# else
-# error "Must define one of GCC_BOOL_CAS, GCC_VAL_CAS, or GHC_CAS"
-# endif
     if (h != old) {
         // Failure:
         RET_NP(1, h);
     }
-#endif
     else 
     {
         // Success means a mutation and thus GC write barrier:
