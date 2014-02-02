@@ -17,43 +17,13 @@ import qualified Data.Atomics.Counter.IORef     as C2
 import qualified Data.Atomics.Counter.Foreign   as C3
 import qualified Data.Atomics.Counter.Unboxed   as C4
 
-import CommonTesting (numElems, forkJoin, timeit)
+import CommonTesting (numElems, forkJoin, timeit, nTimes)
 
 --------------------------------------------------------------------------------
-
--- {-# INLINE nTimes #-}
--- | To make sure we get a simple loop...
-nTimes :: Int -> IO () -> IO ()
--- nTimes :: Int -> IO a -> IO ()
--- Note: starting out I would get 163Mb allocation for 10M sequential incrs (on unboxed).
--- The problem was that the "Int" result from each incr was being allocated.
--- Weird thing is that inlining nTimes reduces the allocation to 323Mb.
--- But forcing it to take an (IO ()) gets rid of the allocation.
--- Egad, wait, no, I have to NOT inline nTimes to get rid of the allocation!?!?
--- Otherwise I'm still stuck with at least 163Mb of allocation.
--- In fact... the allocation is still there even if we use incrCounter_ !!
--- If we leave nTimes uninlined, we can get down to 3Mb allocation with either incrCounter or incrCounter_.
--------------------------
--- UPDATE:
--- As per http://www.haskell.org/pipermail/glasgow-haskell-users/2011-June/020472.html
---
---  INLINE should not affect recursive functions.  But here it seems to have a
---  deleterious effect!
-nTimes 0 !c = return ()
-nTimes !n !c = c >> nTimes (n-1) c
 
 -- {-# INLINE vd #-}
 -- vd = void
 -- vd x = x
-
-cputime :: IO t -> IO t
-cputime a = do
-    start <- getCPUTime
-    v <- a
-    end   <- getCPUTime
-    let diff = (fromIntegral (end - start)) / (10^12)
-    printf "SELFTIMED: %0.3f sec\n" (diff :: Double)
-    return v
 
 normal tries = do
   r <- newIORef True

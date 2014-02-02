@@ -7,36 +7,37 @@ import Control.Monad
 -- import Control.Monad.ST (stToIO)
 import Control.Exception (evaluate)
 import Control.Concurrent.MVar
-import GHC.Conc
 import Data.IORef (modifyIORef')
 import Data.Int
 import Data.Time.Clock
-import Text.Printf
-import GHC.STRef
-import GHC.IORef
-import GHC.Stats (getGCStats, GCStats(..))
 import Data.Primitive.Array
 import Data.Word
 import qualified Data.Set as S
 import Data.List ((\\))
+import Text.Printf
+import GHC.Conc
+import GHC.STRef
+import GHC.IORef
+import GHC.Stats (getGCStats, GCStats(..))
+import GHC.IO (unsafePerformIO)
 import System.Random (randomIO, randomRIO)
-
-import Data.Atomics as A
-import Data.Atomics (casArrayElem, readArrayElem)
-
 import Test.HUnit (Assertion, assertEqual, assertBool)
 import Test.Framework  (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
-
-import GHC.IO (unsafePerformIO)
 import System.Mem (performGC)
 import System.Mem.StableName (makeStableName, hashStableName, StableName)
 import System.Environment (getEnvironment)
 import System.IO        (stdout, stderr, hPutStrLn, hFlush)
 import Debug.Trace      (trace)
 
+----------------------------------------
+import Data.Atomics as A
+import Data.Atomics (casArrayElem, readArrayElem)
+
 import CommonTesting 
-import CounterTests (counterTests)
+import qualified CounterReference 
+import qualified CounterUnboxed
+import qualified CounterIORef
 
 ------------------------------------------------------------------------
 
@@ -88,7 +89,10 @@ main = do
                       [1, numcap `quot` 2, numcap, 2*numcap]
          , size    <- [1, 10, 100]
          , iters   <- [10000]]
-         ++ counterTests
+
+         ++ CounterReference.tests
+         ++ CounterUnboxed.tests
+         ++ CounterIORef.tests
 
 setify :: [Int] -> [Int]
 setify = S.toList . S.fromList

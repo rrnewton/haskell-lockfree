@@ -10,6 +10,7 @@ import GHC.Conc
 import Data.Time.Clock
 import Text.Printf
 import GHC.IO (unsafePerformIO)
+import System.CPUTime
 import System.Mem.StableName (makeStableName, hashStableName)
 import System.Environment (getEnvironment)
 import System.IO        (stdout, stderr, hPutStrLn, hFlush)
@@ -59,7 +60,15 @@ data Forkable a = Fork Int (IO a)
                 | Sequence (Forkable a) (Forkable a) -- Sequential compositon, with barrier
 --                | Barrier Forkable
 
+-- | Grab a GC-invariant stable "address" for any value.
+{-# NOINLINE unsafeName #-}
+unsafeName :: a -> Int
+unsafeName x = unsafePerformIO $ do 
+   sn <- makeStableName x
+   return (hashStableName sn)
 
+
+-- | Measure realtime 
 timeit :: IO a -> IO a 
 timeit ioact = do 
    start <- getCurrentTime
@@ -68,11 +77,37 @@ timeit ioact = do
    putStrLn$ "  Time elapsed: " ++ show (diffUTCTime end start)
    return res
 
-{-# NOINLINE unsafeName #-}
-unsafeName :: a -> Int
-unsafeName x = unsafePerformIO $ do 
-   sn <- makeStableName x
-   return (hashStableName sn)
+
+-- | Measure CPU time rather than realtime...
+cputime :: IO t -> IO t
+cputime a = do
+    start <- getCPUTime
+    v <- a
+    end   <- getCPUTime
+    let diff = (fromIntegral (end - start)) / (10^12)
+    printf "SELFTIMED: %0.3f sec\n" (diff :: Double)
+    return v
+
+
+-- | To make sure we get a simple loop...
+nTimes :: Int -> IO () -> IO ()
+-- nTimes :: Int -> IO a -> IO ()
+-- Note: starting out I would get 163Mb allocation for 10M sequential incrs (on unboxed).
+-- The problem was that the "Int" result from each incr was being allocated.
+-- Weird thing is that inlining nTimes reduces the allocation to 323Mb.
+-- But forcing it to take an (IO ()) gets rid of the allocation.
+-- Egad, wait, no, I have to NOT inline nTimes to get rid of the allocation!?!?
+-- Otherwise I'm still stuck with at least 163Mb of allocation.
+-- In fact... the allocation is still there even if we use incrCounter_ !!
+-- If we leave nTimes uninlined, we can get down to 3Mb allocation with either incrCounter or incrCounter_.
+-------------------------
+-- UPDATE:
+-- As per http://www.haskell.org/pipermail/glasgow-haskell-users/2011-June/020472.html
+--
+--  INLINE should not affect recursive functions.  But here it seems to have a
+--  deleterious effect!
+nTimes 0 !c = return ()
+nTimes !n !c = c >> nTimes (n-1) c
 
 
 
@@ -96,7 +131,7 @@ dbg = case lookup "DEBUG" unsafeEnv of
 -- | How many elements or iterations should the test use?
 numElems :: Int
 numElems = case lookup "NUMELEMS" unsafeEnv of 
-             Nothing  -> 1000 * 1000 
+             Nothing  -> 1000 * 1000  -- A million by default.
              Just str -> warnUsing ("NUMELEMS = "++str) $ 
                          read str
 
@@ -124,3 +159,4 @@ for_ start end fn = loop start
   where
    loop !i | i == end  = return ()
 	   | otherwise = do fn i; loop (i+1)
+
