@@ -1,11 +1,13 @@
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples, CPP #-}
 
+-- | This should be the most efficient implementation of atomic counters.
+--   You probably don't need the others!  (Except for testing/debugging.)
+
 module Data.Atomics.Counter.Unboxed
        (AtomicCounter, CTicket,
         newCounter, readCounterForCAS, readCounter, peekCTicket,
         writeCounter, casCounter, incrCounter, incrCounter_)
        where
-
 
 import GHC.Ptr
 import Data.Atomics          (casByteArrayInt)
@@ -38,15 +40,20 @@ import GHC.Prim
 #define SIZEOF_HSINT  INT_SIZE_IN_BYTES
 #endif
 
+-- | The type of mutable atomic counters.
 data AtomicCounter = AtomicCounter (MutableByteArray# RealWorld)
+
+-- | You should not depend on this type.  It varies between different implementations
+-- of atomic counters.
 type CTicket = Int
+-- TODO: Could newtype this.
 
 -- | Create a new counter initialized to the given value.
 {-# INLINE newCounter #-}
 newCounter :: Int -> IO AtomicCounter
 newCounter n = do
   c <- newRawCounter
-  writeCounter c n
+  writeCounter c n -- Non-atomic is ok; it hasn't been released into the wild.
   return c
 
 -- | Create a new, uninitialized counter.
@@ -73,7 +80,8 @@ writeCounter (AtomicCounter arr) (I# i) = IO $ \s ->
 
 {-# INLINE readCounterForCAS #-}
 -- | Just like the "Data.Atomics" CAS interface, this routine returns an opaque
--- ticket that can be used in CAS operations.
+-- ticket that can be used in CAS operations.  Except for the difference in return
+-- type, the semantics of this are the same as `readCounter`.
 readCounterForCAS :: AtomicCounter -> IO CTicket
 readCounterForCAS = readCounter
 
@@ -83,7 +91,11 @@ peekCTicket :: CTicket -> Int
 peekCTicket !x = x
 
 {-# INLINE casCounter #-}
--- | Compare and swap for the counter ADT.  Similar behavior to `casIORef`.
+-- | Compare and swap for the counter ADT.  Similar behavior to
+-- `Data.Atomics.casIORef`, in particular, in both success and failure cases it
+-- returns a ticket that you should use for the next attempt.  (That is, in the
+-- success case, it actually returns the new value that you provided as input, but in
+-- ticket form.)
 casCounter :: AtomicCounter -> CTicket -> Int -> IO (Bool, CTicket)
 -- casCounter (AtomicCounter barr) !old !new =
 casCounter (AtomicCounter mba#) (I# old#) newBox@(I# new#) = IO$ \s1# ->

@@ -72,10 +72,15 @@ casArrayTicketed# = unsafeCoerce#
 -- that a thread observed a specific previous value of a mutable
 -- variable.  It is provided in lieu of the "old" value to
 -- compare-and-swap.
+--
+-- Design note: `Ticket`s exist to hide objects from the GHC compiler, which
+-- can normally perform many optimizations that change pointer equality.  A Ticket,
+-- on the other hand, is a first-class object that can be handled by the user,
+-- but will not have its pointer identity changed by compiler optimizations
+-- (but will of course, change addresses during garbage collection).
 type Ticket a = Any a
 -- If we allow tickets to be a pointer type, then the garbage collector will update
 -- the pointer when the object moves.
-
 
 instance Show (Ticket a) where
   show _ = "<CAS_ticket>"

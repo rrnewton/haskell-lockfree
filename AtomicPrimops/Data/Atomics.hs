@@ -15,16 +15,17 @@ module Data.Atomics
    -- * Types for atomic operations
    Ticket, peekTicket, -- CASResult(..),
 
+   -- * Atomic operations on IORefs
+   readForCAS, casIORef, casIORef2, 
+   
    -- * Atomic operations on mutable arrays
    casArrayElem, casArrayElem2, readArrayElem, 
 
    -- * Atomic operations on byte arrays
    casByteArrayInt, fetchAddByteArrayInt,
-   
-   -- * Atomic operations on IORefs
-   readForCAS, casIORef, casIORef2, 
-   
+      
    -- * Atomic operations on raw MutVars
+   -- | A lower-level version of the IORef interface.
    readMutVarForCAS, casMutVar, casMutVar2,
 
    -- * Memory barriers
@@ -86,7 +87,8 @@ import GHC.Word (Word(W#))
 
 --------------------------------------------------------------------------------
 
--- | Compare-and-swap 
+-- | Compare-and-swap.  Follows the same rules as `casIORef`, returning the ticket for
+--   then next operation.
 casArrayElem :: MutableArray RealWorld a -> Int -> Ticket a -> a -> IO (Bool, Ticket a)
 -- casArrayElem (MutableArray arr#) (I# i#) old new = IO$ \s1# ->
 --  case casArray# arr# i# old new s1# of 
@@ -100,6 +102,7 @@ casArrayElem2 (MutableArray arr#) (I# i#) old new = IO$ \s1# ->
  case casArrayTicketed# arr# i# old new s1# of 
    (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, res) #)
 
+-- | Ordinary processor load instruction (non-atomic, not implying any memory barriers).
 readArrayElem :: forall a . MutableArray RealWorld a -> Int -> IO (Ticket a)
 -- readArrayElem = unsafeCoerce# readArray#
 readArrayElem (MutableArray arr#) (I# i#) = IO $ \ st -> unsafeCoerce# (fn st)
@@ -107,6 +110,13 @@ readArrayElem (MutableArray arr#) (I# i#) = IO $ \ st -> unsafeCoerce# (fn st)
     fn :: State# RealWorld -> (# State# RealWorld, a #)
     fn = readArray# arr# i#
 
+-- | Compare and swap on word-sized chunks of a byte-array.  For indexing purposes
+-- the bytearray is treated as an array of words (`Int`s).  Note that UNLIKE
+-- `casIORef` and `casArrayTicketed`, this does not need to operate on tickets.
+--
+-- Further, this version always returns the /old value/, that was read from the array during
+-- the CAS operation.  That is, it follows the normal protocol for CAS operations
+-- (and matches the underlying instruction on most architectures).
 casByteArrayInt ::  MutableByteArray RealWorld -> Int -> Int -> Int -> IO Int
 casByteArrayInt (MutableByteArray mba#) (I# ix#) (I# old#) (I# new#) =
   IO$ \s1# ->
@@ -121,6 +131,11 @@ casByteArrayInt (MutableByteArray mba#) (I# ix#) (I# old#) (I# new#) =
   (# s2#, (I# res) #)
   -- I don't know if a let will mak any difference here... hopefully not.
 
+-- | Atomically add to a word of memory within a `MutableByteArray`.
+-- 
+--   This function returns the NEW value of the location after the increment.
+--   Thus, it is a bit misnamed, and in other contexts might be called "add-and-fetch",
+--   such as in GCC's `__sync_add_and_fetch`.
 fetchAddByteArrayInt ::  MutableByteArray RealWorld -> Int -> Int -> IO Int
 fetchAddByteArrayInt (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1# -> 
   let (# s2#, res #) = fetchAddIntArray# mba# offset# incr# s1# in
@@ -128,19 +143,33 @@ fetchAddByteArrayInt (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1
 
 --------------------------------------------------------------------------------
 
+-- | Ordinary processor load instruction (non-atomic, not implying any memory barriers).
+-- 
+--   The difference between this function and `readIORef`, is that it returns a /ticket/,
+--   for use in future compare-and-swap operations.
 readForCAS :: IORef a -> IO ( Ticket a )
 readForCAS (IORef (STRef mv)) = readMutVarForCAS mv
 
--- | Performs a machine-level compare and swap operation on an
+-- | Performs a machine-level compare and swap (CAS) operation on an
 -- 'IORef'. Returns a tuple containing a 'Bool' which is 'True' when a
--- swap is performed, along with the 'current' value from the 'IORef'.
+-- swap is performed, along with the most 'current' value from the 'IORef'.
+-- Note that this differs from the more common CAS behavior, which is to
+-- return the /old/ value before the CAS occured.
+--
+-- The reason for the difference is the ticket API.  This function always returns the
+-- ticket that you should use in your next CAS attempt.  In case of success, this ticket
+-- corresponds to the `new` value which you yourself installed in the `IORef`, whereas
+-- in the case of failure it represents the preexisting value currently in the IORef. 
 -- 
 -- Note \"compare\" here means pointer equality in the sense of
--- 'GHC.Prim.reallyUnsafePtrEquality#'.
+-- 'GHC.Prim.reallyUnsafePtrEquality#'.  However, the ticket API absolves
+-- the user of this module from needing to worry about the pointer equality of their
+-- values, which in general requires reasoning about the details of the Haskell
+-- implementation (GHC).
 casIORef :: IORef a  -- ^ The 'IORef' containing a value 'current'
          -> Ticket a -- ^ A ticket for the 'old' value
          -> a        -- ^ The 'new' value to replace 'current' if @old == current@
-         -> IO (Bool, Ticket a)
+         -> IO (Bool, Ticket a) -- ^ Success flag, plus ticket for the NEXT operation.
 casIORef (IORef (STRef var)) old new = casMutVar var old new 
 
 -- | This variant takes two tickets, i.e. the 'new' value is a ticket rather than an
@@ -155,6 +184,7 @@ casIORef2 (IORef (STRef var)) old new = casMutVar2 var old new
 --------------------------------------------------------------------------------
 
 -- | A ticket contains or can get the usable Haskell value.
+--   This function does just that.
 {-# NOINLINE peekTicket #-}
 -- At least this function MUST remain NOINLINE.  Issue5 is an example of a bug that
 -- ensues otherwise.
@@ -166,6 +196,7 @@ peekTicket = unsafeCoerce#
 seal :: a -> Ticket a 
 seal = unsafeCoerce#
 
+-- | Like `readForCAS`, but for `MutVar#`.
 readMutVarForCAS :: MutVar# RealWorld a -> IO ( Ticket a )
 readMutVarForCAS !mv = IO$ \ st -> readForCAS# mv st
 
@@ -188,13 +219,13 @@ casMutVar2 !mv !tick !new = IO$ \st ->
 -- Memory barriers
 --------------------------------------------------------------------------------
 
--- | Memory barrier implemented by the GHC rts (SMP.h).
+-- | Memory barrier implemented by the GHC rts (see SMP.h).
 storeLoadBarrier :: IO ()
 
--- | Memory barrier implemented by the GHC rts (SMP.h).
+-- | Memory barrier implemented by the GHC rts (see SMP.h).
 loadLoadBarrier :: IO ()
 
--- | Memory barrier implemented by the GHC rts (SMP.h).
+-- | Memory barrier implemented by the GHC rts (see SMP.h).
 writeBarrier :: IO ()
 
 -- GHC 7.8 consistently exposes these symbols while linking:
