@@ -40,12 +40,12 @@ newCounter n = do x <- mallocForeignPtr
 --   based on CAS, this increment is /O(1)/.  Fetch-and-add does not require a retry
 --   loop like CAS.
 incrCounter :: Int -> AtomicCounter -> IO Int
-incrCounter bump r = withForeignPtr r$ \r' -> fetchAndAdd r' bump
+incrCounter bump r = withForeignPtr r$ \r' -> addAndFetch r' bump
 
 {-# INLINE incrCounter_ #-}
 -- | An alternate version for when you don't care about the old value.
 incrCounter_ :: Int -> AtomicCounter -> IO ()
-incrCounter_ bump r = withForeignPtr r$ \r' -> void (fetchAndAdd r' bump)
+incrCounter_ bump r = withForeignPtr r$ \r' -> void (addAndFetch r' bump)
 
 {-# INLINE readCounterForCAS #-}
 -- | Just like the "Data.Atomics" CAS interface, this routine returns an opaque
@@ -72,8 +72,8 @@ writeCounter r !new = withForeignPtr r $ \r' -> poke r' new
 -- | Compare and swap for the counter ADT.
 casCounter :: AtomicCounter -> CTicket -> Int -> IO (Bool, CTicket)
 casCounter r !tick !new = withForeignPtr r $ \r' -> do
-   b <- compareAndSwap r' tick new
-   -- if b then return (True,new)
-   --      else do x <- peek r'
-   --              return (False,x)
-   return (b==tick, b)
+   cur <- compareAndSwap r' tick new
+   if cur==tick 
+     then return (True,new)
+     else return (False,cur)
+--   return (b==tick, b)
