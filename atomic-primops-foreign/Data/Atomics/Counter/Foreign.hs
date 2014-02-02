@@ -3,6 +3,9 @@
 -- | This implementation stores an unboxed counter and uses FFI operations to modify
 -- its contents.  It has the advantage that it can use true fetch-and-add operations.
 -- It has the disadvantage of extra overhead due to FFI calls.
+--
+-- For more documentation, see the module "Data.Atomics.Counter", which exports
+-- the same interface as this module.
 
 module Data.Atomics.Counter.Foreign
        (AtomicCounter, CTicket,
@@ -14,9 +17,11 @@ import Data.Bits.Atomic
 import Foreign.ForeignPtr
 import Foreign.Storable
 
--- newtype AtomicCounter = AtomicCounter (ForeignPtr Int)
+-- | The type of mutable atomic counters.
 type AtomicCounter = ForeignPtr Int
 
+-- | You should not depend on this type.  It varies between different implementations
+-- of atomic counters.
 type CTicket = Int
 
 {-# INLINE newCounter #-}

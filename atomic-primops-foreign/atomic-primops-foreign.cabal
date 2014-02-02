@@ -1,0 +1,36 @@
+Name:                atomic-primops-foreign
+Version:             0.6
+License:             BSD3
+License-file:        LICENSE
+Author:              Ryan Newton
+Maintainer:          rrnewton@gmail.com
+Category:            Data
+Build-type:          Simple
+-- TODO: This requirement needs to be bumped to 1.17 when the latest cabal is
+-- released.  This package gtriggers issue #1284:
+Cabal-version:       >=1.8
+HomePage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
+
+-- 0.6 -- Factored out of parent module to separate dependencies.
+
+Synopsis: An atomic counter implemented using the FFI.
+Description:
+
+Library
+  exposed-modules: Data.Atomics.Counter.Foreign
+  ghc-options: -O2 -funbox-strict-fields
+
+  build-depends: bits-atomic
+  build-depends: base >= 4.5.0.0 && <= 4.7.0.0
+  -- ghc-prim, primitive, Cabal
+
+  CC-Options:       -Wall 
+
+-- Test-Suite test-atomic-primops
+--     type:       exitcode-stdio-1.0
+
+Source-Repository head
+    Type:         git
+    Location:     git://github.com/rrnewton/haskell-lockfree-queue.git
+    Directory:    atomic-primops-foreign/
+

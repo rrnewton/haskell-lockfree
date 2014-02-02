@@ -37,6 +37,10 @@ Description:
   add access to other variants that may be of
   interest, specifically, compare and swap inside an array.
  .
+  Note that as of GHC 7.8, the relevant primops have been included in GHC itself.
+  This library is engineered to work pre- and post-GHC-7.8, while exposing the 
+  same interface.
+ .
  Changes in 0.3:
  .
  * Major internal change.  Duplicate the barrier code from the GHC RTS and thus 
@@ -53,6 +57,12 @@ Description:
  Changes in 0.5:
  . 
  * Remove dependency on bits-atomic unless a flag is turned on.
+ . 
+ Changes in 0.5.0.2:
+ .
+ * IMPORTANT BUGFIXES - don't use earlier versions.  They have been marked deprecated.
+
+
 
 
 Extra-Source-Files:  DEVLOG.md,
@@ -64,12 +74,6 @@ Flag debug
     Description: Enable extra internal checks.
     Default: False
 
--- The bits-atomic based modules are causing problems [2014.01.23] 
-Flag foreign
-    Description: Enable a dependency on bits-atomic and in turn provide a 
-                 foreign implementation of Counter.
-    Default: False
-
 Library
   exposed-modules:   Data.Atomics
                      Data.Atomics.Internal
@@ -79,16 +83,13 @@ Library
                      Data.Atomics.Counter.Unboxed
   ghc-options: -O2 -funbox-strict-fields
 
-  if flag (foreign) { 
-    exposed-modules: Data.Atomics.Counter.Foreign
-    build-depends: bits-atomic
-  }
-
   -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
   -- (base 4.5 or greater). We also need the "Any" kind.
   build-depends:     base >= 4.5.0.0 && <= 4.7.0.0, ghc-prim, primitive, Cabal
 
-  -- TODO: Try to push support back to 7.0:
+  -- TODO: Try to push support back to 7.0, but make it default to an implementation
+  -- other than Unboxed.
+
   -- Ah, but if we don't USE casMutVar# in this package we are ok:
   -- build-depends:     base >= 4.3, ghc-prim, primitive
 
@@ -99,8 +100,6 @@ Library
      C-Sources:        cbits/RtsDup.c
   }
   CC-Options:       -Wall 
-  -- Let the code know that profiling is on:
-  ghc-prof-options: -DGHC_PROFILING_ON
 
   -- if( cabal-version < 1.17 ) {
   --   ghc-prof-options: ERROR_DO_NOT_BUILD_THIS_WITH_PROFILING_YET__SEE_CABAL_ISSUE_1284
@@ -115,7 +114,7 @@ Library
 -- -- Switching to a separate package in ./testing/ 
 -- Test-Suite test-atomic-primops
 --     type:       exitcode-stdio-1.0
-
+--     ...
 
 Source-Repository head
     Type:         git

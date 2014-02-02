@@ -9,6 +9,8 @@ import Distribution.Version               (Version(..))
 import Distribution.PackageDescription    (PackageDescription)
 import Debug.Trace
 
+-- I couldn't figure out a way to do this check from the cabal file, so we drop down
+-- here to do it instead:
 checkGoodVersion :: IO ()
 checkGoodVersion =
   if   cabalVersion >= Version [1,17,0] []
