@@ -2,7 +2,7 @@
 -- Trying a completely separate .cabal for testing.
 
 Name:                test-atomic-primops
-Version:             0.5
+Version:             0.5.0.2
 Build-type:          Simple
 Cabal-version:       >=1.8
 

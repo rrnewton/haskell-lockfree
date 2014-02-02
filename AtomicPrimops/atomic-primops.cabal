@@ -56,9 +56,9 @@ Description:
 
 
 Extra-Source-Files:  DEVLOG.md,
-                     testing/Test.hs, testing/test-atomic-primops.cabal,
-                     testing/Makefile, testing/CommonTesting.hs, testing/CounterTests.hs, testing/hello.hs
---                    Makefile, Test.hs, README.md
+                     testing/Test.hs, testing/test-atomic-primops.cabal, testing/ghci-test.hs
+                     testing/Makefile, testing/CommonTesting.hs, testing/CounterCommon.hs, testing/hello.hs
+                     testing/CounterReference.hs testing/CounterUnboxed.hs testing/CounterIORef.hs
 
 Flag debug
     Description: Enable extra internal checks.
