@@ -70,7 +70,7 @@ casCounter (AtomicCounter r) oldT !new =
   let old = oldT in 
   atomicModifyIORef' r $ \val -> 
     if   (val == old)
-    then (new, (True, val))
+    then (new, (True, new))
     else (val, (False,val))
 
 

@@ -86,9 +86,11 @@ peekCTicket !x = x
 -- | Compare and swap for the counter ADT.  Similar behavior to `casIORef`.
 casCounter :: AtomicCounter -> CTicket -> Int -> IO (Bool, CTicket)
 -- casCounter (AtomicCounter barr) !old !new =
-casCounter (AtomicCounter mba#) (I# old#) (I# new#) = IO$ \s1# ->
+casCounter (AtomicCounter mba#) (I# old#) newBox@(I# new#) = IO$ \s1# ->
   let (# s2#, res# #) = casIntArray# mba# 0# old# new# s1# in
-  (# s2#, (res# ==# old#, I# res#) #)
+  case res# ==# old# of 
+    False -> (# s2#, (False, I# res# ) #) -- Failure
+    True  -> (# s2#, (True , newBox ) #) -- Success
 
 {-# INLINE sameCTicket #-}
 sameCTicket :: CTicket -> CTicket -> Bool
