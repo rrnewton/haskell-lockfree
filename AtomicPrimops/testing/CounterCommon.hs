@@ -13,6 +13,24 @@ import Data.Atomics
 import CommonTesting (numElems, forkJoin, timeit, nTimes)
 
 --------------------------------------------------------------------------------
+-- Test the basics
+
+case_basic1 = do 
+  r <- C.newCounter 0
+  ret <- C.incrCounter 10 r
+  assertEqual "incrCounter returns the NEW value" 10 ret
+
+case_basic2 = do 
+  let tries = numElems `quot` 100
+  r <- C.newCounter 0
+  nTimes tries $ do
+    t <- C.readCounterForCAS r
+    (True,_) <- C.casCounter r t (C.peekCTicket t + 1)
+    return ()
+  cnt <- C.readCounter r
+  assertEqual "Every CAS should succeed on one thread" tries cnt 
+
+--------------------------------------------------------------------------------
 -- Repeated increments
 
 incrloop tries = do r <- C.newCounter 0; nTimes tries $ void$ C.incrCounter 1 r
@@ -93,8 +111,10 @@ case_parincrloop_wCAS = do
 
 tests = 
  [
+   testCase (name++"basic1_incrCounter") $ case_basic1
+ , testCase (name++"basic1_casCounter") $ case_basic2
    ----------------------------------------
-   testCase (name++"_single_thread_repeat_incr") $ timeit case_incrloop
+ , testCase (name++"_single_thread_repeat_incr") $ timeit case_incrloop
  , testCase (name++"_incr_with_result_feedback") $ timeit (incrloop4B default_seq_tries)
    ----------------------------------------
 
