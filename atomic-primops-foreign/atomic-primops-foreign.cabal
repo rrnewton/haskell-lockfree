@@ -38,4 +38,4 @@ Test-Suite test-atomic-primops-foreign
 Source-Repository head
     Type:         git
     Location:     git://github.com/rrnewton/haskell-lockfree-queue.git
-    Directory:    atomic-primops-foreign/
+    Subdir:       atomic-primops-foreign/

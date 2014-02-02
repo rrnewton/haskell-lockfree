@@ -120,4 +120,4 @@ Library
 Source-Repository head
     Type:         git
     Location:     git://github.com/rrnewton/haskell-lockfree-queue.git
-    Directory:    atomic-primops/
+    Subdir:       atomic-primops/

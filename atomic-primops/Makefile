@@ -96,7 +96,7 @@ prof72:
 	GHC=ghc-7.2.2 PROF=1 ${MAKE} test 2>&1 | ${DEST}
 
 prof74:
-	GHC=$(GHC74) PROF=1 ${MAKE} test 2>&1 | ${DEST}l
+	GHC=$(GHC74) PROF=1 ${MAKE} test 2>&1 | ${DEST}
 
 prof76:
 	GHC=$(GHC76) PROF=1 ${MAKE} test 2>&1 | ${DEST}
