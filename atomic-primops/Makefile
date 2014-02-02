@@ -5,6 +5,9 @@
 # 
 #--------------------------------------------------------------------------------
 
+# [2014.02.02] FIXME: this was written for cabal-dev and has not been
+# updated for cabal sandboxes.
+
 ifeq ($(GHC),)
   GHC=ghc
 endif 
