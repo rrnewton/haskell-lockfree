@@ -5,16 +5,15 @@ Contents of this Repository
 This is a multi-package repository.  The following directories
 correspond to the following packages:
 
-    AbstractDeque  - abstract-deque
-    MichaelScott   - lockfree-queue
-    ChaseLev       - chaselev-deques
-    MegaDeque      - mega-deques    
-    CAS            - IORefCAS legacy IORefCAS, subsumed by atomic-primops
-    atomic-primops - atomic-primops 
-
+ * [AbstractDeque]:  "abstract-deque"
+ * [MichaelScott]: "lockfree-queue"
+ * [ChaseLev]: "chaselev-deque"
+ * [MegaDeque]: "mega-deque"
+ * [atomic-primops]: atomic-primops 
+ * [CAS] __deprecated__: IORefCAS legacy IORefCAS, subsumed by atomic-primops
+ 
 Please see the .cabal files for descriptions of each package.  Here's
 a brief summary:
-
 
   * AbstractDeque - abstract interface for single and double ended
     queues, plus reference implementation in pure Haskell
@@ -25,7 +24,7 @@ a brief summary:
     interface constraints, which are expressed at the type level.
 
   * AtomicPrimops - *safe* CAS/FAA on various kinds of mutable locations     
-  * CAS - Compare and swap operations for 
+  * CAS - Compare and swap operations for IORefs.  Generally unsafe.
 
 How to Test and Install
 ================================================================================
