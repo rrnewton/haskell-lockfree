@@ -1,6 +1,7 @@
 
 
 [2013.04.07] {Figuring out install methods, linking, and segfaults}
+-------------------------------------------------------------------
 
 Ok, here's the weird state of affairs at the moment.
 
@@ -44,7 +45,7 @@ AHA!  It works when I build like this:
 
    cabal install --disable-library-profiling --disable-documentation
    
-But NOT with a vanially cabal install (profiling and documentation).
+But NOT with a vanilla cabal install (profiling and documentation).
 As expected, it is the profiling that makes the difference.
 Note that I am NOT building the test with profiling.  The profiling
 version should be IRRELEVANT.  Why does this cause the segfault?
