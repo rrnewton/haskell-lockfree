@@ -83,7 +83,7 @@ peekCTicket :: CTicket -> Int
 peekCTicket !x = x
 
 {-# INLINE casCounter #-}
--- | Compare and swap for the counter ADT.
+-- | Compare and swap for the counter ADT.  Similar behavior to `casIORef`.
 casCounter :: AtomicCounter -> CTicket -> Int -> IO (Bool, CTicket)
 -- casCounter (AtomicCounter barr) !old !new =
 casCounter (AtomicCounter mba#) (I# old#) (I# new#) = IO$ \s1# ->

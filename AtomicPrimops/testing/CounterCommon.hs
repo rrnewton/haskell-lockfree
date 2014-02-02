@@ -21,6 +21,19 @@ case_basic1 = do
   assertEqual "incrCounter returns the NEW value" 10 ret
 
 case_basic2 = do 
+  r <- C.newCounter 0
+  t <- C.readCounterForCAS r
+  (True,newt) <- C.casCounter r t 10
+  assertEqual "casCounter returns new val/ticket on success" 10 (C.peekCTicket newt)
+
+case_basic3 = do 
+  r <- C.newCounter 0
+  t <- C.readCounterForCAS r
+  _ <- C.incrCounter 1 r
+  (False,oldt) <- C.casCounter r t 10
+  assertEqual "casCounter returns read val on failure" 1 (C.peekCTicket oldt)
+
+case_basic4 = do 
   let tries = numElems `quot` 100
   r <- C.newCounter 0
   nTimes tries $ do
@@ -112,7 +125,9 @@ case_parincrloop_wCAS = do
 tests = 
  [
    testCase (name++"basic1_incrCounter") $ case_basic1
- , testCase (name++"basic1_casCounter") $ case_basic2
+ , testCase (name++"basic2_casCounter") $ case_basic2
+ , testCase (name++"basic3_casCounter") $ case_basic3
+ , testCase (name++"basic4_casCounter") $ case_basic4
    ----------------------------------------
  , testCase (name++"_single_thread_repeat_incr") $ timeit case_incrloop
  , testCase (name++"_incr_with_result_feedback") $ timeit (incrloop4B default_seq_tries)

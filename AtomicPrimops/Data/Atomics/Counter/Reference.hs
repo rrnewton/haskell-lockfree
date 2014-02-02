@@ -64,11 +64,11 @@ writeCounter :: AtomicCounter -> Int -> IO ()
 writeCounter (AtomicCounter r) !new = writeIORef r new
 
 {-# INLINE casCounter #-}
--- | Compare and swap for the counter ADT.
+-- | Compare and swap for the counter ADT.  Similar behavior to `casIORef`.
 casCounter :: AtomicCounter -> CTicket -> Int -> IO (Bool, CTicket)
 casCounter (AtomicCounter r) oldT !new =
   let old = oldT in 
-  atomicModifyIORef r $ \val -> 
+  atomicModifyIORef' r $ \val -> 
     if   (val == old)
     then (new, (True, val))
     else (val, (False,val))
