@@ -9,7 +9,6 @@ import Test.HUnit (Assertion, assertEqual, assertBool)
 import Text.Printf
 import Data.IORef  
 
-import Data.Atomics
 import CommonTesting (numElems, forkJoin, timeit, nTimes)
 
 --------------------------------------------------------------------------------

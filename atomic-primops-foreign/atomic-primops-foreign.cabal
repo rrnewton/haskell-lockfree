@@ -6,8 +6,6 @@ Author:              Ryan Newton
 Maintainer:          rrnewton@gmail.com
 Category:            Data
 Build-type:          Simple
--- TODO: This requirement needs to be bumped to 1.17 when the latest cabal is
--- released.  This package gtriggers issue #1284:
 Cabal-version:       >=1.8
 HomePage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
 
@@ -21,16 +19,22 @@ Library
   ghc-options: -O2 -funbox-strict-fields
 
   build-depends: bits-atomic
-  build-depends: base >= 4.5.0.0 && <= 4.7.0.0
-  -- ghc-prim, primitive, Cabal
 
+  -- This can go back further than the atomic-primops package in supporting old GHC's:
+  -- For now let's say GHC 7.0 through 7.8:
+  build-depends: base >= 4.3.0.0 && <= 4.7.0.0
   CC-Options:       -Wall 
 
--- Test-Suite test-atomic-primops
---     type:       exitcode-stdio-1.0
+Test-Suite test-atomic-primops-foreign
+    type:       exitcode-stdio-1.0
+    main-is: testing/Main.hs
+    hs-source-dirs: testing/ ./
+    build-depends: bits-atomic
+    build-depends: base >= 4.3.0.0 && <= 4.7.0.0, 
+                   -- For Testing:
+                   time, HUnit, test-framework, test-framework-hunit
 
 Source-Repository head
     Type:         git
     Location:     git://github.com/rrnewton/haskell-lockfree-queue.git
     Directory:    atomic-primops-foreign/
-
