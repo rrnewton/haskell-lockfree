@@ -20,6 +20,12 @@ cabal sandbox init
 CMDROOT="cabal install --reinstall --with-ghc=ghc-$JENKINS_GHC --force-reinstalls"
 $CMDROOT $MODE2 $PKGS
 
+# Now install the DEPENDENCIES for testing
+$CMDROOT $MODE2 $PKGS --enable-tests --only-dependencies
+
+# List what we've got:
+cabal sandbox hc-pkg list
+
 echo "Everything installed, now to test."
 root=`pwd`
 for subdir in $PKGS; do 
