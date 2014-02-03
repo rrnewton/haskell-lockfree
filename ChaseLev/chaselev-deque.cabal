@@ -1,5 +1,5 @@
 Name:                chaselev-deque
-Version:             0.4
+Version:             0.5.0.2
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan R. Newton, Edward Kmett 
@@ -14,8 +14,9 @@ Cabal-version:       >=1.8
 -- 0.1.3 -- small release to fix version deps before atomic-primops api change
 -- 0.3   -- bump to go along with atomic-primops 0.3
 -- 0.4   -- bump to go along with atomic-primops 0.4
+-- 0.5.0.2 -- bump to go along with MAJOR bugfix in atomic-primops 0.5.0.2
 
-Homepage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
+Homepage: https://github.com/rrnewton/haskell-lockfree/wiki
 
 Synopsis: Chase & Lev work-stealing lock-free double-ended queues (deques).
 
@@ -41,7 +42,7 @@ Library
 
   build-depends:     base >= 4.4.0.0 && < 5, array, transformers, bits-atomic,
                      abstract-deque >= 0.2.2 && < 0.3, vector, ghc-prim,
-                     atomic-primops >= 0.5.0.2 && < 0.5
+                     atomic-primops >= 0.5.0.2
 --                     IORefCAS >= 0.2
   build-depends: ghc-prim
   ghc-options: -O2
