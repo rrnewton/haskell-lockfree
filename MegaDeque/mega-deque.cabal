@@ -30,7 +30,7 @@ Library
   ghc-options: -O2
 
 
-Test-Suite test-chaselev-deque
+Test-Suite test-mega-deque
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
     build-depends:  base >= 4.6.0.0,
