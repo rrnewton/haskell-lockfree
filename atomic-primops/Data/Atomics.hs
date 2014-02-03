@@ -17,6 +17,7 @@ module Data.Atomics
 
    -- * Atomic operations on IORefs
    readForCAS, casIORef, casIORef2, 
+   atomicModifyIORefCAS, atomicModifyIORefCAS_,
    
    -- * Atomic operations on mutable arrays
    casArrayElem, casArrayElem2, readArrayElem, 
@@ -33,13 +34,14 @@ module Data.Atomics
  ) where
 
 import Control.Monad.ST (stToIO)
+import Control.Exception (evaluate)
 import Data.Primitive.Array (MutableArray(MutableArray))
 import Data.Primitive.ByteArray (MutableByteArray(MutableByteArray))
 import Data.Atomics.Internal
 import Data.Int -- TEMPORARY
 
-import Data.IORef
-import GHC.IORef
+import Data.IORef 
+import GHC.IORef hiding (atomicModifyIORef)
 import GHC.STRef
 import GHC.ST
 #if MIN_VERSION_base(4,7,0)
@@ -251,4 +253,55 @@ foreign import ccall unsafe "DUP_load_load_barrier" loadLoadBarrier
 foreign import ccall unsafe "DUP_write_barrier" writeBarrier
   :: IO ()
 #endif
+
+
+--------------------------------------------------------------------------------
+
+
+-- | A drop-in replacement for `atomicModifyIORefCAS` that
+--   optimistically attempts to compute the new value and CAS it into
+--   place without introducing new thunks or locking anything.  Note
+--   that this is more STRICT than its standard counterpart and will only
+--   place evaluated (WHNF) values in the IORef.
+-- 
+--   The upside is that sometimes we see a performance benefit.  
+--   The downside is that this version is speculative -- when it 
+--   retries, it must reexecute the compution.
+atomicModifyIORefCAS :: IORef a      -- ^ Mutable location to modify
+                     -> (a -> (a,b)) -- ^ Computation runs one or more times (speculation)
+                     -> IO b
+atomicModifyIORefCAS ref fn = do
+   -- TODO: Should handle contention in a better way...
+   tick <- readForCAS ref
+   loop tick effort
+  where 
+   effort = 30 :: Int -- TODO: Tune this.
+   loop old 0     = atomicModifyIORef ref fn -- Fall back to the regular version.
+   loop old tries = do 
+     (new,result) <- evaluate $ fn $ peekTicket old
+     (b,tick) <- casIORef ref old new
+     if b 
+      then return result
+      else loop tick (tries-1)
+
+
+-- | A simpler version that modifies the state but does not return anything.
+atomicModifyIORefCAS_ :: IORef t -> (t -> t) -> IO ()
+-- atomicModifyIORefCAS_ ref fn = atomicModifyIORefCAS ref (\ x -> (fn x, ()))
+-- Can't inline a function with a loop so we duplicate this:
+-- <duplicated code>
+atomicModifyIORefCAS_ ref fn = do
+   tick <- readForCAS ref
+   loop tick effort
+  where 
+   effort = 30 :: Int -- TODO: Tune this.
+   loop old 0     = atomicModifyIORef_ ref fn
+   loop old tries = do 
+     new <- evaluate $ fn $ peekTicket old
+     (b,val) <- casIORef ref old new
+     if b 
+      then return ()
+      else loop val (tries-1)
+   atomicModifyIORef_ ref fn = atomicModifyIORef ref (\ x -> (fn x, ()))
+-- </duplicated code>
 

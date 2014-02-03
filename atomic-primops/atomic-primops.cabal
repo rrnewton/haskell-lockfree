@@ -1,5 +1,5 @@
 Name:                atomic-primops
-Version:             0.5.99
+Version:             0.6
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan Newton
@@ -29,6 +29,7 @@ HomePage: https://github.com/rrnewton/haskell-lockfree/wiki
 -- 0.4.1 -- Add advance support for GHC 7.8
 -- 0.5 -- Nix Data.Atomics.Counter.Foreign and the bits-atomic dependency.
 -- 0.5.0.2 -- IMPORTANT Bugfix release.
+-- 0.6 -- add atomicModifyIORefCAS, and bump due to prev bugfixes
 
 Synopsis: A safe approach to CAS and other atomic ops in Haskell.
 

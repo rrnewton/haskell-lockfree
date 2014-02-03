@@ -24,6 +24,7 @@ import Prelude hiding (length)
 import qualified Data.Concurrent.Deque.Class as C
 import Data.Sequence
 import Data.IORef
+
 #ifdef USE_CAS
 #warning "abstract-deque: reference implementation using CAS..."
 import Data.CAS (atomicModifyIORefCAS)
@@ -34,6 +35,7 @@ _is_using_CAS = True
 modify = atomicModifyIORef
 _is_using_CAS = False
 #endif
+
 {-# INLINE modify #-}
 modify :: IORef a -> (a -> (a, b)) -> IO b
 _is_using_CAS :: Bool
