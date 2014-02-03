@@ -40,7 +40,6 @@ Test-Suite test-chaselev-deque
                     HUnit
 --    base >= 4.4.0.0 && < 5, abstract-deque, 
 --                   HUnit, test-framework, test-framework-hunit,
---                   atomic-primops, 
 --                   IORefCAS >= 0.2
     build-depends: containers
     ghc-options: -O2 -threaded -rtsopts 

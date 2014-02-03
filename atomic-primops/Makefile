@@ -13,7 +13,8 @@ ifeq ($(GHC),)
 endif 
 
 ifeq ($(CABAL),)
-  CABAL=cabal-dev
+  CABAL=cabal
+#  CABAL=cabal-dev
 endif 
 
 ifeq ($(DEST),)
@@ -74,7 +75,7 @@ hydra:
 	(DEST=hydra-head ${MAKE} -j all) | hydra-view
 
 GHC74=ghc-7.4.2
-GHC76=ghc-7.6.2
+GHC76=ghc-7.6.3
 
 
 test70:
