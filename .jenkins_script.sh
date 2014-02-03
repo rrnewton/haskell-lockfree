@@ -1,5 +1,8 @@
 #!/bin/bash
 
+set -e
+set -x
+
 source $HOME/rn_jenkins_scripts/acquire_ghc.sh
 which cabal
 cabal --version
