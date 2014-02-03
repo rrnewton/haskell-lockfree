@@ -31,7 +31,7 @@ Test-Suite test-atomic-primops
     -- Set it to always run with some parallelism.
     ghc-options: -rtsopts -with-rtsopts=-N4
        
-    build-depends: base, ghc-prim, primitive, containers, random, atomic-primops >= 0.5,
+    build-depends: base, ghc-prim, primitive, containers, random, atomic-primops >= 0.5.0.2,
                    -- For Testing:
                    time, HUnit, test-framework, test-framework-hunit
 
