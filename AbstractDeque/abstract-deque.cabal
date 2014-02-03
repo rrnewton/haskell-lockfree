@@ -63,7 +63,8 @@ Library
                      containers, 
                      HUnit, test-framework >= 0.6, test-framework-hunit >= 0.2.7, time
   if flag(useCAS) && impl( ghc >= 7.4 ) && !os(mingw32) {
-    build-depends:   IORefCAS >= 0.2 
+    -- build-depends:   IORefCAS >= 0.2 
+    build-depends:   atomic-primops >= 0.5.0.2
     cpp-options:  -DUSE_CAS -DDEFAULT_SIGNATURES
 --    extensions: DefaultSignatures
 --    GHC-Options: -XDefaultSignatures

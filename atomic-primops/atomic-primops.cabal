@@ -10,7 +10,7 @@ Build-type:          Custom
 -- TODO: This requirement needs to be bumped to 1.17 when the latest cabal is
 -- released.  This package triggers issue #1284:
 -- Cabal-version:       >=1.18
-Cabal-version:       >=1.8
+Cabal-version:       >=1.10
 -- Egad!  Requiring cabal version 1.18 triggers a seemingly spurious failure on Mac OS:
 -- http://tester-lin.soic.indiana.edu:8080/job/Haskell-LockFree_master/JENKINS_GHC=7.6.3,label=macos/346/console
 -- So for now I'm backing off about the cabal requirement.  Setup.hs will catch it later IF an early version
