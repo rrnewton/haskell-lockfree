@@ -28,6 +28,8 @@ Description:
   .
   "http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.170.1097&rep=rep1&type=pdf"
 
+Extra-Source-Files: Test.hs RegressionTests/Issue5.hs RegressionTests/Issue5B.hs
+
 Flag debug
     Description: Enable the extra internal checks.
     Default: False
@@ -41,7 +43,7 @@ Library
   other-modules:     Data.Concurrent.Deque.ChaseLevUnboxed
 
   build-depends:     base >= 4.4.0.0 && < 5, array, transformers, bits-atomic,
-                     abstract-deque >= 0.2.2 && < 0.3, vector, ghc-prim,
+                     abstract-deque >= 0.2.2.1 && < 0.3, vector, ghc-prim,
                      atomic-primops >= 0.5.0.2
 --                     IORefCAS >= 0.2
   build-depends: ghc-prim
