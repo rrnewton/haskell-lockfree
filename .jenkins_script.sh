@@ -24,7 +24,7 @@ echo "Everything installed, now to test."
 root=`pwd`
 for subdir in $PKGS; do 
   cd $root/$subdir
-  cabal sandbox init --sandbox=`root`
+  cabal sandbox init --sandbox=$root
   # Print the individual test outputs:
   cabal test --show-details=always
 done
