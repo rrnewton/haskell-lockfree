@@ -10,7 +10,7 @@ cabal --version
 which -a llc || echo "No LLVM"
 
 # AtomicPrimops/testing/
-PKGS="atomic-primops/ atomic-primops/testing/ atomic-primops-foreign/ AbstractDeque/ MichaelScott/ ChaseLev/ MegaDeque/"
+PKGS="atomic-primops/ atomic-primops/testing/ atomic-primops-foreign/ abstract-deque/ lockfree-queue/ chaselev-deque/ mega-deque/"
 MODE1="--enable-library-profiling --enable-executable-profiling"
 MODE2="--disable-library-profiling --disable-executable-profiling"
 

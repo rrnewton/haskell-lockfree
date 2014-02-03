@@ -15,7 +15,7 @@ if [ "$GHC" == "" ];
 then GHC=`which ghc`
 fi
 
-ALLPKG="./atomic-primops ./atomic-primops/testing ./atomic-primops-foreign  ./AbstractDeque ./MichaelScott ./ChaseLev ./MegaDeque"
+ALLPKG="./atomic-primops ./atomic-primops/testing ./atomic-primops-foreign  ./abstract-deque ./lockfree-queue ./chaselev-deque ./mega-deque"
 
 # A manual form of cleaning.
 for dir in $ALLPKG; do 

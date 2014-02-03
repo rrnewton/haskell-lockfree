@@ -3,28 +3,20 @@ Contents of this Repository
 ================================================================================
 
 This is a multi-package repository.  The following directories
-correspond to the following packages:
+each correspond to exactly one cabal package:
 
- * [AbstractDeque]:  "abstract-deque"
- * [MichaelScott]: "lockfree-queue"
- * [ChaseLev]: "chaselev-deque"
- * [MegaDeque]: "mega-deque"
- * [atomic-primops]: atomic-primops 
- * [CAS] __deprecated__: IORefCAS legacy IORefCAS, subsumed by atomic-primops
- 
-Please see the .cabal files for descriptions of each package.  Here's
-a brief summary:
-
-  * AbstractDeque - abstract interface for single and double ended
-    queues, plus reference implementation in pure Haskell
-  * MichaelScott - classic Michael & Scott algorithm for single ended
-    queues
-  * ChaseLev - Work-stealing "1.5" ended deques.
-  * MegaDeque - a package that picks the best implementation for the
+ * [abstract-deque]: AbstractDeque - abstract interface for single and
+    double ended queues, plus reference implementation in pure Haskell 
+ * [lockefree-queue]: classic Michael & Scott algorithm for single ended queues
+ * [chaselev-deque]: work-stealing "1.5" ended deques.
+ * [mega-deque]: a package that picks the best implementation for the
     interface constraints, which are expressed at the type level.
+ * [atomic-primops]: *safe* CAS/FAA on various kinds of mutable locations 
+ * [atomic-primops-foreign]: Add on package that provides an FFI based
+   implementation of counters.
+ 
+Please see the .cabal files for more detailed descriptions of each package.  
 
-  * AtomicPrimops - *safe* CAS/FAA on various kinds of mutable locations     
-  * CAS - Compare and swap operations for IORefs.  Generally unsafe.
 
 How to Test and Install
 ================================================================================
