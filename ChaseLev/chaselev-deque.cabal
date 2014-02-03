@@ -45,7 +45,6 @@ Library
   build-depends:     base >= 4.4.0.0 && < 5, array, transformers, bits-atomic,
                      abstract-deque >= 0.2.2.1 && < 0.3, vector, ghc-prim,
                      atomic-primops >= 0.5.0.2
---                     IORefCAS >= 0.2
   build-depends: ghc-prim
   ghc-options: -O2
   if flag(debug)
@@ -53,7 +52,7 @@ Library
 
 Source-Repository head
     Type:         git
-    Location:     git://github.com/rrnewton/haskell-lockfree-queue.git
+    Location:     git://github.com/rrnewton/haskell-lockfree.git
 
 Test-Suite test-chaselev-deque
     type:       exitcode-stdio-1.0
@@ -61,7 +60,6 @@ Test-Suite test-chaselev-deque
     build-depends: base >= 4.4.0.0 && < 5, abstract-deque >= 0.2.2 && < 0.3, 
                    HUnit, test-framework, test-framework-hunit,
                    atomic-primops >= 0.5.0.2, vector, ghc-prim, array
---                   IORefCAS >= 0.2
     build-depends: containers
     ghc-options: -O2 -threaded -rtsopts 
 

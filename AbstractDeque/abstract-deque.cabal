@@ -8,7 +8,7 @@ Category:            Data
 Build-type:          Simple
 Cabal-version:       >= 1.8
 
-Homepage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
+Homepage: https://github.com/rrnewton/haskell-lockfree/wiki
 
 -- Version History:
 -- 0.1: 
@@ -74,7 +74,7 @@ Library
 
 Source-Repository head
     Type:         git
-    Location:     git://github.com/rrnewton/haskell-lockfree-queue.git
+    Location:     git://github.com/rrnewton/haskell-lockfree.git
 
 Test-Suite test-abstract-deque
     type:       exitcode-stdio-1.0

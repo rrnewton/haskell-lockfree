@@ -7,7 +7,7 @@ Maintainer:          rrnewton@gmail.com
 Category:            Data
 Build-type:          Simple
 Cabal-version:       >=1.8
-HomePage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
+HomePage: https://github.com/rrnewton/haskell-lockfree/wiki
 
 -- 0.6 -- Factored out of parent module to separate dependencies.
 
@@ -37,5 +37,5 @@ Test-Suite test-atomic-primops-foreign
 
 Source-Repository head
     Type:         git
-    Location:     git://github.com/rrnewton/haskell-lockfree-queue.git
+    Location:     git://github.com/rrnewton/haskell-lockfree.git
     Subdir:       atomic-primops-foreign/

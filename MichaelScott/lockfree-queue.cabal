@@ -8,7 +8,7 @@ Category:            Data, Concurrent
 Build-type:          Simple
 Cabal-version:       >=1.8
 
-Homepage: https://github.com/rrnewton/haskell-lockfree-queue/wiki
+Homepage: https://github.com/rrnewton/haskell-lockfree/wiki
 
 -- Version History:
 -- 0.1 -- initial version
@@ -44,7 +44,7 @@ Library
 
 Source-Repository head
     Type:         git
-    Location:     git://github.com/rrnewton/haskell-lockfree-queue.git
+    Location:     git://github.com/rrnewton/haskell-lockfree.git
 
 
 Test-Suite test-lockfree-queue
