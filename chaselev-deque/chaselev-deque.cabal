@@ -61,7 +61,8 @@ Test-Suite test-chaselev-deque
                    HUnit, test-framework, test-framework-hunit,
                    atomic-primops >= 0.5.0.2, vector, ghc-prim, array
     build-depends: containers
-    ghc-options: -O2 -threaded -rtsopts 
+    ghc-options: -O2 -threaded 
+    ghc-options: -rtsopts -with-rtsopts=-N4
 
     -- ghc-options: -O2 -threaded -rtsopts 
     -- -- Debugging generated code:

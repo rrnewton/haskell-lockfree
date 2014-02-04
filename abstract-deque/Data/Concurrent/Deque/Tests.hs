@@ -168,15 +168,16 @@ stdTestHarness genTests = do
   putStrLn "Use NUMELEMS, NUMAGENTS, NUMTHREADS to control the size of this benchmark."
   args <- getArgs
 
-  np <- getNumProcessors
-  putStrLn $"Running on a machine with "++show np++" hardware threads."
+  -- [2014.02.03] Change of policy, I think it's better to always assume 4 threads and run the same tests:
+  -- np <- getNumProcessors
+  -- putStrLn $"Running on a machine with "++show np++" hardware threads."
 
   -- We allow the user to set this directly, because the "-t" based regexp selection
   -- of benchmarks is quite limited.
   let all_threads = case lookup "NUMTHREADS" theEnv of
                       Just str -> [read str]
-                      Nothing -> S.toList$ S.fromList$
-                        [1, 2, np `quot` 2, np, 2*np ]
+                      Nothing -> [1,2,4]
+                                 -- S.toList$ S.fromList$ [1, 2, np `quot` 2, np, 2*np ]
   putStrLn $"Running tests for these thread settings: "  ++show all_threads
   all_tests <- genTests 
 
