@@ -24,7 +24,7 @@ Description:
 Library
   exposed-modules:   Data.Concurrent.MegaDeque
   build-depends:     base >= 4.6.0.0,
-                     abstract-deque,
+                     abstract-deque >= 0.3,
                      lockfree-queue,
                      chaselev-deque
   ghc-options: -O2
@@ -34,7 +34,7 @@ Test-Suite test-mega-deque
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
     build-depends:  base >= 4.6.0.0,
-                    abstract-deque,
+                    abstract-deque >= 0.3, abstract-deque-tests >= 0.3,
                     lockfree-queue,
                     chaselev-deque,
                     HUnit

@@ -1,0 +1,40 @@
+Name:                abstract-deque-tests
+Version:             0.3
+License:             BSD3
+License-file:        LICENSE
+Author:              Ryan R. Newton
+Maintainer:          rrnewton@gmail.com
+Category:            Data 
+Build-type:          Simple
+Cabal-version:       >= 1.8
+
+Homepage: https://github.com/rrnewton/haskell-lockfree/wiki
+Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
+
+Synopsis: A test-suite for any queue or double-ended queue satisfying an interface 
+
+Description:
+
+  This package provides tests that can be used with any queue implementation 
+  that satisfies the `abstract-deque` interface.  
+
+
+Library
+  exposed-modules:   Data.Concurrent.Deque.Tests
+  build-depends:     base >= 4 && < 5, abstract-deque >= 0.3, 
+                     random >= 1.0, containers, array, time,
+                     HUnit, test-framework >= 0.6, test-framework-hunit >= 0.2.7
+  extensions: CPP
+  ghc-options: -O2
+
+Source-Repository head
+    Type:         git
+    Location:     git://github.com/rrnewton/haskell-lockfree.git
+
+Test-Suite test-abstract-deque
+    type:       exitcode-stdio-1.0
+    main-is:    Test.hs
+    build-depends:  base >= 4 && < 5, abstract-deque >= 0.3,
+                    random >= 1.0, containers, array, 
+                    HUnit, test-framework >= 0.6, test-framework-hunit >= 0.2.7, time
+    ghc-options: -O2 -threaded -rtsopts

@@ -26,14 +26,15 @@ install:
 # This is a hack to make Travis happy because it doesn't install happy/alex by default
  - cabal-1.18 install happy alex
 # And now we install the main packages:
- - cabal-1.18 install ./atomic-primops ./atomic-primops-foreign ./abstract-deque/ ./lockfree-queue/ ./chaselev-deque/ ./mega-deque
+ - PKGS="./atomic-primops ./atomic-primops-foreign ./abstract-deque/ ./abstract-deque-tests/ ./lockfree-queue/ ./chaselev-deque/ ./mega-deque"
+ - cabal-1.18 install $PKGS
 # Now enable benchmarks and tests and add the extra dependencies:
- - cabal-1.18 install --only-dependencies --enable-tests --enable-benchmarks ./atomic-primops ./atomic-primops/testing ./atomic-primops-foreign ./abstract-deque/ ./lockfree-queue/ ./chaselev-deque/ ./mega-deque
+ - cabal-1.18 install --only-dependencies --enable-tests --enable-benchmarks $PKGS
 
 # Here starts the actual work to be performed for the package under test; any command which exits with a non-zero exit code causes the build to fail.
 script:
  - (cd ./atomic-primops/testing; cabal-1.18 test --show-details=always)
- - (cd ./atomic-primops-foreign; cabal-1.18 test --show-details=always)
+ - (cd ./atomic-primops-foreign; cabal configure; cabal-1.18 test --show-details=always)
  - (cd ./abstract-deque; cabal-1.18 test --show-details=always)
  - (cd ./lockfree-queue//; cabal-1.18 test --show-details=always)
  - (cd ./chaselev-deque/; cabal-1.18 test --show-details=always)

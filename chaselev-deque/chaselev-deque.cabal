@@ -44,7 +44,7 @@ Library
   other-modules:     Data.Concurrent.Deque.ChaseLevUnboxed
 
   build-depends:     base >= 4.4.0.0 && < 5, array, transformers, bits-atomic,
-                     abstract-deque >= 0.2.2.1 && < 0.3, vector, ghc-prim,
+                     abstract-deque >= 0.3 && < 0.4, vector, ghc-prim,
                      atomic-primops >= 0.5.0.2
   build-depends: ghc-prim
   ghc-options: -O2
@@ -58,7 +58,8 @@ Source-Repository head
 Test-Suite test-chaselev-deque
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
-    build-depends: base >= 4.4.0.0 && < 5, abstract-deque >= 0.2.2 && < 0.3, 
+    build-depends: base >= 4.4.0.0 && < 5, 
+                   abstract-deque >= 0.3 && < 0.4, abstract-deque-tests >= 0.3,
                    HUnit, test-framework, test-framework-hunit,
                    atomic-primops >= 0.5.0.2, vector, ghc-prim, array
     build-depends: containers

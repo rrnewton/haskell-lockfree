@@ -1,5 +1,5 @@
 Name:                abstract-deque
-Version:             0.2.2.1 
+Version:             0.3 
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan R. Newton
@@ -23,6 +23,7 @@ Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
 -- 0.2:   [breaking] Refactor names of exposed Tests
 -- 0.2.2:   Add Debugger
 -- 0.2.2.1: Add some extra testing helpers.
+-- 0.3:  Remove testing utilities to their own package.
 
 Synopsis: Abstract, parameterized interface to mutable Deques.
 
@@ -56,19 +57,14 @@ Flag useCAS
 
 Library
   exposed-modules:   Data.Concurrent.Deque.Class,
-                     Data.Concurrent.Deque.Tests,
                      Data.Concurrent.Deque.Reference,
                      Data.Concurrent.Deque.Reference.DequeInstance,
                      Data.Concurrent.Deque.Debugger
   build-depends:     base >= 4 && < 5, array, random,
-                     containers, 
-                     HUnit, test-framework >= 0.6, test-framework-hunit >= 0.2.7, time
+                     containers, time
   if flag(useCAS) && impl( ghc >= 7.4 ) && !os(mingw32) {
-    -- build-depends:   IORefCAS >= 0.2 
     build-depends:   atomic-primops >= 0.5.0.2
     cpp-options:  -DUSE_CAS -DDEFAULT_SIGNATURES
---    extensions: DefaultSignatures
---    GHC-Options: -XDefaultSignatures
   }
 
   extensions: CPP
@@ -78,25 +74,5 @@ Source-Repository head
     Type:         git
     Location:     git://github.com/rrnewton/haskell-lockfree.git
 
-Test-Suite test-abstract-deque
-    type:       exitcode-stdio-1.0
-    main-is:    Test.hs
-    build-depends:  base >= 4 && < 5, containers, HUnit, array, random,
-                    HUnit, test-framework >= 0.6, test-framework-hunit >= 0.2.7, time
-    ghc-options: -O2 -threaded -rtsopts
-
-    -- ghc-options: -keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint
-    -- ghc-options: -ddump-ds -ddump-simpl -ddump-stg -ddump-asm -ddump-bcos -ddump-cmm -ddump-opt-cmm -ddump-inlinings
 
 
-    -- Disabling this for now due to a limitation of cabal-install-0.10.2:
-    -- Examining generated code:
-    -- If 
-    --------------------------------------------------------------------------------
-    -- if flag(useCAS) && impl( ghc >= 7.4 ) && !os(mingw32) {
-    --   ghc-options:  -with-rtsopts=-K32M
-    --   build-depends:   IORefCAS >= 0.2 
-    --   cpp-options:  -DUSE_CAS -DDEFAULT_SIGNATURES
-    -- }
-    -- if impl( ghc < 7 )
-    --   buildable: False
