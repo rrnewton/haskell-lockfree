@@ -19,7 +19,7 @@ cabal sandbox init
 root=`pwd`
 for subdir in $PKGS; do 
   cd "$root/$subdir"
-  cabal sandbox init --sandbox=$root
+  cabal sandbox init --sandbox=$root/.cabal-sandbox
 done
 cd "$root"
 
@@ -37,9 +37,6 @@ cabal sandbox hc-pkg list
 echo "Everything installed, now to test."
 for subdir in $PKGS; do 
   cd "$root/$subdir"
-  cabal sandbox hc-pkg list
   # Print the individual test outputs:
-  cabal configure
-  cabal build
   cabal test --show-details=always
 done
