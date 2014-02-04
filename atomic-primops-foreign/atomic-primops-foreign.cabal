@@ -18,7 +18,7 @@ Description:
 Library
   exposed-modules: Data.Atomics.Counter.Foreign
   ghc-options: -O2 -funbox-strict-fields
-  build-depends: bits-atomic
+  build-depends: bits-atomic >= 0.1.3
 
   -- This can go back further than the atomic-primops package in supporting old GHC's:
   -- For now let's say GHC 7.0 through 7.8:
