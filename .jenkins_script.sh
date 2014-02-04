@@ -39,5 +39,7 @@ for subdir in $PKGS; do
   cd "$root/$subdir"
   cabal sandbox hc-pkg list
   # Print the individual test outputs:
+  cabal configure
+  cabal build
   cabal test --show-details=always
 done
