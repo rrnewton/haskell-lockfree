@@ -16,6 +16,14 @@ MODE2="--disable-library-profiling --disable-executable-profiling"
 
 cabal sandbox init
 
+root=`pwd`
+for subdir in $PKGS; do 
+  cd "$root/$subdir"
+  cabal sandbox init --sandbox=$root
+done
+cd "$root"
+
+
 # First install everything without testing:
 CMDROOT="cabal install --reinstall --with-ghc=ghc-$JENKINS_GHC --force-reinstalls"
 $CMDROOT $MODE2 $PKGS
@@ -27,10 +35,9 @@ $CMDROOT $MODE2 $PKGS --enable-tests --only-dependencies
 cabal sandbox hc-pkg list
 
 echo "Everything installed, now to test."
-root=`pwd`
 for subdir in $PKGS; do 
-  cd $root/$subdir
-  cabal sandbox init --sandbox=$root
+  cd "$root/$subdir"
+  cabal sandbox hc-pkg list
   # Print the individual test outputs:
   cabal test --show-details=always
 done
