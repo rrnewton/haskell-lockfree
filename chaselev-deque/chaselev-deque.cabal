@@ -17,6 +17,7 @@ Cabal-version:       >=1.8
 -- 0.5.0.2 -- bump to go along with MAJOR bugfix in atomic-primops 0.5.0.2
 
 Homepage: https://github.com/rrnewton/haskell-lockfree/wiki
+Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
 
 Synopsis: Chase & Lev work-stealing lock-free double-ended queues (deques).
 

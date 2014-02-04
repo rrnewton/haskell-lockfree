@@ -9,6 +9,7 @@ Build-type:          Simple
 Cabal-version:       >=1.8
 
 Homepage: https://github.com/rrnewton/haskell-lockfree/wiki
+Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
 
 -- Version History:
 -- 0.1 -- initial version

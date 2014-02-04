@@ -17,6 +17,7 @@ Cabal-version:       >=1.10
 -- of cabal is used WITH profiling mode.
 
 HomePage: https://github.com/rrnewton/haskell-lockfree/wiki
+Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
 
 -- Version History:
 -- 0.1.0.0 -- initial release

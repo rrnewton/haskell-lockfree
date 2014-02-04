@@ -8,6 +8,7 @@ Category:            Data
 Build-type:          Simple
 Cabal-version:       >=1.8
 HomePage: https://github.com/rrnewton/haskell-lockfree/wiki
+Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
 
 -- 0.6 -- Factored out of parent module to separate dependencies.
 
