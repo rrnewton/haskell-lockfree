@@ -35,7 +35,7 @@ install:
 script:
  - (cd ./atomic-primops/testing; cabal-1.18 test --show-details=always)
  - (cd ./atomic-primops-foreign; cabal-1.18 configure; cabal-1.18 test --show-details=always)
- - (cd ./abstract-deque; cabal-1.18 test --show-details=always)
- - (cd ./lockfree-queue//; cabal-1.18 test --show-details=always)
- - (cd ./chaselev-deque/; cabal-1.18 test --show-details=always)
- - (cd ./mega-deque/; cabal-1.18 test --show-details=always)
+ - (cd ./abstract-deque;         cabal-1.18 configure; cabal-1.18 test --show-details=always)
+ - (cd ./lockfree-queue//;       cabal-1.18 configure; cabal-1.18 test --show-details=always)
+ - (cd ./chaselev-deque/;        cabal-1.18 configure; cabal-1.18 test --show-details=always)
+ - (cd ./mega-deque/;            cabal-1.18 configure; cabal-1.18 test --show-details=always)
