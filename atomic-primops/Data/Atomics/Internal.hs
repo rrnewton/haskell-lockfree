@@ -25,24 +25,16 @@ import GHC.Prim (RealWorld, Int#, Word#, State#, MutableArray#, MutVar#,
 
 #if MIN_VERSION_base(4,7,0)
 import GHC.Prim (casArray#, casIntArray#, fetchAddIntArray#)    
-#endif
-    
-#if MIN_VERSION_base(4,5,0)
--- Any is only in GHC 7.6!!!  We want 7.4 support.
+#elif MIN_VERSION_base(4,6,0)
+-- Any is only supported in the FFI in the way we need in GHC 7.6+
 import GHC.Prim (readMutVar#, casMutVar#, Any)
 #else
-#error "Need to figure out how to emulate Any () in GHC < 7.4 !"
+#error "Need to figure out how to emulate Any () in GHC <= 7.4 !"
 -- type Any a = Word#
 #endif    
 
-
 #if MIN_VERSION_base(4,7,0) 
 #else
-
---------------------------------------------------------------------------------
--- CAS and friendsa
---------------------------------------------------------------------------------
-
 #ifdef DEBUG_ATOMICS
 {-# NOINLINE readForCAS# #-}
 {-# NOINLINE casArrayTicketed# #-}
@@ -52,9 +44,12 @@ import GHC.Prim (readMutVar#, casMutVar#, Any)
 {-# INLINE casArrayTicketed# #-}
 -- I *think* inlining may be ok here as long as casting happens on the arrow types:
 #endif
-
 #endif
 -- End GHC >7.6
+
+--------------------------------------------------------------------------------
+-- CAS and friends
+--------------------------------------------------------------------------------
 
 -- | Unsafe, machine-level atomic compare and swap on an element within an Array.  
 casArrayTicketed# :: MutableArray# RealWorld a -> Int# -> Ticket a -> Ticket a 
