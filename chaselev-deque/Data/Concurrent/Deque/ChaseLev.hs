@@ -123,11 +123,6 @@ wr  = MV.write
 --   if i >= MV.length v
 --   then error (printf "ERROR: Out of bounds of top of vector index %d, vec length %d\n" i (MV.length v))
 --   else MV.write v i x
-
--- [2013.06.25] Note Issue5 is not affected by this:
-{-# NOINLINE pushL #-}
-{-# NOINLINE tryPopL #-}
-{-# NOINLINE tryPopR #-}
 #endif
 
 
@@ -172,7 +167,7 @@ growCirc !strt !end !oldarr = do
   ----------------------------------------  
   let len   = MV.length oldarr
       elems = end - strt
-  -- putStrLn$ "Grow to size "++show (len+len)++", copying over "++show elems
+  when dbg $ putStrLn$ "Grow to size "++show (len+len)++", copying over "++show elems
   newarr <- if dbg then
                nu (len + len)
             else  -- Better errors:
