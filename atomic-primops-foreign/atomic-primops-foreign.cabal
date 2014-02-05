@@ -1,5 +1,5 @@
 Name:                atomic-primops-foreign
-Version:             0.6
+Version:             0.6.1
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan Newton
@@ -28,7 +28,7 @@ Library
 Test-Suite test-atomic-primops-foreign
     type:       exitcode-stdio-1.0
     main-is:    testing/Main.hs
-    other-modules: CounterForeign
+    other-modules: CounterForeign, CounterCommon, CommonTesting
     hs-source-dirs: testing/ ./
 
     ghc-options: -threaded -rtsopts -with-rtsopts=-N4
