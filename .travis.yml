@@ -12,7 +12,7 @@ env:
  - GHCVER=7.6.1
  - GHCVER=7.6.2
  - GHCVER=7.6.3
- - GHCVER=head  # see section about GHC HEAD snapshots
+# - GHCVER=head  # see section about GHC HEAD snapshots
 
 # Note: the distinction between `before_install` and `install` is not important.
 before_install:
