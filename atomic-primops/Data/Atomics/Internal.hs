@@ -7,11 +7,7 @@
 -- operations.  
 module Data.Atomics.Internal 
    (
--- From GHC 7.8 onward these are built into the compiler:
-#if MIN_VERSION_base(4,7,0) 
-#else
     casIntArray#, fetchAddIntArray#, 
-#endif
     readForCAS#, casMutVarTicketed#, casArrayTicketed#, 
     Ticket
    )
@@ -24,7 +20,7 @@ import GHC.Prim (RealWorld, Int#, Word#, State#, MutableArray#, MutVar#,
                  unsafeCoerce#, reallyUnsafePtrEquality#) 
 
 #if MIN_VERSION_base(4,7,0)
-import GHC.Prim (casArray#, casIntArray#, fetchAddIntArray#)    
+import GHC.Prim (casArray#, casIntArray#, fetchAddIntArray#, Any, readMutVar#, casMutVar#)
 #elif MIN_VERSION_base(4,6,0)
 -- Any is only supported in the FFI in the way we need in GHC 7.6+
 import GHC.Prim (readMutVar#, casMutVar#, Any)
