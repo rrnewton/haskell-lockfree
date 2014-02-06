@@ -14,10 +14,6 @@ Flag threaded
     Description: Enable GHC threaded RTS.
     Default: True
 
-Flag withTH
-     Description: Build the test suite, including the template-haskell-atomic-primops executable.
-     Default: False
-
 Test-Suite test-atomic-primops
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
@@ -49,7 +45,7 @@ Executable hello-world-atomic-primops
 Test-suite template-haskell-atomic-primops
   type:       exitcode-stdio-1.0
   main-is: ghci-test.hs
-  if flag(withTH) {
+  if impl(ghc >= 7.8) {
     Buildable: True
     build-depends: base >= 4.5, atomic-primops >= 0.5, template-haskell,
                    -- For Testing:
