@@ -28,7 +28,7 @@ else
 fi
 
 if [ "$THREADING" == "threads" ]; then 
-  CBLARGS="$CBLARGS --ghc-options='-threaded' "
+  CBLARGS="$CBLARGS --ghc-options=-threaded "
 fi
 
 cabal sandbox init
