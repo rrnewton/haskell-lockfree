@@ -1,5 +1,5 @@
 Name:                atomic-primops
-Version:             0.6.0.1
+Version:             0.6.0.2
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan Newton
@@ -128,5 +128,5 @@ Library
 
 Source-Repository head
     Type:         git
-    Location:     git://github.com/rrnewton/haskell-lockfree.git
-    Subdir:       atomic-primops/
+    Location:     https://github.com/rrnewton/haskell-lockfree/
+    Subdir:       atomic-primops
