@@ -27,7 +27,9 @@ else
   CBLARGS="$CBLARGS --disable-library-coverage"
 fi
 
-if [ "$THREADING" == "threads" ]; then 
+if [ "$THREADING" == "nothreads" ]; then 
+  echo "Compiling without threading support."
+else
   CBLARGS="$CBLARGS --ghc-options=-threaded "
 fi
 
