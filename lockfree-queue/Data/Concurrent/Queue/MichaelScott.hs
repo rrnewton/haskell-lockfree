@@ -24,7 +24,6 @@ import System.IO (stderr)
 import Data.ByteString.Char8 (hPutStrLn, pack)
 
 -- import GHC.Types (Word(W#))
-import GHC.Prim (sameMutVar#)
 import GHC.IORef(IORef(IORef))
 import GHC.STRef(STRef(STRef))
 
@@ -33,11 +32,14 @@ import Data.Atomics (readForCAS, casIORef, Ticket, peekTicket)
 
 -- GHC 7.8 changed some primops
 #if MIN_VERSION_base(4,7,0)
-import GHC.Base  hiding ((==#))
-import GHC.Prim hiding ((==#))
+import GHC.Base  hiding ((==#), sameMutVar#)
+import GHC.Prim hiding ((==#), sameMutVar#)
 import qualified GHC.PrimopWrappers as GPW
 (==#) :: Int# -> Int# -> Bool
 (==#) x y = case x GPW.==# y of { 0# -> False; _ -> True }
+
+sameMutVar# :: MutVar# s a -> MutVar# s a -> Bool
+sameMutVar# x y = case GPW.sameMutVar# x y of { 0# -> False; _ -> True }
 #else
 import GHC.Base
 import GHC.Prim
