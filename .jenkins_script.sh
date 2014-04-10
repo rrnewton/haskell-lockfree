@@ -13,7 +13,12 @@ which -a llc || echo "No LLVM"
 PKGS="atomic-primops/ atomic-primops/testing/ atomic-primops-foreign/ abstract-deque/ abstract-deque-tests/ lockfree-queue/ chaselev-deque/ mega-deque/"
 
 # Pass OPTLVL directly to cabal:
-CBLARGS=" $OPTLVL "
+CBLARGS=" -j $OPTLVL "
+
+if [ "$JENKINS_GHC" == "" ]; then 
+  echo "Must set JENKINS_GHC env var to run this script."
+  exit 1
+fi
 
 if [ "$PROF" == "prof" ]; then 
   CBLARGS="$CBLARGS --enable-library-profiling --enable-executable-profiling"

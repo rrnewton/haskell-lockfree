@@ -13,7 +13,9 @@ Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
 -- 0.6 -- Factored out of parent module to separate dependencies.
 
 Synopsis: An atomic counter implemented using the FFI.
-Description:
+Description: 
+  This is an alternate implementation of the counter interface 
+  provided by the atomic-primops packag.
 
 Library
   exposed-modules: Data.Atomics.Counter.Foreign
