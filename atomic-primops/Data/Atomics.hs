@@ -39,6 +39,7 @@ import Data.Primitive.Array (MutableArray(MutableArray))
 import Data.Primitive.ByteArray (MutableByteArray(MutableByteArray))
 import Data.Atomics.Internal
 import Data.Int -- TEMPORARY
+import Debug.Trace
 
 import Data.IORef 
 import GHC.IORef hiding (atomicModifyIORef)
@@ -205,7 +206,9 @@ readMutVarForCAS !mv = IO$ \ st -> readForCAS# mv st
 -- | MutVar counterpart of `casIORef`.
 --
 casMutVar :: MutVar# RealWorld a -> Ticket a -> a -> IO (Bool, Ticket a)
-casMutVar !mv !tick !new = casMutVar2 mv tick (seal new)
+casMutVar !mv !tick !new = 
+  -- trace ("TEMPDBG: Inside casMutVar.. ") $ 
+  casMutVar2 mv tick (seal new)
 
 -- | This variant takes two tickets, i.e. the 'new' value is a ticket rather than an
 -- arbitrary, lifted, Haskell value.
