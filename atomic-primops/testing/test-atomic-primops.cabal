@@ -74,6 +74,7 @@ Test-suite Issue28
   type:    exitcode-stdio-1.0
   build-depends: base, ghc-prim, atomic-primops >= 0.6
   main-is: Issue28.hs
+  ghc-options: -main-is Issue28.main
   -- if impl(ghc < 7.7) {
   --   Buildable: False  
   -- }
