@@ -357,3 +357,9 @@ into Test.hs with the other tests.
     ./dist/build/test-atomic-primops/test-atomic-primops -j1 -t issue28_copied
 
 This version fails in the same way -- the ticket gets corrupted.
+
+Aha!  It's just an Int/String difference.  The same simple CAS test
+works for Int but fails for String.  That's interesting.
+
+
+
