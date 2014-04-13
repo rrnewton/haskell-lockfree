@@ -63,6 +63,7 @@ main = do
        defaultMain $ 
          [ testCase "casTicket1"              case_casTicket1
          , testCase "issue28_standalone"      case_issue28_standalone
+         , testCase "issue28_copied "         case_issue28_copied
          , testCase "create_and_read"         case_create_and_read
          , testCase "create_and_mutate"       case_create_and_mutate
          , testCase "create_and_mutate_twice" case_create_and_mutate_twice
@@ -222,9 +223,14 @@ case_casTicket1 = do
   return ()
 
 case_issue28_standalone :: Assertion
-case_issue28_standalone = 
-  do Issue28.main
-     putStrLn "Issue28.main passed"
+case_issue28_standalone = Issue28.main
+
+case_issue28_copied :: Assertion
+case_issue28_copied = do 
+  r  <- newIORef "hi"
+  t0 <- readForCAS r
+  (True,t1) <- casIORef r t0 "bye"
+  return ()
 
 ---- toddaaro's tests -----
 
