@@ -28,7 +28,7 @@ add1Op
 }
 
 
-stg_casArrayzh
+stg_casArray2zh
 /* MutableArray# s a -> Int# -> a -> a -> State# s -> (# State# s, Int#, a #) */
 {
     W_ arr, p, ind, old, new, h, len;

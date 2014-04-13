@@ -103,12 +103,15 @@ Library
   -- Ah, but if we don't USE casMutVar# in this package we are ok:
   -- build-depends:     base >= 4.3, ghc-prim, primitive
 
+  Include-Dirs:     cbits
   if impl(ghc < 7.7) {
-     Include-Dirs:     cbits
-     C-Sources:        cbits/primops.cmm
-     -- Duplicate RTS functionality for GHC 7.6:
-     C-Sources:        cbits/RtsDup.c
+    C-Sources:        cbits/primops.cmm
+  } else {
+    C-Sources:        cbits/primops_new.cmm
   }
+  -- Duplicate RTS functionality for GHC 7.6:
+  C-Sources:        cbits/RtsDup.c
+--  C-Sources:        cbits/DirectOps.c
   CC-Options:       -Wall 
 
   -- if( cabal-version < 1.17 ) {

@@ -44,16 +44,30 @@ import Data.IORef
 import GHC.IORef hiding (atomicModifyIORef)
 import GHC.STRef
 import GHC.ST
-#if MIN_VERSION_base(4,7,0)
-import GHC.Prim hiding ((==#))
+
+import GHC.Prim (MutVar#, RealWorld, State#, Int#, 
+                 readArray#, unsafeCoerce#)
 import qualified GHC.PrimopWrappers as GPW
-#else
-import GHC.Prim
-#endif
+
+-- #if MIN_VERSION_base(4,7,0)
+-- import GHC.Prim hiding ((==#))
+-- import qualified GHC.PrimopWrappers as GPW
+-- #else
+-- import GHC.Prim
+-- #endif
 import GHC.Arr 
 import GHC.Base (Int(I#))
 import GHC.IO (IO(IO))
 import GHC.Word (Word(W#))
+
+-- GHC 7.8 changed some primops
+#if MIN_VERSION_base(4,7,0)
+(==#) :: Int# -> Int# -> Bool
+(==#) x y = case x GPW.==# y of { 0# -> False; _ -> True }
+#else 
+import GHC.Prim ((==#))
+#endif
+
 
 #ifdef DEBUG_ATOMICS
 #warning "Activating DEBUG_ATOMICS... NOINLINE's and more"
@@ -81,11 +95,6 @@ import GHC.Word (Word(W#))
 #endif
 
 
--- GHC 7.8 changed some primops
-#if MIN_VERSION_base(4,7,0)
-(==#) :: Int# -> Int# -> Bool
-(==#) x y = case x GPW.==# y of { 0# -> False; _ -> True }
-#endif
 
 --------------------------------------------------------------------------------
 

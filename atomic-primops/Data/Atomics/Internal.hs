@@ -21,9 +21,7 @@ import GHC.Prim (RealWorld, Int#, Word#, State#, MutableArray#, MutVar#,
                  MutableByteArray#, 
                  unsafeCoerce#, reallyUnsafePtrEquality#) 
 
-#if MIN_VERSION_base(4,7,0)
-import GHC.Prim (casArray#, casIntArray#, fetchAddIntArray#, Any, readMutVar#, casMutVar#)
-#elif MIN_VERSION_base(4,6,0)
+#if MIN_VERSION_base(4,6,0)
 -- Any is only supported in the FFI in the way we need in GHC 7.6+
 import GHC.Prim (readMutVar#, casMutVar#, Any)
 #else
@@ -50,12 +48,7 @@ casArrayTicketed# :: MutableArray# RealWorld a -> Int# -> Ticket a -> Ticket a
           -> State# RealWorld -> (# State# RealWorld, Int#, Ticket a #)
 -- WARNING: cast of a function -- need to verify these are safe or eta expand.
 casArrayTicketed# = unsafeCoerce#
-#if MIN_VERSION_base(4,7,0)
-   -- In GHC 7.8 onward we just want to expose the existing primop with a different type:
-   casArray#
-#else
    casArrayTypeErased#
-#endif
     
 -- | When performing compare-and-swaps, the /ticket/ encapsulates proof
 -- that a thread observed a specific previous value of a mutable
@@ -100,12 +93,7 @@ casMutVarTicketed# :: MutVar# RealWorld a -> Ticket a -> Ticket a ->
                State# RealWorld -> (# State# RealWorld, Int#, Ticket a #)
 -- WARNING: cast of a function -- need to verify these are safe or eta expand:
 casMutVarTicketed# =
-#if MIN_VERSION_base(4,7,0) 
-  unsafeCoerce# casMutVar#
-#else
   unsafeCoerce# casMutVar_TypeErased#
-#endif
-
 
 --------------------------------------------------------------------------------
 -- Type-erased versions that call the raw foreign primops:
@@ -114,10 +102,8 @@ casMutVarTicketed# =
 -- polymorphic signature for the below functions.  So we lie to the type system
 -- instead.
 
-#if MIN_VERSION_base(4,7,0) 
-#else
 
-foreign import prim "stg_casArrayzh" casArrayTypeErased#
+foreign import prim "stg_casArray2zh" casArrayTypeErased#
   :: MutableArray# RealWorld () -> Int# -> Any () -> Any () -> 
      State# RealWorld  -> (# State# RealWorld, Int#, Any () #) 
 --   out_of_line = True
@@ -139,5 +125,3 @@ foreign import prim "stg_casByteArrayIntzh" casIntArray#
 
 foreign import prim "stg_fetchAddByteArrayIntzh" fetchAddIntArray#
   :: MutableByteArray# s -> Int# -> Int# -> State# s -> (# State# s, Int# #) 
-
-#endif

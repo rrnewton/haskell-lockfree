@@ -13,20 +13,18 @@ import GHC.Ptr
 import Data.Atomics          (casByteArrayInt)
 -- import Data.Atomics.Internal (casIntArray#, fetchAddIntArray#)
 import Data.Atomics.Internal
-#if MIN_VERSION_base(4,7,0)
-import GHC.Base  hiding ((==#))
-import GHC.Prim hiding ((==#))
+import GHC.IO (IO(..))
+import GHC.Base (Int(I#))
 import qualified GHC.PrimopWrappers as GPW
-#else
-import GHC.Base
-import GHC.Prim
-#endif
-
+import GHC.Prim (MutVar#, RealWorld, State#, Int#, MutableByteArray#, 
+                 readArray#, unsafeCoerce#, newByteArray#, readIntArray#, writeIntArray#)
 
 -- GHC 7.8 changed some primops
 #if MIN_VERSION_base(4,7,0)
 (==#) :: Int# -> Int# -> Bool
 (==#) x y = case x GPW.==# y of { 0# -> False; _ -> True }
+#else
+import GHC.Prim ((==#))
 #endif
 
 

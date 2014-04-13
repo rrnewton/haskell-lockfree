@@ -1,0 +1,89 @@
+
+// ============================================================
+// We only use this file for GHC 7.8+
+// ============================================================
+
+#include "Cmm.h"
+
+
+
+// RRN: Uses the ticketed approach; see casMutVar
+stg_casArray2zh ( gcptr arr, W_ ind, gcptr old, gcptr new )
+/* MutableArray# s a -> Int# -> a -> a -> State# s -> (# State# s, Int#, Any a #) */
+{
+    gcptr p, h;
+    W_ len;
+
+    p = arr + SIZEOF_StgMutArrPtrs + WDS(ind);
+    (h) = ccall cas(p, old, new);
+    
+    if (h != old) {
+        // Failure, return what was there instead of 'old':
+        return (1,h);
+    } else {
+        // Compare and Swap Succeeded:
+        SET_HDR(arr, stg_MUT_ARR_PTRS_DIRTY_info, CCCS);
+        len = StgMutArrPtrs_ptrs(arr);
+        // The write barrier.  We must write a byte into the mark table:
+        I8[arr + SIZEOF_StgMutArrPtrs + WDS(len) + (ind >> MUT_ARR_PTRS_CARD_BITS )] = 1;
+        return (0,new);
+    }
+}
+
+
+
+// RRN: This one does not use the "ticketing" approach because it
+// deals in unboxed scalars, not heap pointers.
+// 
+// This changed names to stg_casIntArrayzh when it was included with GHC 7.8.
+stg_casByteArrayIntzh ( gcptr arr, W_ ind, W_ old, W_ new )
+/* MutableByteArray# s -> Int# -> Int# -> Int# -> State# s -> (# State# s, Int# #) */
+{
+    gcptr p;
+    W_ h;
+
+    p = arr + SIZEOF_StgArrWords + WDS(ind);
+    (h) = ccall cas(p, old, new);
+
+    return(h);
+}
+
+
+// This changed names to stg_fetchAddIntArrayzh when it was included inside GHC 7.8.
+stg_fetchAddByteArrayIntzh ( gcptr arr, W_ ind, W_ incr )
+/* MutableByteArray# s -> Int# -> Int# -> State# s -> (# State# s, Int# #) */
+{
+    gcptr p;
+    W_ h;
+
+    p = arr + SIZEOF_StgArrWords + WDS(ind);
+    (h) = ccall atomic_inc(p, incr);
+
+    return(h);
+}
+
+
+// RRN: To support the "ticketed" approach, we return the NEW rather
+// than old value if the CAS is successful.  This is received in an
+// opaque form in the Haskell code, preventing the compiler from
+// changing its pointer identity.  The ticket can then be safely used
+// in future CAS operations.
+// 
+// (Historical note: The old casMutVar# in GHC 7.2-7.6 returned the
+// old value instead.)
+stg_casMutVar2zh ( gcptr mv, gcptr old, gcptr new )
+ /* MutVar# s a -> a -> a -> State# s -> (# State#, Int#, Any a #) */
+{
+    gcptr h;
+
+    (h) = ccall cas(mv + SIZEOF_StgHeader + OFFSET_StgMutVar_var,
+                          old, new);
+    if (h != old) {
+        return (1,h);
+    } else {
+        if (GET_INFO(mv) == stg_MUT_VAR_CLEAN_info) {
+           ccall dirty_MUT_VAR(BaseReg "ptr", mv "ptr");
+        }
+        return (0,new);
+    }
+}
