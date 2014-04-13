@@ -87,3 +87,18 @@ stg_casMutVar2zh ( gcptr mv, gcptr old, gcptr new )
         return (0,new);
     }
 }
+
+
+// The regular readMutVar# is an inline primop and would work fine for
+// this EXCEPT that we need to give it a different type to prevent GHC
+// from seeing the naked, lifted 'a' value (not coerced to an Any).
+stg_readMutVar2zh( gcptr mv )
+/*  MutVar# RealWorld a -> State# RealWorld -> (# State# RealWorld, Ticket a #) */
+{
+    W_ res;
+    mv  = R1;
+    // Do the actual read:
+    res = W_[mv + SIZEOF_StgHeader + OFFSET_StgMutVar_var];
+    return(res);
+}
+

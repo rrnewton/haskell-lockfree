@@ -115,13 +115,13 @@ stg_casMutVar2zh
 
 // Takes a single input argument in R1:
 stg_readMutVar2zh
-/*  MutVar# RealWorld a -> State# RealWorld -> (# State# RealWorld, Word#, a #) */
+/*  MutVar# RealWorld a -> State# RealWorld -> (# State# RealWorld, Ticket a #) */
 {
     W_ mv, res;
     mv  = R1;
     // Do the actual read:
     res = W_[mv + SIZEOF_StgHeader + OFFSET_StgMutVar_var];
-    RET_NP(res, res);
+    RET_P(res);
 }
 /* emitPrimOp [res] ReadMutVarOp [mutv] _ */
 /*    = stmtC (CmmAssign (CmmLocal res) (cmmLoadIndexW mutv fixedHdrSize gcWord)) */

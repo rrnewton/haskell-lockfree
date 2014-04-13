@@ -81,10 +81,10 @@ readForCAS# :: MutVar# RealWorld a ->
                State# RealWorld -> (# State# RealWorld, Ticket a #)
 -- WARNING: cast of a function -- need to verify these are safe or eta expand:
 #ifdef CASTFUN
-readForCAS# = unsafeCoerce# readMutVar#
+readForCAS# = unsafeCoerce# readMutVar_TypeErased#
 #else
 readForCAS# mv rw =
-  case readMutVar# mv rw of
+  case readMutVar_TypeErased mv rw of
     (# rw', a #) -> (# rw', unsafeCoerce# a #)
 #endif
 
@@ -115,9 +115,9 @@ foreign import prim "stg_casMutVar2zh" casMutVar_TypeErased#
   :: MutVar# RealWorld () -> Any () -> Any () ->
      State# RealWorld -> (# State# RealWorld, Int#, Any () #)
 
--- foreign import prim "stg_readMutVar2zh" readMutVar_TypeErased#
---   :: MutVar# RealWorld () -> 
---      State# RealWorld -> (# State# RealWorld, Any () #)
+foreign import prim "stg_readMutVar2zh" readMutVar_TypeErased#
+  :: MutVar# RealWorld () -> 
+     State# RealWorld -> (# State# RealWorld, Any () #)
 
 foreign import prim "stg_casByteArrayIntzh" casIntArray#
   :: MutableByteArray# s -> Int# -> Int# -> Int# ->
