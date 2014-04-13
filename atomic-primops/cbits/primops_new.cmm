@@ -74,10 +74,13 @@ stg_fetchAddByteArrayIntzh ( gcptr arr, W_ ind, W_ incr )
 stg_casMutVar2zh ( gcptr mv, gcptr old, gcptr new )
  /* MutVar# s a -> a -> a -> State# s -> (# State#, Int#, Any a #) */
 {
-    gcptr h;
+    gcptr h, p;
 
-    (h) = ccall cas(mv + SIZEOF_StgHeader + OFFSET_StgMutVar_var,
-                          old, new);
+    p = mv + SIZEOF_StgHeader + OFFSET_StgMutVar_var;
+    ccall printf("Hello from CAS, loc %p, current %d, ticket %d, new %p\n", 
+                 W_[p], mv, old, new);
+
+    (h) = ccall cas(p,old, new);
     if (h != old) {
         return (1,h);
     } else {
