@@ -6,13 +6,14 @@ Version:             0.6.0.3
 Build-type:          Simple
 Cabal-version:       >=1.8
 
+-- This is generally controled by the continuous integration script at a more granular level:
 Flag opt
     Description: Enable GHC optimization.
-    Default: True
+    Default: False
 
 Flag threaded
     Description: Enable GHC threaded RTS.
-    Default: True
+    Default: False
 
 Flag withTH
      Description: Build the test suite, including the template-haskell-atomic-primops executable.
