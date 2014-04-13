@@ -9,7 +9,9 @@ module Data.Atomics.Internal
    (
     casIntArray#, fetchAddIntArray#, 
     readForCAS#, casMutVarTicketed#, casArrayTicketed#, 
-    Ticket
+    Ticket,
+    -- * Very unsafe, not to be used
+    ptrEq
    )
   where 
 
@@ -30,6 +32,7 @@ import GHC.Prim (readMutVar#, casMutVar#, Any)
 #endif    
 
 #if MIN_VERSION_base(4,7,0) 
+-- These procedures dont exist in this version.
 #else
 #ifdef DEBUG_ATOMICS
 {-# NOINLINE readForCAS# #-}
@@ -41,7 +44,6 @@ import GHC.Prim (readMutVar#, casMutVar#, Any)
 -- I *think* inlining may be ok here as long as casting happens on the arrow types:
 #endif
 #endif
--- End GHC >7.6
 
 --------------------------------------------------------------------------------
 -- CAS and friends
