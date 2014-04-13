@@ -2,7 +2,7 @@
 import Control.Monad
 import Data.IORef
 import Data.Atomics
-import Data.Atomics.Internal (ptrEq)
+-- import Data.Atomics.Internal (ptrEq)
 
 main = do
   r <- newIORef "hi"

@@ -31,18 +31,14 @@ import GHC.Prim (readMutVar#, casMutVar#, Any)
 -- type Any a = Word#
 #endif    
 
-#if MIN_VERSION_base(4,7,0) 
--- These procedures dont exist in this version.
-#else
 #ifdef DEBUG_ATOMICS
 {-# NOINLINE readForCAS# #-}
-{-# NOINLINE casArrayTicketed# #-}
 {-# NOINLINE casMutVarTicketed# #-}
+{-# NOINLINE casArrayTicketed# #-}
 #else
 {-# INLINE casMutVarTicketed# #-}
 {-# INLINE casArrayTicketed# #-}
 -- I *think* inlining may be ok here as long as casting happens on the arrow types:
-#endif
 #endif
 
 --------------------------------------------------------------------------------

@@ -13,7 +13,7 @@ Flag opt
 
 Flag threaded
     Description: Enable GHC threaded RTS.
-    Default: False
+    Default: True
 
 Flag withTH
      Description: Build the test suite, including the template-haskell-atomic-primops executable.
@@ -28,9 +28,9 @@ Test-Suite test-atomic-primops
        ghc-options: -O2 -funbox-strict-fields
     if flag(threaded)
        ghc-options: -threaded 
+       ghc-options: -rtsopts -with-rtsopts=-N4
 
     -- Set it to always run with some parallelism.
-    ghc-options: -rtsopts -with-rtsopts=-N4
        
     build-depends: base, ghc-prim, primitive, containers, random, atomic-primops >= 0.6,
                    -- For Testing:

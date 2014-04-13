@@ -34,8 +34,9 @@ fi
 
 if [ "$THREADING" == "nothreads" ]; then 
   echo "Compiling without threading support."
+  CBLARGS="$CBLARGS -f-threaded "
 else
-  CBLARGS="$CBLARGS --ghc-options=-threaded "
+  CBLARGS="$CBLARGS -fthreaded --ghc-options=-threaded "
 fi
 
 cabal sandbox init
