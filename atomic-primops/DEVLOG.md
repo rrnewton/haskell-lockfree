@@ -340,3 +340,20 @@ Could that somehow happen if there were two different (boxed) objects
 representing 14?  
 
 
+[2014.04.13] {On debug branch, working on Issue 28}
+---------------------------------------------------
+
+Ok, right now Issue28.hs does fail whether it is run as a standalone
+executable or as part of the bigger test suite:
+
+    cd atomic-primops/testing/
+    cabal install --reinstall --with-ghc=ghc-7.8.2 .. . --enable-tests 
+    ./dist/build/test-atomic-primops/test-atomic-primops -j1 -t stand
+
+And taht is in the same batch of tests where SIMILAR tests such as
+case_casTicket1 pass.  Next, I also copied the same Issue28.hs code
+into Test.hs with the other tests.
+
+    ./dist/build/test-atomic-primops/test-atomic-primops -j1 -t issue28_copied
+
+This version fails in the same way -- the ticket gets corrupted.

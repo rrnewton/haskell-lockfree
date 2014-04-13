@@ -2,7 +2,7 @@
 -- Trying a completely separate .cabal for testing.
 
 Name:                test-atomic-primops
-Version:             0.6.0.3
+Version:             0.6.0.4
 Build-type:          Simple
 Cabal-version:       >=1.8
 
@@ -32,7 +32,7 @@ Test-Suite test-atomic-primops
 
     -- Set it to always run with some parallelism.
        
-    build-depends: base, ghc-prim, primitive, containers, random, atomic-primops >= 0.6,
+    build-depends: base, ghc-prim, primitive, containers, random, atomic-primops >= 0.6.0.4,
                    -- For Testing:
                    time, HUnit, test-framework, test-framework-hunit
 
@@ -52,7 +52,7 @@ Test-suite template-haskell-atomic-primops
   main-is: ghci-test.hs
   if flag(withTH) {
     Buildable: True
-    build-depends: base >= 4.5, atomic-primops >= 0.5, template-haskell,
+    build-depends: base >= 4.5, atomic-primops >= 0.6.0.4, template-haskell,
                    -- For Testing:
                    test-framework, test-framework-hunit
   } else {
@@ -62,7 +62,7 @@ Test-suite template-haskell-atomic-primops
 -- A very simple test of one primop included in GHC 7.8:
 Test-suite raw_CAS
   type:    exitcode-stdio-1.0
-  build-depends: base, ghc-prim, atomic-primops >= 0.6
+  build-depends: base, ghc-prim, atomic-primops >= 0.6.0.4
 -- ghc-prim, primitive, containers, random, atomic-primops >= 0.5.0.2,
   main-is: Raw781_test.hs
   if impl(ghc < 7.7) {
@@ -72,7 +72,7 @@ Test-suite raw_CAS
 
 Test-suite Issue28
   type:    exitcode-stdio-1.0
-  build-depends: base, ghc-prim, atomic-primops >= 0.6
+  build-depends: base, ghc-prim, atomic-primops >= 0.6.0.4
   main-is: Issue28.hs
   ghc-options: -main-is Issue28.main
   -- if impl(ghc < 7.7) {
