@@ -34,6 +34,8 @@ import Debug.Trace      (trace)
 import Data.Atomics as A
 import Data.Atomics (casArrayElem, readArrayElem)
 
+import qualified Issue28
+
 import CommonTesting 
 import qualified CounterReference 
 import qualified CounterUnboxed
@@ -60,6 +62,7 @@ main = do
        
        defaultMain $ 
          [ testCase "casTicket1"              case_casTicket1
+         , testCase "issue28_standalone"      case_issue28_standalone
          , testCase "create_and_read"         case_create_and_read
          , testCase "create_and_mutate"       case_create_and_mutate
          , testCase "create_and_mutate_twice" case_create_and_mutate_twice
@@ -217,6 +220,11 @@ case_casTicket1 = do
   dbgPrint 1$"To check contents, did a SECOND read: "++show res3
 
   return ()
+
+case_issue28_standalone :: Assertion
+case_issue28_standalone = 
+  do Issue28.main
+     putStrLn "Issue28.main passed"
 
 ---- toddaaro's tests -----
 
