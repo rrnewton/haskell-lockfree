@@ -357,3 +357,55 @@ into Test.hs with the other tests.
     ./dist/build/test-atomic-primops/test-atomic-primops -j1 -t issue28_copied
 
 This version fails in the same way -- the ticket gets corrupted.
+
+
+
+
+[2014.04.13] {GHC panic}
+------------------------
+
+Just cherry-picked a patch from the debug to master branch.
+Got this:
+
+    $ ghc-7.8.2 -main-is Issue28.main -threaded -O2 Issue28.hs -fforce-recomp -rtsopts -with-rts
+    opts=-N4 $GHCDUMP
+    [1 of 1] Compiling Issue28          ( Issue28.hs, Issue28.o )
+    ghc: panic! (the 'impossible' happened)
+      (GHC version 7.8.2 for x86_64-apple-darwin):
+            Iface Lint failure
+        In interface for atomic-primops-0.6.0.4:Data.Atomics
+        Unfolding of casIORef{v r5s}
+          <no location info>: Warning:
+              In the expression: casMutVar#{(w) v 94F} [gid[PrimOp]]
+                                   @ Any{(w) tc 31N}
+                                   @ Any{(w) tc 31N}
+                                   (var{v a12G} [lid]
+                                    `cast` ((MutVar#{(w) tc 32F}
+                                               (UnivCo nominal RealWorld{(w) tc 31E} Any{(w) tc 31N})
+                                               (UnivCo representational
+                                                  a11{tv a12y} [tv] Any{(w) tc 31N}))_R
+                                            :: MutVar#{(w) tc 32F}
+                                                 RealWorld{(w) tc 31E} a11{tv a12y} [tv]
+                                                 ~#
+                                               MutVar#{(w) tc 32F} Any{(w) tc 31N} Any{(w) tc 31N}))
+                                   (old{v a12A} [lid]
+                                    `cast` (Any{(w) tc 31N}_R :: Any{(w) tc 31N} ~# Any{(w) tc 31N}))
+                                   (new{v a12B} [lid]
+                                    `cast` (UnivCo representational
+                                              a11{tv a12y} [tv] (Ticket{tc r5g} a11{tv a12y} [tv])
+                                            ; Any{(w) tc 31N}_R
+                                            :: a11{tv a12y} [tv] ~# Any{(w) tc 31N}))
+                                   (st{v a12I} [lid]
+                                    `cast` ((State#{(w) tc 32q}
+                                               (UnivCo nominal RealWorld{(w) tc 31E} Any{(w) tc 31N}))_R
+                                            :: State#{(w) tc 32q} RealWorld{(w) tc 31E}
+                                                 ~#
+                                               State#{(w) tc 32q} Any{(w) tc 31N}))
+              From-type of Cast differs from type of enclosed expression
+              From-type: Any{(w) tc 31N}
+              Type of enclosed expr: Ticket{tc r5g} a11{tv a12y} [tv]
+              Actual enclosed expr: old{v a12A} [lid]
+              Coercion used in cast: Any{(w) tc 31N}_R
+
+
+
