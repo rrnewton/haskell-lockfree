@@ -1,7 +1,11 @@
-#!/bin/bash
 
 set -e
 set -x
+
+if [ "$JENKINS_GHC" == "" ]; then 
+  echo "Must set JENKINS_GHC to, e.g. '7.6.3', to run this script."
+  exit 1
+fi
 
 source $HOME/rn_jenkins_scripts/acquire_ghc.sh
 which cabal
@@ -9,16 +13,9 @@ cabal --version
 
 which -a llc || echo "No LLVM"
 
-# AtomicPrimops/testing/
-PKGS="atomic-primops/ atomic-primops/testing/ atomic-primops-foreign/ abstract-deque/ abstract-deque-tests/ lockfree-queue/ chaselev-deque/ mega-deque/"
 
 # Pass OPTLVL directly to cabal:
 CBLARGS=" -j $OPTLVL "
-
-if [ "$JENKINS_GHC" == "" ]; then 
-  echo "Must set JENKINS_GHC env var to run this script."
-  exit 1
-fi
 
 if [ "$PROF" == "prof" ]; then 
   CBLARGS="$CBLARGS --enable-library-profiling --enable-executable-profiling"
@@ -39,10 +36,12 @@ else
   CBLARGS="$CBLARGS -fthreaded --ghc-options=-threaded "
 fi
 
+ALLPKGS="$PKGS $NOTEST_PKGS"
+
 cabal sandbox init
 
 root=`pwd`
-for subdir in $PKGS; do 
+for subdir in $ALLPKGS; do 
   cd "$root/$subdir"
   cabal sandbox init --sandbox=$root/.cabal-sandbox
 done
@@ -51,7 +50,7 @@ cd "$root"
 
 # First install everything without testing:
 CMDROOT="cabal install --reinstall --with-ghc=ghc-$JENKINS_GHC --force-reinstalls"
-$CMDROOT $CBLARGS $PKGS
+$CMDROOT $CBLARGS $ALLPKGS
 
 # Now install the DEPENDENCIES for testing
 $CMDROOT $CBLARGS $PKGS --enable-tests --only-dependencies
