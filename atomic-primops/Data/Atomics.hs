@@ -1,4 +1,4 @@
-{-# LANGUAGE  MagicHash, UnboxedTuples, ScopedTypeVariables, CPP #-}
+{-# LANGUAGE  MagicHash, UnboxedTuples, ScopedTypeVariables, BangPatterns, CPP #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 
 -- | Provides atomic memory operations on IORefs and Mutable Arrays.
@@ -92,11 +92,13 @@ import GHC.Word (Word(W#))
 
 -- | Compare-and-swap.  Follows the same rules as `casIORef`, returning the ticket for
 --   then next operation.
+-- 
+--   By convention this is WHNF strict in the "new" value provided.
 casArrayElem :: MutableArray RealWorld a -> Int -> Ticket a -> a -> IO (Bool, Ticket a)
 -- casArrayElem (MutableArray arr#) (I# i#) old new = IO$ \s1# ->
 --  case casArray# arr# i# old new s1# of 
 --    (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, res) #)
-casArrayElem arr i old new = casArrayElem2 arr i old (seal new)
+casArrayElem arr i old !new = casArrayElem2 arr i old (seal new)
 
 -- | This variant takes two tickets: the 'new' value is a ticket rather than an
 -- arbitrary, lifted, Haskell value.
@@ -169,11 +171,15 @@ readForCAS (IORef (STRef mv)) = readMutVarForCAS mv
 -- the user of this module from needing to worry about the pointer equality of their
 -- values, which in general requires reasoning about the details of the Haskell
 -- implementation (GHC).
+--
+-- By convention this function is strict in the "new" value argument.  This isn't
+-- absolutely necesary, but we think it's a bad habit to use unevaluated thunks in
+-- this context.
 casIORef :: IORef a  -- ^ The 'IORef' containing a value 'current'
          -> Ticket a -- ^ A ticket for the 'old' value
          -> a        -- ^ The 'new' value to replace 'current' if @old == current@
          -> IO (Bool, Ticket a) -- ^ Success flag, plus ticket for the NEXT operation.
-casIORef (IORef (STRef var)) old new = casMutVar var old new 
+casIORef (IORef (STRef var)) old !new = casMutVar var old new 
 
 -- | This variant takes two tickets, i.e. the 'new' value is a ticket rather than an
 -- arbitrary, lifted, Haskell value.
@@ -205,8 +211,9 @@ readMutVarForCAS mv = IO$ \ st -> readForCAS# mv st
 
 -- | MutVar counterpart of `casIORef`.
 --
+--   By convention this is WHNF strict in the "new" value provided.
 casMutVar :: MutVar# RealWorld a -> Ticket a -> a -> IO (Bool, Ticket a)
-casMutVar mv tick new = 
+casMutVar mv tick !new = 
   -- trace ("TEMPDBG: Inside casMutVar.. ") $ 
   casMutVar2 mv tick (seal new)
 
