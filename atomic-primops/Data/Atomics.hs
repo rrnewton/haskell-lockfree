@@ -1,4 +1,4 @@
-{-# LANGUAGE  MagicHash, UnboxedTuples, BangPatterns, ScopedTypeVariables, CPP #-}
+{-# LANGUAGE  MagicHash, UnboxedTuples, ScopedTypeVariables, CPP #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 
 -- | Provides atomic memory operations on IORefs and Mutable Arrays.
@@ -210,19 +210,19 @@ seal = unsafeCoerce#
 
 -- | Like `readForCAS`, but for `MutVar#`.
 readMutVarForCAS :: MutVar# RealWorld a -> IO ( Ticket a )
-readMutVarForCAS !mv = IO$ \ st -> readForCAS# mv st
+readMutVarForCAS mv = IO$ \ st -> readForCAS# mv st
 
 -- | MutVar counterpart of `casIORef`.
 --
 casMutVar :: MutVar# RealWorld a -> Ticket a -> a -> IO (Bool, Ticket a)
-casMutVar !mv !tick !new = 
+casMutVar mv tick new = 
   -- trace ("TEMPDBG: Inside casMutVar.. ") $ 
   casMutVar2 mv tick (seal new)
 
 -- | This variant takes two tickets, i.e. the 'new' value is a ticket rather than an
 -- arbitrary, lifted, Haskell value.
 casMutVar2 :: MutVar# RealWorld a -> Ticket a -> Ticket a -> IO (Bool, Ticket a)
-casMutVar2 !mv !tick !new = IO$ \st -> 
+casMutVar2 mv tick new = IO$ \st -> 
   case casMutVarTicketed# mv tick new st of 
     (# st, flag, tick' #) ->
       (# st, (flag ==# 0#, tick') #)

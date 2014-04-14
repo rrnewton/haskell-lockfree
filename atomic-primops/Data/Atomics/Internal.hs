@@ -118,6 +118,8 @@ foreign import prim "stg_casMutVar2zh" casMutVar_TypeErased#
 foreign import prim "stg_readMutVar2zh" readMutVar_TypeErased#
   :: MutVar# RealWorld () -> 
      State# RealWorld -> (# State# RealWorld, Any () #)
+  -- with has_side_effects = True
+  --      commutable = False
 
 foreign import prim "stg_casByteArrayIntzh" casIntArray#
   :: MutableByteArray# s -> Int# -> Int# -> Int# ->
