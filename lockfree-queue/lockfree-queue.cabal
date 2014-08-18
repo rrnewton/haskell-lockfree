@@ -1,5 +1,5 @@
 Name:                lockfree-queue
-Version:             0.2.3
+Version:             0.2.3.1
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan R. Newton
@@ -51,8 +51,11 @@ Source-Repository head
 
 Test-Suite test-lockfree-queue
     type:       exitcode-stdio-1.0
+    hs-source-dirs: ./tests/
     main-is:    Test.hs
-    build-depends: base >= 4.4.0.0 && < 5, bytestring, 
+    build-depends: lockfree-queue
+    build-depends: base >= 4.4.0.0 && < 5, 
+                   bytestring, 
                    abstract-deque >= 0.3, abstract-deque-tests >= 0.3, 
                    HUnit, test-framework, test-framework-hunit,
                    ghc-prim, atomic-primops >= 0.6
