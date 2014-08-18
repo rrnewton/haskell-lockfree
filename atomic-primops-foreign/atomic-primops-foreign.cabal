@@ -1,5 +1,5 @@
 Name:                atomic-primops-foreign
-Version:             0.6.1
+Version:             0.6.2
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan Newton
@@ -24,7 +24,7 @@ Library
 
   -- This can go back further than the atomic-primops package in supporting old GHC's:
   -- For now let's say GHC 7.0 through 7.8:
-  build-depends: base >= 4.3.0.0 && <= 4.7.0.0
+  build-depends: base >= 4.3.0.0 && < 4.8.0.0
   CC-Options:       -Wall 
 
 Test-Suite test-atomic-primops-foreign
