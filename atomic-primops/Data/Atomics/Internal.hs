@@ -36,7 +36,7 @@ import GHC.Prim (readMutVar#, casMutVar#, Any)
 {-# NOINLINE casMutVarTicketed# #-}
 {-# NOINLINE casArrayTicketed# #-}
 #else
-{-# INLINE casMutVarTicketed# #-}
+-- {-# INLINE casMutVarTicketed# #-}
 {-# INLINE casArrayTicketed# #-}
 -- I *think* inlining may be ok here as long as casting happens on the arrow types:
 #endif
@@ -67,13 +67,12 @@ casArrayTicketed# = unsafeCoerce#
 -- on the other hand, is a first-class object that can be handled by the user,
 -- but will not have its pointer identity changed by compiler optimizations
 -- (but will of course, change addresses during garbage collection).
-type Ticket a = Any a
+newtype Ticket a = Ticket Any
 -- If we allow tickets to be a pointer type, then the garbage collector will update
 -- the pointer when the object moves.
 
 instance Show (Ticket a) where
   show _ = "<CAS_ticket>"
-
 
 {-# NOINLINE ptrEq #-}
 ptrEq :: a -> a -> Bool
@@ -105,7 +104,6 @@ casMutVarTicketed# =
 #else
   unsafeCoerce# casMutVar_TypeErased#
 #endif
-
 
 --------------------------------------------------------------------------------
 -- Type-erased versions that call the raw foreign primops:
