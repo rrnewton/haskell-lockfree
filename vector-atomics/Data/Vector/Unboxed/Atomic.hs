@@ -24,7 +24,7 @@ import qualified Foreign.Ptr as P
   
 --------------------------------------------------------------------------------
 
--- | Vector types which are implemented as sangle MutableByteArray, and whose
+-- | Vector types which are implemented as single MutableByteArray, and whose
 -- elements are of an appropriate size to perform atomic memory operations on them.
 class IsOneMBV v a where
   getMutableByteArray :: v s a -> MutableByteArray s
