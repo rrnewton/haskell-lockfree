@@ -7,9 +7,13 @@ if [ "$JENKINS_GHC" == "" ]; then
   exit 1
 fi
 
+if [ "$CABAL" == "" ]; then 
+  CABAL=cabal
+fi
+
 source $HOME/rn_jenkins_scripts/acquire_ghc.sh
-which cabal
-cabal --version
+which $CABAL
+$CABAL --version
 
 which -a llc || echo "No LLVM"
 
@@ -38,29 +42,29 @@ fi
 
 ALLPKGS="$PKGS $NOTEST_PKGS"
 
-cabal sandbox init
+$CABAL sandbox init
 
 root=`pwd`
 for subdir in $ALLPKGS; do 
   cd "$root/$subdir"
-  cabal sandbox init --sandbox=$root/.cabal-sandbox
+  $CABAL sandbox init --sandbox=$root/.cabal-sandbox
 done
 cd "$root"
 
 
 # First install everything without testing:
-CMDROOT="cabal install --reinstall --with-ghc=ghc-$JENKINS_GHC --force-reinstalls"
+CMDROOT="$CABAL install --reinstall --with-ghc=ghc-$JENKINS_GHC --force-reinstalls"
 $CMDROOT $CBLARGS $ALLPKGS
 
 # Now install the DEPENDENCIES for testing
 $CMDROOT $CBLARGS $PKGS --enable-tests --only-dependencies
 
 # List what we've got:
-cabal sandbox hc-pkg list
+$CABAL sandbox hc-pkg list
 
 echo "Everything installed, now to test."
 for subdir in $PKGS; do 
   cd "$root/$subdir"
   # Print the individual test outputs:
-  cabal test --show-details=always
+  $CABAL test --show-details=always
 done
