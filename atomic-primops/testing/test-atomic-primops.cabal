@@ -15,10 +15,11 @@ Flag threaded
     Description: Enable GHC threaded RTS.
     Default: True
 
+-- The MAIN test suite:
 Test-Suite test-atomic-primops
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
-    ghc-options: -rtsopts
+    ghc-options: -rtsopts -main-is Test.main
 
     if flag(opt)
        ghc-options: -O2 -funbox-strict-fields
@@ -27,11 +28,9 @@ Test-Suite test-atomic-primops
        ghc-options: -rtsopts -with-rtsopts=-N4
 
     -- Set it to always run with some parallelism.
-       
     build-depends: base, ghc-prim, primitive, containers, random, atomic-primops >= 0.6.0.5,
                    -- For Testing:
                    time, HUnit, test-framework, test-framework-hunit
-
     -- Optional: Debugging generated code:
     --    ghc-options: -keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint
     --    ghc-options: -ddump-ds -ddump-simpl -ddump-stg -ddump-asm -ddump-bcos -ddump-cmm -ddump-opt-cmm -ddump-inlinings
@@ -75,3 +74,11 @@ Test-suite Issue28
   --   Buildable: False  
   -- }
 
+Benchmark atomic-primops-MicroBench
+  type:    exitcode-stdio-1.0
+  build-depends: base, ghc-prim, primitive, containers, random,
+                 atomic-primops >= 0.6.0.5, 
+                 deepseq >= 1.3, 
+                 time, HUnit, test-framework, test-framework-hunit
+  build-depends: criterion >= 1.0
+  main-is: MicroBench.hs

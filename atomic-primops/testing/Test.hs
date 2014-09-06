@@ -1,15 +1,16 @@
 {-# LANGUAGE MagicHash, UnboxedTuples, BangPatterns, ScopedTypeVariables, NamedFieldPuns, CPP #-}
 
+module Test ( main,
+              test_all_hammer_one ) where
+
 -- | This test has three different modes which can be toggled via the
 -- C preprocessor.  Any subset of the three may be activated.
 
 import Control.Monad
 -- import Control.Monad.ST (stToIO)
 import Control.Exception (evaluate)
-import Control.Concurrent.MVar
 import Data.IORef (modifyIORef')
 import Data.Int
-import Data.Time.Clock
 import Data.Primitive.Array
 import Data.Word
 import qualified Data.Set as S
@@ -19,16 +20,11 @@ import GHC.Conc
 import GHC.STRef
 import GHC.IORef
 import GHC.Stats (getGCStats, GCStats(..))
-import GHC.IO (unsafePerformIO)
 import System.Random (randomIO, randomRIO)
 import Test.HUnit (Assertion, assertEqual, assertBool)
-import Test.Framework  (Test, defaultMain, testGroup)
+import Test.Framework  (defaultMain)
 import Test.Framework.Providers.HUnit (testCase)
 import System.Mem (performGC)
-import System.Mem.StableName (makeStableName, hashStableName, StableName)
-import System.Environment (getEnvironment)
-import System.IO        (stdout, stderr, hPutStrLn, hFlush)
-import Debug.Trace      (trace)
 
 ----------------------------------------
 import Data.Atomics as A
