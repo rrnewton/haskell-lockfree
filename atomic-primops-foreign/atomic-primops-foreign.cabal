@@ -1,5 +1,5 @@
 Name:                atomic-primops-foreign
-Version:             0.6.2
+Version:             0.6.2.1
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan Newton
@@ -11,6 +11,7 @@ HomePage: https://github.com/rrnewton/haskell-lockfree/wiki
 Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
 
 -- 0.6 -- Factored out of parent module to separate dependencies.
+-- 0.6.2.1 -- ver constraints only
 
 Synopsis: An atomic counter implemented using the FFI.
 Description: 
@@ -35,7 +36,7 @@ Test-Suite test-atomic-primops-foreign
 
     ghc-options: -threaded -rtsopts -with-rtsopts=-N4
     build-depends: bits-atomic
-    build-depends: base >= 4.3.0.0 && <= 4.7.0.0, 
+    build-depends: base >= 4.3.0.0 && <= 4.8.0.0, 
                    -- For Testing:
                    time, HUnit, test-framework, test-framework-hunit
 
