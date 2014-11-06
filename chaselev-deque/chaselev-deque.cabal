@@ -28,7 +28,7 @@ Description:
   used for work-stealing.
   This implementation derives directly from the pseudocode in the 2005 SPAA paper:
   .
-  "http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.170.1097&rep=rep1&type=pdf"
+  http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.170.1097&rep=rep1&type=pdf
 
 Extra-Source-Files: Test.hs RegressionTests/Issue5.hs RegressionTests/Issue5B.hs
 
