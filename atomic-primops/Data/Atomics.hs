@@ -136,6 +136,7 @@ casByteArrayInt (MutableByteArray mba#) (I# ix#) (I# old#) (I# new#) =
   (# s2#, (I# res) #)
   -- I don't know if a let will mak any difference here... hopefully not.
 
+{-# DEPRECATED fetchAddByteArrayInt "Replaced by fetchAddIntArray" #-}
 -- | Atomically add to a word of memory within a `MutableByteArray`.
 -- 
 --   This function returns the NEW value of the location after the increment.
