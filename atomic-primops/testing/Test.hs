@@ -316,7 +316,7 @@ test_succeed_once n =
      bitls <- newIORef []
      tick1 <- A.readForCAS r
      let loop 0 = return ()
-	 loop n = do
+         loop n = do
           res <- A.casIORef r tick1 100
           atomicModifyIORef bitls (\x -> (res:x, ()))
 --          putStrLn$ "  CAS result: " ++ show res
@@ -364,12 +364,12 @@ test_all_hammer_one threads iters seed = do
   logs::[[Bool]] <- forkJoin threads $ \_ -> 
     do checkGCStats
        let loop 0 _ _ !acc = return (reverse acc)
-	   loop n !ticket !expected !acc = do
+           loop n !ticket !expected !acc = do
             -- This line will result in boxing/unboxing and using extra memory locations:
 --            let bumped = expected + 1 
             bumped <- evaluate$ expected + 1
-	    (res,tick) <- casIORef ref ticket bumped
-	    case res of
+            (res,tick) <- casIORef ref ticket bumped
+            case res of
               True -> do
                 when (iters < 30) $
                   dbgPrint 1$ "  Succeed CAS, old tick "++show ticket++" new "++show tick++", wrote "++show bumped
@@ -414,18 +414,18 @@ testCAS3 iters ref =
  where 
    loop 0  = return ()
    loop n  = do
-	-- let bumped = expected+1 -- Must do this only once, should be NOINLINE
+    -- let bumped = expected+1 -- Must do this only once, should be NOINLINE
 --        let bump !x !y = x+y
 #ifdef T1
-	A.atomicModifyIORefCAS_ ref (+1)
+    A.atomicModifyIORefCAS_ ref (+1)
 #endif
 #ifdef T2
---	B.atomicModifyIORefCAS_ ref (+1)
---	B.atomicModifyIORefCAS_ ref (bump 1)
-	x <- atomicModifyIORef ref (\x -> (x+1,x))
+--  B.atomicModifyIORefCAS_ ref (+1)
+--  B.atomicModifyIORefCAS_ ref (bump 1)
+    x <- atomicModifyIORef ref (\x -> (x+1,x))
         evaluate x -- Avoid stack leak.
 #endif
-	loop (n-1)
+    loop (n-1)
 
 ----------------------------------------------------------------------------------------------------       
 -- This version uses a non-scalar type for CAS.  It instead
@@ -455,8 +455,8 @@ testCAS4 iters ref = do
     tl' <- readCASable tl
     case tl' of 
       Null -> do (b,v) <- cas tl tl' new
-		 if b then loop (n-1) v
-		      else loop v
+         if b then loop (n-1) v
+              else loop v
       cons -> loop cons tl'
   loop n _ Null = error "too short"
 #endif
@@ -492,11 +492,11 @@ checkOutput3 msg iters ls fin = do
 --   a <- newStablePtr x 
 --   b <- newStablePtr x 
 --   printf "First call, word %d IntPtr %d\n" 
--- 	 (unsafeCoerce a :: Word)
--- 	 ((fromIntegral$ ptrToIntPtr $ castStablePtrToPtr a) :: Int)
+--   (unsafeCoerce a :: Word)
+--   ((fromIntegral$ ptrToIntPtr $ castStablePtrToPtr a) :: Int)
 --   printf "Second call, word %d IntPtr %d\n" 
--- 	 (unsafeCoerce b :: Word)
--- 	 ((fromIntegral$ ptrToIntPtr $ castStablePtrToPtr b) :: Int)
+--   (unsafeCoerce b :: Word)
+--   ((fromIntegral$ ptrToIntPtr $ castStablePtrToPtr b) :: Int)
 
 
 -- main = test 3

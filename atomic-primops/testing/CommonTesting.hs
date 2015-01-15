@@ -46,7 +46,7 @@ forkJoin numthreads action =
      dbgPrint 1 $ printf "Forking %d threads.\n" numthreads
     
      forM_ (zip [0..] answers) $ \ (ix,mv) -> 
- 	forkIO (action ix >>= putMVar mv)
+       forkIO (action ix >>= putMVar mv)
 
      -- Reading answers:
      ls <- mapM readMVar answers
@@ -158,5 +158,5 @@ for_ start end _fn | start > end = error "for_: start is greater than end"
 for_ start end fn = loop start
   where
    loop !i | i == end  = return ()
-	   | otherwise = do fn i; loop (i+1)
+           | otherwise = do fn i; loop (i+1)
 
