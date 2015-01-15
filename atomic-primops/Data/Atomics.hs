@@ -136,7 +136,7 @@ casByteArrayInt (MutableByteArray mba#) (I# ix#) (I# old#) (I# new#) =
   (# s2#, (I# res) #)
   -- I don't know if a let will mak any difference here... hopefully not.
 
-{-# DEPRECATED fetchAddByteArrayInt "Replaced by fetchAddIntArray" #-}
+{-# DEPRECATED fetchAddByteArrayInt "Replaced by fetchAddIntArray which returns the OLD value" #-}
 -- | Atomically add to a word of memory within a `MutableByteArray`.
 -- 
 --   This function returns the NEW value of the location after the increment.
@@ -145,7 +145,13 @@ casByteArrayInt (MutableByteArray mba#) (I# ix#) (I# old#) (I# new#) =
 fetchAddByteArrayInt ::  MutableByteArray RealWorld -> Int -> Int -> IO Int
 fetchAddByteArrayInt (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1# -> 
   let (# s2#, res #) = fetchAddIntArray# mba# offset# incr# s1# in
+-- fetchAddIntArray# changed behavior in 7.10 to return the OLD value, so we
+-- need this to maintain forwards compatibility until removed:
+#if MIN_VERSION_base(4,8,0)
+  (# s2#, (I# (res +# incr#)) #)
+#else
   (# s2#, (I# res) #)
+#endif
 
 --------------------------------------------------------------------------------
 

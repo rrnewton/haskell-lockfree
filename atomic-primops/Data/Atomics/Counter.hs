@@ -142,7 +142,13 @@ sameCTicket = (==)
 incrCounter :: Int -> AtomicCounter -> IO Int
 incrCounter (I# incr#) (AtomicCounter mba#) = IO $ \ s1# -> 
   let (# s2#, res #) = fetchAddIntArray# mba# 0# incr# s1# in
+-- fetchAddIntArray# changed behavior in 7.10 to return the OLD value, so we
+-- need this to maintain forwards compatibility:
+#if MIN_VERSION_base(4,8,0)
+  (# s2#, (I# (res +# incr#)) #)
+#else
   (# s2#, (I# res) #)
+#endif
 
 {-# INLINE incrCounter_ #-}
 -- | An alternate version for when you don't care about the old value.
