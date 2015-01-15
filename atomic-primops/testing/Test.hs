@@ -118,10 +118,10 @@ case_casmutarray1 = do
  tick <- readArrayElem arr 4
  putStrLn$ "(Peeking at array gave: "++show (peekTicket tick)++")"
 
- (res1,tick2) <- casArrayElem arr 3 tick 44
- (res2,_)     <- casArrayElem arr 3 tick 44
--- res  <- stToIO$ casArrayST arr 3 mynum 44
--- res2 <- stToIO$ casArrayST arr 3 mynum 44 
+ (res1,tick2) <- casArrayElem arr 4 tick 44
+ (res2,_)     <- casArrayElem arr 4 tick 44
+-- res  <- stToIO$ casArrayST arr 4 mynum 44
+-- res2 <- stToIO$ casArrayST arr 4 mynum 44 
 
  putStrLn "Printing array:"
  forM_ [0..4] $ \ i -> do
