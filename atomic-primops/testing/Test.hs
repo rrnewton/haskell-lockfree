@@ -33,9 +33,7 @@ import Data.Atomics (casArrayElem, readArrayElem)
 import qualified Issue28
 
 import CommonTesting 
-import qualified CounterReference 
-import qualified CounterUnboxed
-import qualified CounterIORef
+import qualified Counter
 
 ------------------------------------------------------------------------
 
@@ -90,9 +88,7 @@ main = do
          , size    <- [1, 10, 100]
          , iters   <- [10000]]
 
-         ++ CounterReference.tests
-         ++ CounterUnboxed.tests
-         ++ CounterIORef.tests
+         ++ Counter.tests
 
 setify :: [Int] -> [Int]
 setify = S.toList . S.fromList

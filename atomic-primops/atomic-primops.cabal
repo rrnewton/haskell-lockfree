@@ -98,10 +98,6 @@ Library
   exposed-modules:   Data.Atomics
                      Data.Atomics.Internal
                      Data.Atomics.Counter
-  other-modules:
-                     Data.Atomics.Counter.IORef
-                     Data.Atomics.Counter.Reference
-                     Data.Atomics.Counter.Unboxed
   ghc-options: -O2 -funbox-strict-fields
 
   -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater

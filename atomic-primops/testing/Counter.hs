@@ -1,5 +1,9 @@
+module Counter (tests) where
 
--- Common tests to the different counter implementations.
+-- This was formerly CounterCommon and #include-ed to test the different
+-- counter implementations which have been removed. 
+-- TODO clean up remnants of that approach.
+import qualified Data.Atomics.Counter as C
 
 import Control.Monad
 import GHC.Conc
@@ -10,6 +14,12 @@ import Text.Printf
 import Data.IORef  
 
 import CommonTesting (numElems, forkJoin, timeit, nTimes)
+
+name = "Unboxed"
+
+default_seq_tries  = 10 * numElems
+-- Things are MUCH slower with contention:
+default_conc_tries = numElems
 
 --------------------------------------------------------------------------------
 -- Test the basics
