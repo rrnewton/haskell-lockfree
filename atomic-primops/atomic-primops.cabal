@@ -1,5 +1,5 @@
 Name:                atomic-primops
-Version:             0.6.99
+Version:             0.7
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan Newton
@@ -86,8 +86,10 @@ Description:
 
 Extra-Source-Files:  DEVLOG.md,
                      testing/Test.hs, testing/test-atomic-primops.cabal, testing/ghci-test.hs
-                     testing/Makefile, testing/CommonTesting.hs, testing/CounterCommon.hs, testing/hello.hs
-                     testing/CounterReference.hs testing/CounterUnboxed.hs testing/CounterIORef.hs
+                     testing/Makefile, testing/CommonTesting.hs, testing/Counter.hs, testing/hello.hs
+                     testing/Issue28.hs
+                     testing/TemplateHaskellSplices.hs
+                     testing/Raw781_test.hs
 
 Flag debug
     Description: Enable extra internal checks.
