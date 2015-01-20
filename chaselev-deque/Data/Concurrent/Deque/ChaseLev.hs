@@ -32,8 +32,7 @@ import Control.Exception (catch, SomeException, throw, evaluate,try)
 import Control.Monad (when, unless, forM_)
 
 import Data.Atomics (storeLoadBarrier, writeBarrier, loadLoadBarrier)
--- TODO: Use whichever counter is exported as the DEFAULT:
-import Data.Atomics.Counter.Unboxed
+import Data.Atomics.Counter
        (AtomicCounter, newCounter, readCounter, writeCounter, casCounter, readCounterForCAS, peekCTicket)
 
 -- Debugging:
