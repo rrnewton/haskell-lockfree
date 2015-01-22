@@ -34,6 +34,7 @@ import qualified Issue28
 
 import CommonTesting 
 import qualified Counter
+import qualified Fetch
 
 ------------------------------------------------------------------------
 
@@ -89,6 +90,7 @@ main = do
          , iters   <- [10000]]
 
          ++ Counter.tests
+         ++ Fetch.tests
 
 setify :: [Int] -> [Int]
 setify = S.toList . S.fromList
