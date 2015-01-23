@@ -30,6 +30,9 @@ module Data.Atomics
    fetchNandIntArray,
    fetchOrIntArray,
    fetchXorIntArray,
+   -- ** Reading and writing with barriers
+   atomicReadIntArray,
+   atomicWriteIntArray,
       
    -- * Atomic operations on raw MutVars
    -- | A lower-level version of the IORef interface.
@@ -68,6 +71,14 @@ import GHC.Word (Word(W#))
 -- for fetch* family function fallbacks:
 import Data.Bits
 
+-- imports for GHC < 7.10 conditionals below.
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Monad (void)
+import Data.Primitive.ByteArray (writeByteArray)
+#endif 
+
+
 #ifdef DEBUG_ATOMICS
 #warning "Activating DEBUG_ATOMICS... NOINLINE's and more"
 {-# NOINLINE seal #-}
@@ -88,6 +99,8 @@ import Data.Bits
 {-# NOINLINE fetchNandIntArray #-}
 {-# NOINLINE fetchOrIntArray #-}
 {-# NOINLINE fetchXorIntArray #-}
+{-# NOINLINE atomicReadIntArray #-}
+{-# NOINLINE atomicWriteIntArray #-}
 #else
 {-# INLINE casIORef #-}
 {-# INLINE casArrayElem2 #-}   
@@ -104,6 +117,8 @@ import Data.Bits
 {-# INLINE fetchNandIntArray #-}
 {-# INLINE fetchOrIntArray #-}
 {-# INLINE fetchXorIntArray #-}
+{-# INLINE atomicReadIntArray #-}
+{-# INLINE atomicWriteIntArray #-}
 #endif
 
 
@@ -274,6 +289,41 @@ fetchAddByteArrayInt (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1
 #endif
 
 
+--------------------------------------------------------------------------------
+
+
+-- | Given an array and an offset in Int units, read an element. The index is
+-- assumed to be in bounds. Implies a full memory barrier.
+atomicReadIntArray :: MutableByteArray RealWorld -> Int -> IO Int
+#if MIN_VERSION_base(4,8,0)
+atomicReadIntArray (MutableByteArray mba#) (I# ix#) = IO $ \ s# ->
+    case atomicReadIntArray# mba# ix# s# of
+        (# s2#, n# #) -> (# s2#, I# n# #)
+#else
+atomicReadIntArray mba ix = do
+    -- I don't think we can get a full barrier here with the three barriers we
+    -- have exposed, so we use a no-op CAS, which implies a full barrier
+    casByteArrayInt mba ix 0 0
+{-# WARNING atomicReadIntArray "atomicReadIntArray is implemented with a CAS on GHC <7.10 and may be slower than a readByteArray + one of the barriers exposed here" #-}
+#endif
+
+-- | Given an array and an offset in Int units, write an element. The index is
+-- assumed to be in bounds. Implies a full memory barrier.
+atomicWriteIntArray :: MutableByteArray RealWorld -> Int -> Int -> IO ()
+#if MIN_VERSION_base(4,8,0)
+atomicWriteIntArray (MutableByteArray mba#) (I# ix#) (I# n#) = IO $ \ s# ->
+    case atomicWriteIntArray# mba# ix# n# s# of
+        s2# -> (# s2#, () #)
+#else
+atomicWriteIntArray mba ix n = do
+    -- As above we use a no-op CAS to get a full barrier. This is particularly
+    -- gross TODO something better if possible
+    let fullBarrier = void $ casByteArrayInt mba ix 0 0
+    fullBarrier
+    writeByteArray mba ix n
+    fullBarrier
+{-# WARNING atomicWriteIntArray "atomicWriteIntArray is likely to be very slow on GHC <7.10. Consider using writeByteArray along with one of the barriers exposed here instead" #-}
+#endif
 
 
 --------------------------------------------------------------------------------
