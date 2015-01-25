@@ -28,7 +28,6 @@ import System.Mem (performGC)
 
 ----------------------------------------
 import Data.Atomics as A
-import Data.Atomics (casArrayElem, readArrayElem)
 
 import qualified Issue28
 
@@ -121,11 +120,11 @@ case_casmutarray1 = do
  writeArray arr 4 33
  putStrLn "Wrote array elements..."
  
- tick <- readArrayElem arr 4
+ tick <- A.readArrayElem arr 4
  putStrLn$ "(Peeking at array gave: "++show (peekTicket tick)++")"
 
- (res1,tick2) <- casArrayElem arr 4 tick 44
- (res2,_)     <- casArrayElem arr 4 tick 44
+ (res1,_tick2) <- A.casArrayElem arr 4 tick 44
+ (res2,_)     <- A.casArrayElem arr 4 tick 44
 -- res  <- stToIO$ casArrayST arr 4 mynum 44
 -- res2 <- stToIO$ casArrayST arr 4 mynum 44 
 
@@ -147,12 +146,12 @@ case_casmutarray1 = do
 test_random_array_comm :: Int -> Int -> Int -> IO ()
 test_random_array_comm threads size iters = do 
   arr <- newArray size Nothing
-  tick0 <- readArrayElem arr 0
+  tick0 <- A.readArrayElem arr 0
   for_ 1 size $ \ i -> do
-    t2 <- readArrayElem arr i
+    t2 <- A.readArrayElem arr i
     assertEqual "All initial Nothings in the array should be ticket-equal:" tick0 t2
 
-  ls <- forkJoin threads $ \tid -> do 
+  ls <- forkJoin threads $ \_tid -> do 
     localAcc <- newIORef 0
     for_ 0 iters $ \iter -> do
       -- Randomly pick a position:
@@ -160,13 +159,12 @@ test_random_array_comm threads size iters = do
       -- Randomly either produce or consume:
       b <- randomIO :: IO Bool
       if b then do 
-        (b,newtick) <- casArrayElem arr ix tick0 (Just iter)
-        return ()
+        void $ A.casArrayElem arr ix tick0 (Just iter)
        else do -- Consume:
-        tick <- readArrayElem arr ix
+        tick <- A.readArrayElem arr ix
         case peekTicket tick of
-          Just _  -> do (b,x) <- casArrayElem arr ix tick (peekTicket tick0) -- Set back to Nothing.
-                        when b $ modifyIORef' localAcc (+1)
+          Just _  -> do (success,_) <- A.casArrayElem arr ix tick (peekTicket tick0) -- Set back to Nothing.
+                        when success $ modifyIORef' localAcc (+1)
 --                        print (peekTicket x)
           Nothing -> return ()
         return ()
@@ -180,8 +178,8 @@ test_random_array_comm threads size iters = do
   printf "Per-thread successes: %s\n" (show ls)
   assertBool "Number of successes: " (successes <= (threads * iters) `quot` 2 && successes >= 0)
   for_ 0 size $ \ i -> do
-    x <- readArray arr i
---    putStr (show x ++ " ")
+    _x <- readArray arr i
+--    putStr (show _x ++ " ")
     return ()
   putStrLn ""
   return ()
@@ -190,12 +188,6 @@ test_random_array_comm threads size iters = do
 ----------------------------------------------------------------------------------------------------
 -- Simple, non-parameterized tests
  ----------------------------------------------------------------------------------------------------
-
-{-# NOINLINE zer #-}
-zer :: Int
-zer = 0
-default_iters :: Int
-default_iters = 100000
 
 case_casTicket1 :: IO ()
 case_casTicket1 = do
@@ -227,7 +219,7 @@ case_issue28_copied :: Assertion
 case_issue28_copied = do 
   r  <- newIORef "hi"
   t0 <- readForCAS r
-  (True,t1) <- casIORef r t0 "bye"
+  (True,_t1) <- casIORef r t0 "bye"
   return ()
 
 ---- toddaaro's tests -----
@@ -255,9 +247,9 @@ case_create_and_mutate_twice = do
   dbgPrint 1$ "  Creating a single 'ticket' based variable to mutate twice."
   x <- newIORef (0::Int)
   tick1 <- A.readForCAS(x)
-  res1 <- A.casIORef x tick1 5
+  void $ A.casIORef x tick1 5
   tick2 <- A.readForCAS(x)
-  res2 <- A.casIORef x tick2 120
+  void $ A.casIORef x tick2 120
   valf <- readIORef x
   assertBool "Does the value after the first mutate equal 5?" (peekTicket tick2 == 5)
   assertBool "Does the value after the second mutate equal 120?" (valf == 120)
@@ -270,8 +262,8 @@ case_n_threads_mutate = do
   dbgPrint 1$ "   Creating 120 threads and having each increment a counter value."
   counter <- newIORef (0::Int)
 --  let work :: Int -> IORef Int -> IO (Int,StableName Int,Int,StableName Int,Int)
-  let work :: Int -> IORef Int -> IO (Int,Int,Int,Int,Int)
-      work ix counter = do
+  let work :: Int -> IO (Int,Int,Int,Int,Int)
+      work ix = do
         tick <- A.readForCAS(counter)
         let nxt = peekTicket tick + 1
         (b,was) <- A.casIORef counter tick nxt
@@ -285,8 +277,8 @@ case_n_threads_mutate = do
           putStr "!"
 --          putStrLn $ "("++ show ix ++ ": Fail when putting "++show nxt
 --                     ++", was already "++show (peekTicket was) ++")"
-          work ix counter
-  arr <- forkJoin 120 (\i -> work i counter) 
+          work ix
+  arr <- forkJoin 120 work 
   ans <- readIORef counter
 
   let dups = [ n | (_,_,_,_,n) <- arr] \\ [1..120]
@@ -312,13 +304,13 @@ case_run_barriers = do
 
 -- | First test: Run a simple CAS a small number of times.
 test_succeed_once :: (Show a, Num a, Eq a) => a -> Assertion
-test_succeed_once n = 
+test_succeed_once initialVal = 
   do
      performGC -- We *ASSUME* GC does not happen below.
      performGC -- We *ASSUME* GC does not happen below.
      checkGCStats
      gc1 <- getGCCount 
-     r <- newIORef n
+     r <- newIORef initialVal
      bitls <- newIORef []
      tick1 <- A.readForCAS r
      let loop 0 = return ()
@@ -327,7 +319,7 @@ test_succeed_once n =
           atomicModifyIORef bitls (\x -> (res:x, ()))
 --          putStrLn$ "  CAS result: " ++ show res
           loop (n-1)
-     loop 10
+     loop (10::Int)
 
      x <- readIORef r
      assertEqual "Finished with loop, read cell: " 100 x
@@ -338,7 +330,7 @@ test_succeed_once n =
 
      ls <- readIORef bitls
      let rev = (reverse ls)
-         tickets = map snd rev
+      -- tickets = map snd rev
          (hd:tl) = map fst rev
 
      gc2 <- getGCCount
@@ -413,7 +405,6 @@ test_all_hammer_one threads iters seed = do
 -- Reads and Writes with full barriers:
 {- 
  - WIP
-
 
 import Data.Atomics (atomicReadIntArray, atomicWriteIntArray)
 import Data.Primitive
