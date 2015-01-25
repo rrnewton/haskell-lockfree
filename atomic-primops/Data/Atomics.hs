@@ -30,9 +30,9 @@ module Data.Atomics
    fetchNandIntArray,
    fetchOrIntArray,
    fetchXorIntArray,
-   -- ** Reading and writing with barriers
-   atomicReadIntArray,
-   atomicWriteIntArray,
+   -- -- ** Reading and writing with barriers
+   -- atomicReadIntArray,
+   -- atomicWriteIntArray,
       
    -- * Atomic operations on raw MutVars
    -- | A lower-level version of the IORef interface.
@@ -71,13 +71,6 @@ import GHC.Word (Word(W#))
 -- for fetch* family function fallbacks:
 import Data.Bits
 
--- imports for GHC < 7.10 conditionals below.
-#if MIN_VERSION_base(4,8,0)
-#else
-import Control.Monad (void)
-import Data.Primitive.ByteArray (writeByteArray)
-#endif 
-
 
 #ifdef DEBUG_ATOMICS
 #warning "Activating DEBUG_ATOMICS... NOINLINE's and more"
@@ -99,8 +92,6 @@ import Data.Primitive.ByteArray (writeByteArray)
 {-# NOINLINE fetchNandIntArray #-}
 {-# NOINLINE fetchOrIntArray #-}
 {-# NOINLINE fetchXorIntArray #-}
-{-# NOINLINE atomicReadIntArray #-}
-{-# NOINLINE atomicWriteIntArray #-}
 #else
 {-# INLINE casIORef #-}
 {-# INLINE casArrayElem2 #-}   
@@ -117,8 +108,6 @@ import Data.Primitive.ByteArray (writeByteArray)
 {-# INLINE fetchNandIntArray #-}
 {-# INLINE fetchOrIntArray #-}
 {-# INLINE fetchXorIntArray #-}
-{-# INLINE atomicReadIntArray #-}
-{-# INLINE atomicWriteIntArray #-}
 #endif
 
 
@@ -290,6 +279,17 @@ fetchAddByteArrayInt (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1
 
 
 --------------------------------------------------------------------------------
+{- WIP. Having trouble writing good tests for these, and not sure how useful
+ - these are. See #43 discussion
+ -
+ - Also remember to add these to the INLINE / NOINLINE section when exported
+
+-- imports for GHC < 7.10 conditionals below.
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Monad (void)
+import Data.Primitive.ByteArray (writeByteArray)
+#endif 
 
 
 -- | Given an array and an offset in Int units, read an element. The index is
@@ -325,6 +325,7 @@ atomicWriteIntArray mba ix n = do
 {-# WARNING atomicWriteIntArray "atomicWriteIntArray is likely to be very slow on GHC <7.10. Consider using writeByteArray along with one of the barriers exposed here instead" #-}
 #endif
 
+-}
 
 --------------------------------------------------------------------------------
 

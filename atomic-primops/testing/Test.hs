@@ -408,6 +408,150 @@ test_all_hammer_one threads iters seed = do
              (total_success >= expected_success)
 
 
+
+------------------------------------------------------------------------
+-- Reads and Writes with full barriers:
+{- 
+ - WIP
+
+
+import Data.Atomics (atomicReadIntArray, atomicWriteIntArray)
+import Data.Primitive
+import Control.Concurrent
+import Data.List(sort)
+
+-- TODO DEBUGGING: for required NoBuffering
+import System.IO
+
+
+test_atomic_read_write_sanity :: IO ()
+test_atomic_read_write_sanity = do
+    mba <- newByteArray (sizeOf (undefined :: Int))
+    atomicWriteIntArray mba 0 0
+    x <- atomicReadIntArray mba 0
+    atomicWriteIntArray mba 0 1
+    y <- atomicReadIntArray mba 0
+    assertEqual "test_atomic_read_write_sanity x" x 0
+    assertEqual "test_atomic_read_write_sanity y" y 1
+
+-- These don't really adequately test that we have a *full* barrier, but only
+-- store/store and load/load I think. TODO something better
+test_atomic_read_write_barriers1, test_atomic_read_write_barriers2 :: Int -> IO ()
+
+-- NOTE: We don't observe failure here on x86 with non-atomic reads/writes, but
+-- maybe it will for other architectures. Otherwise this can be removed.
+test_atomic_read_write_barriers1 iters = do
+    let theWrite mba = atomicWriteIntArray mba 0
+        theRead mba = atomicReadIntArray mba 0
+    {- NOTE: We would like this to fail (but it seems to work on x86)
+    let theWrite mba = writeByteArray mba 0
+        theRead mba = readByteArray mba 0
+     -}
+    -- For kicks, a bunch of padding to ensure these are on different cache-lines:
+    mba0 <- newByteArray (sizeOf (undefined :: Int) * 32)
+    mba1 <- newByteArray (sizeOf (undefined :: Int) * 32)
+    writeByteArray mba0 0 (0 :: Int)
+    writeByteArray mba1 0 (1 :: Int)
+    -- One thread increments mba0, then mba1 and repeats. The other repeatedly
+    -- loops reading mba0 and mba1, checking that the value from the first is
+    -- always <= the second:
+    readerWait <- newEmptyMVar
+    void $ forkIO $
+        let go :: Int -> IO ()
+            go n = unless (n > iters) $ do
+                    theWrite mba0 n
+                    theWrite mba1 (n+1)
+                    go (n+1)
+         in go 1
+    void $ forkIO $
+        let go = do x <- theRead mba0
+                    y <- theRead mba1
+                    assertBool "test_atomic_read_write_barriers" $
+                        (x <= y)
+                    when (x < iters) go
+         in go
+-- Peterson's lock: http://en.wikipedia.org/wiki/Peterson%27s_algorithm
+-- 
+-- TODO DEBUGGING see https://github.com/rrnewton/haskell-lockfree/issues/43#issuecomment-71294801
+--                for a discussion of issues to be resolved here.
+test_atomic_read_write_barriers2 iters = do
+
+    hSetBuffering stdout NoBuffering  -- TODO DEBUGGING (THIS APPEARS NECESSARY FOR PUTSTR TRICK BELOW TO WORK, TOO)
+
+    let theWrite mba = atomicWriteIntArray mba 0
+        theRead mba = atomicReadIntArray mba 0
+    {- NOTE: WE WANT TO MAKE SURE THESE FAIL, BUT THEY DON'T !!
+    let theWrite mba (v::Int) = writeByteArray mba 0 v
+        theRead mba = readByteArray mba 0 :: IO Int
+     -}
+    let true = 1 :: Int
+        false = 0 :: Int
+    -- For kicks, a bunch of padding to ensure these are on different cache-lines:
+    flag0 <- newByteArray (sizeOf (undefined :: Int) * 32)
+    flag1 <- newByteArray (sizeOf (undefined :: Int) * 32)
+    turn <- newByteArray (sizeOf (undefined :: Int) * 32)
+    writeByteArray flag0 0 false
+    writeByteArray flag1 0 false
+
+    -- We use our lock to get an atomic counter:
+    counter <- newByteArray (sizeOf (undefined :: Int) * 32)
+    writeByteArray counter 0 (0::Int)
+
+    let petersonIncr flagA flagB turnVal = do
+            theWrite flagA true
+            theWrite turn turnVal
+            let busyWait = do
+                  flagBVal <- theRead flagB
+                  turnVal' <- theRead turn
+                  if turnVal == 1 then putStr "x"  else putStr "+" -- TODO DEBUGGING (THIS APPEARS NECESSARY, AND MUST HAPPEN HERE)
+                  -- putStrLn ""                                      -- TODO DEBUGGING this works too (BUT NOT FOR 1MIL?)
+                  -- void $ newEmptyMVar                              -- TODO DEBUGGING does some heap alloc help? NOPE
+                  -- yield                                             -- TODO DEBUGGING neither this nor -fno-omit-yields seem to help
+                  when (flagBVal == true && turnVal' == 1) busyWait
+            busyWait
+            -- start critical section --
+            old <- theRead counter
+            theWrite counter (old+1)
+            -- exit critical section --
+            theWrite flagA false
+            return old
+
+    out1 <- newEmptyMVar
+    out2 <- newEmptyMVar
+    void $ forkIO $ 
+        (replicateM iters $ petersonIncr flag0 flag1 1)
+          >>= putMVar out1
+    void $ forkIO $ 
+        (replicateM iters $ petersonIncr flag1 flag0 0)
+          >>= putMVar out2
+
+    -- make sure we got some interleaving, and that output was correct:
+    res1 <- takeMVar out1
+    res2 <- takeMVar out2
+
+    let numGaps gaps _ [] = gaps
+        numGaps gaps prev (x:xs)
+            | prev+1 == x = numGaps gaps x xs
+            | otherwise   = numGaps (gaps+1) x xs
+    -- TODO DEBUGGING FYI:
+    print $ numGaps (0::Int) (-1::Int) res1
+    print $ numGaps (0::Int) (-1::Int) res2
+    -- ------------------
+    
+    -- if this fails, fix the test or call with more iters
+    assertBool "test_atomic_read_write_barriers2 had enough interleaving to be legit" $
+           numGaps (0::Int) (-1::Int) res1 > 10000 
+        && numGaps (0::Int) (-1::Int) res2 > 10000
+
+    -- braindead merge check:
+    let ok = sort res1 == res1  
+              &&  sort res2 == res2  
+              &&  sort (res1++res2) == [0..iters*2-1]
+
+    assertBool "test_atomic_read_write_barriers2" ok
+
+ -}
+    
 ----------------------------------------------------------------------------------------------------
 {-
 
