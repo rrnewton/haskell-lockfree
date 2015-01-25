@@ -22,7 +22,7 @@ import GHC.IORef
 import GHC.Stats (getGCStats, GCStats(..))
 import System.Random (randomIO, randomRIO)
 import Test.HUnit (Assertion, assertEqual, assertBool)
-import Test.Framework  (defaultMain)
+import Test.Framework  (defaultMain,testGroup,mutuallyExclusive)
 import Test.Framework.Providers.HUnit (testCase)
 import System.Mem (performGC)
 
@@ -54,8 +54,12 @@ main = do
        -- numcap <- getNumProcessors
        let numcap = 4
        when (numCapabilities /= numcap) $ setNumCapabilities numcap
-       
+
        defaultMain $ 
+        -- Make these run sequentially (hopefully), so we don't interfere with
+        -- concurrent tests. TODO I guess: figure out how to run tests that
+        -- don't fork in parallel, but forking tests sequentially
+        return $ mutuallyExclusive $ testGroup "All tests" $
          [ testCase "casTicket1"              case_casTicket1
          , testCase "issue28_standalone"      case_issue28_standalone
          , testCase "issue28_copied "         case_issue28_copied
