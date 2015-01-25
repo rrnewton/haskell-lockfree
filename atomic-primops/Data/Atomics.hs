@@ -68,9 +68,12 @@ import GHC.Base (Int(I#))
 import GHC.IO (IO(IO))
 import GHC.Word (Word(W#))
 
--- for fetch* family function fallbacks:
-import Data.Bits
 
+#if MIN_VERSION_base(4,8,0)
+#else
+import Data.Bits
+import Data.Primitive.ByteArray (readByteArray)
+#endif
 
 #ifdef DEBUG_ATOMICS
 #warning "Activating DEBUG_ATOMICS... NOINLINE's and more"
@@ -194,7 +197,12 @@ fetchSubIntArray :: MutableByteArray RealWorld
                      -> Int    -- ^ The offset into the array
                      -> Int    -- ^ The value to be subtracted
                      -> IO Int -- ^ The value *before* the addition
-fetchSubIntArray = doAtomicRMW fetchSubIntArray# (-)
+fetchSubIntArray = doAtomicRMW 
+#if MIN_VERSION_base(4,8,0)
+                     fetchSubIntArray# 
+#else
+                     (-)
+#endif
 
 -- | Atomically bitwise AND to a word of memory within a `MutableByteArray`,
 -- returning the value *before* the operation. Implies a full memory barrier.
@@ -202,7 +210,12 @@ fetchAndIntArray :: MutableByteArray RealWorld
                      -> Int    -- ^ The offset into the array
                      -> Int    -- ^ The value to be AND-ed
                      -> IO Int -- ^ The value *before* the addition
-fetchAndIntArray = doAtomicRMW fetchAndIntArray# (.&.)
+fetchAndIntArray = doAtomicRMW 
+#if MIN_VERSION_base(4,8,0)
+                    fetchAndIntArray# 
+#else
+                    (.&.)
+#endif
 
 -- | Atomically bitwise NAND to a word of memory within a `MutableByteArray`,
 -- returning the value *before* the operation. Implies a full memory barrier.
@@ -210,8 +223,13 @@ fetchNandIntArray :: MutableByteArray RealWorld
                      -> Int    -- ^ The offset into the array
                      -> Int    -- ^ The value to be NAND-ed
                      -> IO Int -- ^ The value *before* the addition
-fetchNandIntArray = doAtomicRMW fetchNandIntArray# nand
+fetchNandIntArray = doAtomicRMW 
+#if MIN_VERSION_base(4,8,0)
+                      fetchNandIntArray# 
+#else
+                      nand
     where nand x y = complement (x .&. y)
+#endif
 
 -- | Atomically bitwise OR to a word of memory within a `MutableByteArray`,
 -- returning the value *before* the operation. Implies a full memory barrier.
@@ -219,7 +237,12 @@ fetchOrIntArray :: MutableByteArray RealWorld
                      -> Int    -- ^ The offset into the array
                      -> Int    -- ^ The value to be OR-ed
                      -> IO Int -- ^ The value *before* the addition
-fetchOrIntArray = doAtomicRMW fetchOrIntArray# (.|.)
+fetchOrIntArray = doAtomicRMW 
+#if MIN_VERSION_base(4,8,0)
+                    fetchOrIntArray# 
+#else
+                    (.|.)
+#endif
 
 -- | Atomically bitwise XOR to a word of memory within a `MutableByteArray`,
 -- returning the value *before* the operation. Implies a full memory barrier.
@@ -227,22 +250,29 @@ fetchXorIntArray :: MutableByteArray RealWorld
                      -> Int    -- ^ The offset into the array
                      -> Int    -- ^ The value to be XOR-ed
                      -> IO Int -- ^ The value *before* the addition
-fetchXorIntArray = doAtomicRMW fetchXorIntArray# xor
+fetchXorIntArray = doAtomicRMW 
+#if MIN_VERSION_base(4,8,0)
+                     fetchXorIntArray# 
+#else
+                     xor
+#endif
 
 
 -- Internals for our fetch* family of functions, with CAS loop fallbacks for
 -- GHC < 7.10:
-doAtomicRMW :: (MutableByteArray# RealWorld -> Int# -> Int# -> State# RealWorld -> (# State# RealWorld, Int# #)) --  primop
-            -> (Int -> Int -> Int)                                     --  fallback op for CAS loop
-            -> MutableByteArray RealWorld -> Int -> Int -> IO Int      --  exported function
 {-# INLINE doAtomicRMW #-}
-doAtomicRMW atomicOp# op =
 #if MIN_VERSION_base(4,8,0)
+doAtomicRMW :: (MutableByteArray# RealWorld -> Int# -> Int# -> State# RealWorld -> (# State# RealWorld, Int# #)) --  primop
+            -> MutableByteArray RealWorld -> Int -> Int -> IO Int      --  exported function
+doAtomicRMW atomicOp# =
   \(MutableByteArray mba#) (I# offset#) (I# val#) ->
     IO $ \ s1# -> 
       let (# s2#, res #) = atomicOp# mba# offset# val# s1# in
       (# s2#, (I# res) #)
 #else
+doAtomicRMW :: (Int -> Int -> Int)                                     --  fallback op for CAS loop
+            -> MutableByteArray RealWorld -> Int -> Int -> IO Int      --  exported function
+doAtomicRMW op =
   \mba offset val ->
     let loop = do
           old <- readByteArray mba offset
