@@ -23,14 +23,26 @@ module Data.Atomics
    casArrayElem, casArrayElem2, readArrayElem, 
 
    -- * Atomic operations on byte arrays
-   casByteArrayInt, fetchAddByteArrayInt,
+   casByteArrayInt,
+   fetchAddIntArray,
+   fetchSubIntArray,
+   fetchAndIntArray,
+   fetchNandIntArray,
+   fetchOrIntArray,
+   fetchXorIntArray,
+   -- -- ** Reading and writing with barriers
+   -- atomicReadIntArray,
+   -- atomicWriteIntArray,
       
    -- * Atomic operations on raw MutVars
    -- | A lower-level version of the IORef interface.
    readMutVarForCAS, casMutVar, casMutVar2,
 
    -- * Memory barriers
-   storeLoadBarrier, loadLoadBarrier, writeBarrier
+   storeLoadBarrier, loadLoadBarrier, writeBarrier,
+
+   -- * Deprecated Functions
+   fetchAddByteArrayInt
  ) where
 
 import Control.Monad.ST (stToIO)
@@ -56,6 +68,10 @@ import GHC.Base (Int(I#))
 import GHC.IO (IO(IO))
 import GHC.Word (Word(W#))
 
+-- for fetch* family function fallbacks:
+import Data.Bits
+
+
 #ifdef DEBUG_ATOMICS
 #warning "Activating DEBUG_ATOMICS... NOINLINE's and more"
 {-# NOINLINE seal #-}
@@ -69,6 +85,13 @@ import GHC.Word (Word(W#))
 {-# NOINLINE readMutVarForCAS #-}
 {-# NOINLINE casMutVar #-}
 {-# NOINLINE casMutVar2 #-}
+{-# NOINLINE casByteArrayInt #-}
+{-# NOINLINE fetchAddIntArray #-}
+{-# NOINLINE fetchSubIntArray #-}
+{-# NOINLINE fetchAndIntArray #-}
+{-# NOINLINE fetchNandIntArray #-}
+{-# NOINLINE fetchOrIntArray #-}
+{-# NOINLINE fetchXorIntArray #-}
 #else
 {-# INLINE casIORef #-}
 {-# INLINE casArrayElem2 #-}   
@@ -79,6 +102,12 @@ import GHC.Word (Word(W#))
 {-# INLINE readMutVarForCAS #-}
 {-# INLINE casMutVar #-}
 {-# INLINE casMutVar2 #-}
+{-# INLINE fetchAddIntArray #-}
+{-# INLINE fetchSubIntArray #-}
+{-# INLINE fetchAndIntArray #-}
+{-# INLINE fetchNandIntArray #-}
+{-# INLINE fetchOrIntArray #-}
+{-# INLINE fetchXorIntArray #-}
 #endif
 
 
@@ -122,6 +151,8 @@ readArrayElem (MutableArray arr#) (I# i#) = IO $ \ st -> unsafeCoerce# (fn st)
 -- Further, this version always returns the /old value/, that was read from the array during
 -- the CAS operation.  That is, it follows the normal protocol for CAS operations
 -- (and matches the underlying instruction on most architectures).
+--
+-- Implies a full memory barrier.
 casByteArrayInt ::  MutableByteArray RealWorld -> Int -> Int -> Int -> IO Int
 casByteArrayInt (MutableByteArray mba#) (I# ix#) (I# old#) (I# new#) =
   IO$ \s1# ->
@@ -135,6 +166,99 @@ casByteArrayInt (MutableByteArray mba#) (I# ix#) (I# old#) (I# new#) =
   let (# s2#, res #) = casIntArray# mba# ix# old# new# s1# in
   (# s2#, (I# res) #)
   -- I don't know if a let will mak any difference here... hopefully not.
+
+
+--------------------------------------------------------------------------------
+-- Fetch-and-* family of functions:
+
+-- | Atomically add to a word of memory within a `MutableByteArray`, returning
+-- the value *before* the operation. Implies a full memory barrier.
+fetchAddIntArray :: MutableByteArray RealWorld 
+                     -> Int    -- ^ The offset into the array
+                     -> Int    -- ^ The value to be added
+                     -> IO Int -- ^ The value *before* the addition
+fetchAddIntArray (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1# -> 
+  let (# s2#, res #) = fetchAddIntArray# mba# offset# incr# s1# in
+-- fetchAddIntArray# changed behavior in 7.10 to return the OLD value, so we
+-- need this to maintain backwards compatibility:
+#if MIN_VERSION_base(4,8,0)
+  (# s2#, (I# res) #)
+#else
+  (# s2#, (I# (res -# incr#)) #)
+#endif
+
+
+-- | Atomically subtract to a word of memory within a `MutableByteArray`,
+-- returning the value *before* the operation. Implies a full memory barrier.
+fetchSubIntArray :: MutableByteArray RealWorld 
+                     -> Int    -- ^ The offset into the array
+                     -> Int    -- ^ The value to be subtracted
+                     -> IO Int -- ^ The value *before* the addition
+fetchSubIntArray = doAtomicRMW fetchSubIntArray# (-)
+
+-- | Atomically bitwise AND to a word of memory within a `MutableByteArray`,
+-- returning the value *before* the operation. Implies a full memory barrier.
+fetchAndIntArray :: MutableByteArray RealWorld 
+                     -> Int    -- ^ The offset into the array
+                     -> Int    -- ^ The value to be AND-ed
+                     -> IO Int -- ^ The value *before* the addition
+fetchAndIntArray = doAtomicRMW fetchAndIntArray# (.&.)
+
+-- | Atomically bitwise NAND to a word of memory within a `MutableByteArray`,
+-- returning the value *before* the operation. Implies a full memory barrier.
+fetchNandIntArray :: MutableByteArray RealWorld 
+                     -> Int    -- ^ The offset into the array
+                     -> Int    -- ^ The value to be NAND-ed
+                     -> IO Int -- ^ The value *before* the addition
+fetchNandIntArray = doAtomicRMW fetchNandIntArray# nand
+    where nand x y = complement (x .&. y)
+
+-- | Atomically bitwise OR to a word of memory within a `MutableByteArray`,
+-- returning the value *before* the operation. Implies a full memory barrier.
+fetchOrIntArray :: MutableByteArray RealWorld 
+                     -> Int    -- ^ The offset into the array
+                     -> Int    -- ^ The value to be OR-ed
+                     -> IO Int -- ^ The value *before* the addition
+fetchOrIntArray = doAtomicRMW fetchOrIntArray# (.|.)
+
+-- | Atomically bitwise XOR to a word of memory within a `MutableByteArray`,
+-- returning the value *before* the operation. Implies a full memory barrier.
+fetchXorIntArray :: MutableByteArray RealWorld 
+                     -> Int    -- ^ The offset into the array
+                     -> Int    -- ^ The value to be XOR-ed
+                     -> IO Int -- ^ The value *before* the addition
+fetchXorIntArray = doAtomicRMW fetchXorIntArray# xor
+
+
+-- Internals for our fetch* family of functions, with CAS loop fallbacks for
+-- GHC < 7.10:
+doAtomicRMW :: (MutableByteArray# RealWorld -> Int# -> Int# -> State# RealWorld -> (# State# RealWorld, Int# #)) --  primop
+            -> (Int -> Int -> Int)                                     --  fallback op for CAS loop
+            -> MutableByteArray RealWorld -> Int -> Int -> IO Int      --  exported function
+{-# INLINE doAtomicRMW #-}
+doAtomicRMW atomicOp# op =
+#if MIN_VERSION_base(4,8,0)
+  \(MutableByteArray mba#) (I# offset#) (I# val#) ->
+    IO $ \ s1# -> 
+      let (# s2#, res #) = atomicOp# mba# offset# val# s1# in
+      (# s2#, (I# res) #)
+#else
+  \mba offset val ->
+    let loop = do
+          old <- readByteArray mba offset
+          let !new = old `op` val
+          actualOld <- casByteArrayInt mba offset old new
+          if old == actualOld
+              then return actualOld
+              else loop
+     in loop
+{-# WARNING fetchSubIntArray "fetchSubIntArray is implemented with a CAS loop on GHC <7.10" #-}
+{-# WARNING fetchAndIntArray "fetchAndIntArray is implemented with a CAS loop on GHC <7.10" #-}
+{-# WARNING fetchNandIntArray "fetchNandIntArray is implemented with a CAS loop on GHC <7.10" #-}
+{-# WARNING fetchOrIntArray "fetchOrIntArray is implemented with a CAS loop on GHC <7.10" #-}
+{-# WARNING fetchXorIntArray "fetchXorIntArray is implemented with a CAS loop on GHC <7.10" #-}
+#endif
+
 
 {-# DEPRECATED fetchAddByteArrayInt "Replaced by fetchAddIntArray which returns the OLD value" #-}
 -- | Atomically add to a word of memory within a `MutableByteArray`.
@@ -152,6 +276,56 @@ fetchAddByteArrayInt (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1
 #else
   (# s2#, (I# res) #)
 #endif
+
+
+--------------------------------------------------------------------------------
+{- WIP. Having trouble writing good tests for these, and not sure how useful
+ - these are. See #43 discussion
+ -
+ - Also remember to add these to the INLINE / NOINLINE section when exported
+
+-- imports for GHC < 7.10 conditionals below.
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Monad (void)
+import Data.Primitive.ByteArray (writeByteArray)
+#endif 
+
+
+-- | Given an array and an offset in Int units, read an element. The index is
+-- assumed to be in bounds. Implies a full memory barrier.
+atomicReadIntArray :: MutableByteArray RealWorld -> Int -> IO Int
+#if MIN_VERSION_base(4,8,0)
+atomicReadIntArray (MutableByteArray mba#) (I# ix#) = IO $ \ s# ->
+    case atomicReadIntArray# mba# ix# s# of
+        (# s2#, n# #) -> (# s2#, I# n# #)
+#else
+atomicReadIntArray mba ix = do
+    -- I don't think we can get a full barrier here with the three barriers we
+    -- have exposed, so we use a no-op CAS, which implies a full barrier
+    casByteArrayInt mba ix 0 0
+{-# WARNING atomicReadIntArray "atomicReadIntArray is implemented with a CAS on GHC <7.10 and may be slower than a readByteArray + one of the barriers exposed here" #-}
+#endif
+
+-- | Given an array and an offset in Int units, write an element. The index is
+-- assumed to be in bounds. Implies a full memory barrier.
+atomicWriteIntArray :: MutableByteArray RealWorld -> Int -> Int -> IO ()
+#if MIN_VERSION_base(4,8,0)
+atomicWriteIntArray (MutableByteArray mba#) (I# ix#) (I# n#) = IO $ \ s# ->
+    case atomicWriteIntArray# mba# ix# n# s# of
+        s2# -> (# s2#, () #)
+#else
+atomicWriteIntArray mba ix n = do
+    -- As above we use a no-op CAS to get a full barrier. This is particularly
+    -- gross TODO something better if possible
+    let fullBarrier = void $ casByteArrayInt mba ix 0 0
+    fullBarrier
+    writeByteArray mba ix n
+    fullBarrier
+{-# WARNING atomicWriteIntArray "atomicWriteIntArray is likely to be very slow on GHC <7.10. Consider using writeByteArray along with one of the barriers exposed here instead" #-}
+#endif
+
+-}
 
 --------------------------------------------------------------------------------
 

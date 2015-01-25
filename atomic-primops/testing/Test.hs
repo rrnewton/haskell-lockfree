@@ -22,18 +22,18 @@ import GHC.IORef
 import GHC.Stats (getGCStats, GCStats(..))
 import System.Random (randomIO, randomRIO)
 import Test.HUnit (Assertion, assertEqual, assertBool)
-import Test.Framework  (defaultMain)
+import Test.Framework  (defaultMain,testGroup,mutuallyExclusive)
 import Test.Framework.Providers.HUnit (testCase)
 import System.Mem (performGC)
 
 ----------------------------------------
 import Data.Atomics as A
-import Data.Atomics (casArrayElem, readArrayElem)
 
 import qualified Issue28
 
 import CommonTesting 
 import qualified Counter
+import qualified Fetch
 
 ------------------------------------------------------------------------
 
@@ -53,8 +53,12 @@ main = do
        -- numcap <- getNumProcessors
        let numcap = 4
        when (numCapabilities /= numcap) $ setNumCapabilities numcap
-       
+
        defaultMain $ 
+        -- Make these run sequentially (hopefully), so we don't interfere with
+        -- concurrent tests. TODO I guess: figure out how to run tests that
+        -- don't fork in parallel, but forking tests sequentially
+        return $ mutuallyExclusive $ testGroup "All tests" $
          [ testCase "casTicket1"              case_casTicket1
          , testCase "issue28_standalone"      case_issue28_standalone
          , testCase "issue28_copied "         case_issue28_copied
@@ -89,6 +93,7 @@ main = do
          , iters   <- [10000]]
 
          ++ Counter.tests
+         ++ Fetch.tests
 
 setify :: [Int] -> [Int]
 setify = S.toList . S.fromList
@@ -115,11 +120,11 @@ case_casmutarray1 = do
  writeArray arr 4 33
  putStrLn "Wrote array elements..."
  
- tick <- readArrayElem arr 4
+ tick <- A.readArrayElem arr 4
  putStrLn$ "(Peeking at array gave: "++show (peekTicket tick)++")"
 
- (res1,tick2) <- casArrayElem arr 4 tick 44
- (res2,_)     <- casArrayElem arr 4 tick 44
+ (res1,_tick2) <- A.casArrayElem arr 4 tick 44
+ (res2,_)     <- A.casArrayElem arr 4 tick 44
 -- res  <- stToIO$ casArrayST arr 4 mynum 44
 -- res2 <- stToIO$ casArrayST arr 4 mynum 44 
 
@@ -141,12 +146,12 @@ case_casmutarray1 = do
 test_random_array_comm :: Int -> Int -> Int -> IO ()
 test_random_array_comm threads size iters = do 
   arr <- newArray size Nothing
-  tick0 <- readArrayElem arr 0
+  tick0 <- A.readArrayElem arr 0
   for_ 1 size $ \ i -> do
-    t2 <- readArrayElem arr i
+    t2 <- A.readArrayElem arr i
     assertEqual "All initial Nothings in the array should be ticket-equal:" tick0 t2
 
-  ls <- forkJoin threads $ \tid -> do 
+  ls <- forkJoin threads $ \_tid -> do 
     localAcc <- newIORef 0
     for_ 0 iters $ \iter -> do
       -- Randomly pick a position:
@@ -154,13 +159,12 @@ test_random_array_comm threads size iters = do
       -- Randomly either produce or consume:
       b <- randomIO :: IO Bool
       if b then do 
-        (b,newtick) <- casArrayElem arr ix tick0 (Just iter)
-        return ()
+        void $ A.casArrayElem arr ix tick0 (Just iter)
        else do -- Consume:
-        tick <- readArrayElem arr ix
+        tick <- A.readArrayElem arr ix
         case peekTicket tick of
-          Just _  -> do (b,x) <- casArrayElem arr ix tick (peekTicket tick0) -- Set back to Nothing.
-                        when b $ modifyIORef' localAcc (+1)
+          Just _  -> do (success,_) <- A.casArrayElem arr ix tick (peekTicket tick0) -- Set back to Nothing.
+                        when success $ modifyIORef' localAcc (+1)
 --                        print (peekTicket x)
           Nothing -> return ()
         return ()
@@ -174,8 +178,8 @@ test_random_array_comm threads size iters = do
   printf "Per-thread successes: %s\n" (show ls)
   assertBool "Number of successes: " (successes <= (threads * iters) `quot` 2 && successes >= 0)
   for_ 0 size $ \ i -> do
-    x <- readArray arr i
---    putStr (show x ++ " ")
+    _x <- readArray arr i
+--    putStr (show _x ++ " ")
     return ()
   putStrLn ""
   return ()
@@ -184,12 +188,6 @@ test_random_array_comm threads size iters = do
 ----------------------------------------------------------------------------------------------------
 -- Simple, non-parameterized tests
  ----------------------------------------------------------------------------------------------------
-
-{-# NOINLINE zer #-}
-zer :: Int
-zer = 0
-default_iters :: Int
-default_iters = 100000
 
 case_casTicket1 :: IO ()
 case_casTicket1 = do
@@ -221,7 +219,7 @@ case_issue28_copied :: Assertion
 case_issue28_copied = do 
   r  <- newIORef "hi"
   t0 <- readForCAS r
-  (True,t1) <- casIORef r t0 "bye"
+  (True,_t1) <- casIORef r t0 "bye"
   return ()
 
 ---- toddaaro's tests -----
@@ -249,9 +247,9 @@ case_create_and_mutate_twice = do
   dbgPrint 1$ "  Creating a single 'ticket' based variable to mutate twice."
   x <- newIORef (0::Int)
   tick1 <- A.readForCAS(x)
-  res1 <- A.casIORef x tick1 5
+  void $ A.casIORef x tick1 5
   tick2 <- A.readForCAS(x)
-  res2 <- A.casIORef x tick2 120
+  void $ A.casIORef x tick2 120
   valf <- readIORef x
   assertBool "Does the value after the first mutate equal 5?" (peekTicket tick2 == 5)
   assertBool "Does the value after the second mutate equal 120?" (valf == 120)
@@ -264,8 +262,8 @@ case_n_threads_mutate = do
   dbgPrint 1$ "   Creating 120 threads and having each increment a counter value."
   counter <- newIORef (0::Int)
 --  let work :: Int -> IORef Int -> IO (Int,StableName Int,Int,StableName Int,Int)
-  let work :: Int -> IORef Int -> IO (Int,Int,Int,Int,Int)
-      work ix counter = do
+  let work :: Int -> IO (Int,Int,Int,Int,Int)
+      work ix = do
         tick <- A.readForCAS(counter)
         let nxt = peekTicket tick + 1
         (b,was) <- A.casIORef counter tick nxt
@@ -279,8 +277,8 @@ case_n_threads_mutate = do
           putStr "!"
 --          putStrLn $ "("++ show ix ++ ": Fail when putting "++show nxt
 --                     ++", was already "++show (peekTicket was) ++")"
-          work ix counter
-  arr <- forkJoin 120 (\i -> work i counter) 
+          work ix
+  arr <- forkJoin 120 work 
   ans <- readIORef counter
 
   let dups = [ n | (_,_,_,_,n) <- arr] \\ [1..120]
@@ -306,13 +304,13 @@ case_run_barriers = do
 
 -- | First test: Run a simple CAS a small number of times.
 test_succeed_once :: (Show a, Num a, Eq a) => a -> Assertion
-test_succeed_once n = 
+test_succeed_once initialVal = 
   do
      performGC -- We *ASSUME* GC does not happen below.
      performGC -- We *ASSUME* GC does not happen below.
      checkGCStats
      gc1 <- getGCCount 
-     r <- newIORef n
+     r <- newIORef initialVal
      bitls <- newIORef []
      tick1 <- A.readForCAS r
      let loop 0 = return ()
@@ -321,7 +319,7 @@ test_succeed_once n =
           atomicModifyIORef bitls (\x -> (res:x, ()))
 --          putStrLn$ "  CAS result: " ++ show res
           loop (n-1)
-     loop 10
+     loop (10::Int)
 
      x <- readIORef r
      assertEqual "Finished with loop, read cell: " 100 x
@@ -332,7 +330,7 @@ test_succeed_once n =
 
      ls <- readIORef bitls
      let rev = (reverse ls)
-         tickets = map snd rev
+      -- tickets = map snd rev
          (hd:tl) = map fst rev
 
      gc2 <- getGCCount
@@ -402,6 +400,149 @@ test_all_hammer_one threads iters seed = do
              (total_success >= expected_success)
 
 
+
+------------------------------------------------------------------------
+-- Reads and Writes with full barriers:
+{- 
+ - WIP
+
+import Data.Atomics (atomicReadIntArray, atomicWriteIntArray)
+import Data.Primitive
+import Control.Concurrent
+import Data.List(sort)
+
+-- TODO DEBUGGING: for required NoBuffering
+import System.IO
+
+
+test_atomic_read_write_sanity :: IO ()
+test_atomic_read_write_sanity = do
+    mba <- newByteArray (sizeOf (undefined :: Int))
+    atomicWriteIntArray mba 0 0
+    x <- atomicReadIntArray mba 0
+    atomicWriteIntArray mba 0 1
+    y <- atomicReadIntArray mba 0
+    assertEqual "test_atomic_read_write_sanity x" x 0
+    assertEqual "test_atomic_read_write_sanity y" y 1
+
+-- These don't really adequately test that we have a *full* barrier, but only
+-- store/store and load/load I think. TODO something better
+test_atomic_read_write_barriers1, test_atomic_read_write_barriers2 :: Int -> IO ()
+
+-- NOTE: We don't observe failure here on x86 with non-atomic reads/writes, but
+-- maybe it will for other architectures. Otherwise this can be removed.
+test_atomic_read_write_barriers1 iters = do
+    let theWrite mba = atomicWriteIntArray mba 0
+        theRead mba = atomicReadIntArray mba 0
+    {- NOTE: We would like this to fail (but it seems to work on x86)
+    let theWrite mba = writeByteArray mba 0
+        theRead mba = readByteArray mba 0
+     -}
+    -- For kicks, a bunch of padding to ensure these are on different cache-lines:
+    mba0 <- newByteArray (sizeOf (undefined :: Int) * 32)
+    mba1 <- newByteArray (sizeOf (undefined :: Int) * 32)
+    writeByteArray mba0 0 (0 :: Int)
+    writeByteArray mba1 0 (1 :: Int)
+    -- One thread increments mba0, then mba1 and repeats. The other repeatedly
+    -- loops reading mba0 and mba1, checking that the value from the first is
+    -- always <= the second:
+    readerWait <- newEmptyMVar
+    void $ forkIO $
+        let go :: Int -> IO ()
+            go n = unless (n > iters) $ do
+                    theWrite mba0 n
+                    theWrite mba1 (n+1)
+                    go (n+1)
+         in go 1
+    void $ forkIO $
+        let go = do x <- theRead mba0
+                    y <- theRead mba1
+                    assertBool "test_atomic_read_write_barriers" $
+                        (x <= y)
+                    when (x < iters) go
+         in go
+-- Peterson's lock: http://en.wikipedia.org/wiki/Peterson%27s_algorithm
+-- 
+-- TODO DEBUGGING see https://github.com/rrnewton/haskell-lockfree/issues/43#issuecomment-71294801
+--                for a discussion of issues to be resolved here.
+test_atomic_read_write_barriers2 iters = do
+
+    hSetBuffering stdout NoBuffering  -- TODO DEBUGGING (THIS APPEARS NECESSARY FOR PUTSTR TRICK BELOW TO WORK, TOO)
+
+    let theWrite mba = atomicWriteIntArray mba 0
+        theRead mba = atomicReadIntArray mba 0
+    {- NOTE: WE WANT TO MAKE SURE THESE FAIL, BUT THEY DON'T !!
+    let theWrite mba (v::Int) = writeByteArray mba 0 v
+        theRead mba = readByteArray mba 0 :: IO Int
+     -}
+    let true = 1 :: Int
+        false = 0 :: Int
+    -- For kicks, a bunch of padding to ensure these are on different cache-lines:
+    flag0 <- newByteArray (sizeOf (undefined :: Int) * 32)
+    flag1 <- newByteArray (sizeOf (undefined :: Int) * 32)
+    turn <- newByteArray (sizeOf (undefined :: Int) * 32)
+    writeByteArray flag0 0 false
+    writeByteArray flag1 0 false
+
+    -- We use our lock to get an atomic counter:
+    counter <- newByteArray (sizeOf (undefined :: Int) * 32)
+    writeByteArray counter 0 (0::Int)
+
+    let petersonIncr flagA flagB turnVal = do
+            theWrite flagA true
+            theWrite turn turnVal
+            let busyWait = do
+                  flagBVal <- theRead flagB
+                  turnVal' <- theRead turn
+                  if turnVal == 1 then putStr "x"  else putStr "+" -- TODO DEBUGGING (THIS APPEARS NECESSARY, AND MUST HAPPEN HERE)
+                  -- putStrLn ""                                      -- TODO DEBUGGING this works too (BUT NOT FOR 1MIL?)
+                  -- void $ newEmptyMVar                              -- TODO DEBUGGING does some heap alloc help? NOPE
+                  -- yield                                             -- TODO DEBUGGING neither this nor -fno-omit-yields seem to help
+                  when (flagBVal == true && turnVal' == 1) busyWait
+            busyWait
+            -- start critical section --
+            old <- theRead counter
+            theWrite counter (old+1)
+            -- exit critical section --
+            theWrite flagA false
+            return old
+
+    out1 <- newEmptyMVar
+    out2 <- newEmptyMVar
+    void $ forkIO $ 
+        (replicateM iters $ petersonIncr flag0 flag1 1)
+          >>= putMVar out1
+    void $ forkIO $ 
+        (replicateM iters $ petersonIncr flag1 flag0 0)
+          >>= putMVar out2
+
+    -- make sure we got some interleaving, and that output was correct:
+    res1 <- takeMVar out1
+    res2 <- takeMVar out2
+
+    let numGaps gaps _ [] = gaps
+        numGaps gaps prev (x:xs)
+            | prev+1 == x = numGaps gaps x xs
+            | otherwise   = numGaps (gaps+1) x xs
+    -- TODO DEBUGGING FYI:
+    print $ numGaps (0::Int) (-1::Int) res1
+    print $ numGaps (0::Int) (-1::Int) res2
+    -- ------------------
+    
+    -- if this fails, fix the test or call with more iters
+    assertBool "test_atomic_read_write_barriers2 had enough interleaving to be legit" $
+           numGaps (0::Int) (-1::Int) res1 > 10000 
+        && numGaps (0::Int) (-1::Int) res2 > 10000
+
+    -- braindead merge check:
+    let ok = sort res1 == res1  
+              &&  sort res2 == res2  
+              &&  sort (res1++res2) == [0..iters*2-1]
+
+    assertBool "test_atomic_read_write_barriers2" ok
+
+ -}
+    
 ----------------------------------------------------------------------------------------------------
 {-
 
