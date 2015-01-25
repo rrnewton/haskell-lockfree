@@ -18,7 +18,10 @@ tests :: [Test]
 tests = [
       testCase "Fetch-and-* operations return previous value" case_return_previous
     , testCase "Fetch-and-* operations behave like their corresponding bitwise operators" case_like_bitwise
-    , testCase "Fetch-and-* operations are atomic" case_atomicity
+    , testCase "fetchAndIntArray and fetchOrIntArray are atomic"  $ fetchAndOrTest  10000000
+    , testCase "fetchNandIntArray atomic"                         $ fetchNandTest   1000000
+    , testCase "fetchAddIntArray and fetchSubIntArray are atomic" $ fetchAddSubTest 10000000
+    , testCase "fetchXorIntArray is atomic"                       $ fetchXorTest    10000000
     ] 
 
 nand :: Bits a => a -> a -> a
@@ -105,12 +108,6 @@ fetchStrArgVal nm v initial = (("fetch"++nm++"IntArray, with arg "++(show v)++" 
 -- ----------------------------------------------------------------------------
 -- Tests of atomicity:
 
-case_atomicity :: IO ()
-case_atomicity = do
-    fetchAndOrTest  10000000
-    fetchNandTest   1000000
-    fetchAddSubTest 10000000
-    fetchXorTest    10000000
 
 -- Concurrently run a sequence of AND and OR simultaneously on separate parts
 -- of the bit range of an Int.
