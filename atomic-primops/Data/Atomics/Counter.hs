@@ -154,5 +154,7 @@ incrCounter (I# incr#) (AtomicCounter mba#) = IO $ \ s1# ->
 -- | An alternate version for when you don't care about the old value.
 incrCounter_ :: Int -> AtomicCounter -> IO ()
 incrCounter_ (I# incr#) (AtomicCounter mba#) = IO $ \ s1# -> 
+  -- NOTE: either old or new behavior of fetchAddIntArray# is fine here, since
+  -- we don't inspect the return value:
   let (# s2#, res #) = fetchAddIntArray# mba# 0# incr# s1# in
   (# s2#, () #)
