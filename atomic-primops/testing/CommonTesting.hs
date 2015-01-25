@@ -85,7 +85,7 @@ cputime a = do
     v <- a
     end   <- getCPUTime
     let diff = (fromIntegral (end - start)) / (10^(12::Int))
-    printf "SELFTIMED: %0.3f sec\n" (diff :: Double)
+    _ <- printf "SELFTIMED: %0.3f sec\n" (diff :: Double)
     return v
 
 

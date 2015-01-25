@@ -120,9 +120,9 @@ fetchAndOrTest iters = do
     out1 <- newEmptyMVar
     mba <- newByteArray (sizeOf (undefined :: Int))
     let andLowersBit , orRaisesBit :: Int -> Int
-        andLowersBit = clearBit (complement zeroBits)
-        orRaisesBit = setBit zeroBits
-    writeByteArray mba 0 (zeroBits :: Int)
+        andLowersBit = clearBit (complement 0)
+        orRaisesBit = setBit 0
+    writeByteArray mba 0 (0 :: Int)
     -- thread 1 toggles bit 0, thread 2 toggles bit 1; then we verify results
     -- in the main thread.
     let go v b = do
@@ -145,7 +145,7 @@ fetchAndOrTest iters = do
 -- TODO think of a more clever test
 fetchNandTest :: Int -> IO ()
 fetchNandTest iters = do
-    let nandComplements = complement zeroBits
+    let nandComplements = complement 0
         dblComplement mba = replicateM_ (2 * iters) $
             fetchNandIntArray mba 0 nandComplements
     randomInts <- take 10 . randoms <$> newStdGen :: IO [Int]

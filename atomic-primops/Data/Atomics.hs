@@ -45,28 +45,23 @@ module Data.Atomics
    fetchAddByteArrayInt
  ) where
 
-import Control.Monad.ST (stToIO)
 import Control.Exception (evaluate)
 import Data.Primitive.Array (MutableArray(MutableArray))
 import Data.Primitive.ByteArray (MutableByteArray(MutableByteArray))
 import Data.Atomics.Internal
-import Data.Int -- TEMPORARY
-import Debug.Trace
 
 import Data.IORef 
 import GHC.IORef hiding (atomicModifyIORef)
 import GHC.STRef
-import GHC.ST
 #if MIN_VERSION_base(4,7,0)
 import GHC.Prim hiding ((==#))
 import qualified GHC.PrimopWrappers as GPW
 #else
 import GHC.Prim
 #endif
-import GHC.Arr 
 import GHC.Base (Int(I#))
 import GHC.IO (IO(IO))
-import GHC.Word (Word(W#))
+-- import GHC.Word (Word(W#))
 
 
 #if MIN_VERSION_base(4,8,0)
@@ -433,8 +428,8 @@ casMutVar mv tick !new =
 casMutVar2 :: MutVar# RealWorld a -> Ticket a -> Ticket a -> IO (Bool, Ticket a)
 casMutVar2 mv tick new = IO$ \st -> 
   case casMutVarTicketed# mv tick new st of 
-    (# st, flag, tick' #) ->
-      (# st, (flag ==# 0#, tick') #)
+    (# st', flag, tick' #) ->
+      (# st', (flag ==# 0#, tick') #)
 --      (# st, if flag ==# 0# then Succeed tick' else Fail tick' #)
 --      if flag ==# 0#    then       else (# st, Fail (W# tick')  #)
 
@@ -497,7 +492,7 @@ atomicModifyIORefCAS ref fn = do
    loop tick effort
   where 
    effort = 30 :: Int -- TODO: Tune this.
-   loop old 0     = atomicModifyIORef ref fn -- Fall back to the regular version.
+   loop _   0     = atomicModifyIORef ref fn -- Fall back to the regular version.
    loop old tries = do 
      (new,result) <- evaluate $ fn $ peekTicket old
      (b,tick) <- casIORef ref old new
@@ -516,13 +511,12 @@ atomicModifyIORefCAS_ ref fn = do
    loop tick effort
   where 
    effort = 30 :: Int -- TODO: Tune this.
-   loop old 0     = atomicModifyIORef_ ref fn
+   loop _   0     = atomicModifyIORef ref (\ x -> (fn x, ()))
    loop old tries = do 
      new <- evaluate $ fn $ peekTicket old
      (b,val) <- casIORef ref old new
      if b 
       then return ()
       else loop val (tries-1)
-   atomicModifyIORef_ ref fn = atomicModifyIORef ref (\ x -> (fn x, ()))
 -- </duplicated code>
 

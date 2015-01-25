@@ -173,9 +173,9 @@ test_random_array_comm threads size iters = do
   let successes = sum ls
       -- Pidgeonhole principle.
       -- min_success =
-  printf "Communication through random array positions (threads/size/iters %s).\n" (show (threads,size,iters))
-  printf "Successes: %d (expected 1/4 of total iterations on all threads)\n" successes
-  printf "Per-thread successes: %s\n" (show ls)
+  _ <- printf "Communication through random array positions (threads/size/iters %s).\n" (show (threads,size,iters))
+  _ <- printf "Successes: %d (expected 1/4 of total iterations on all threads)\n" successes
+  _ <- printf "Per-thread successes: %s\n" (show ls)
   assertBool "Number of successes: " (successes <= (threads * iters) `quot` 2 && successes >= 0)
   for_ 0 size $ \ i -> do
     _x <- readArray arr i
