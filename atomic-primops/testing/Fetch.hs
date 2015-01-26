@@ -123,17 +123,20 @@ fetchAndOrTest iters = do
     -- thread 1 toggles bit 0, thread 2 toggles bit 1; then we verify results
     -- in the main thread.
     let go v b = do
-            outs <- replicateM iters $ do 
+            -- Avoid stack overflow on GHC 7.6:
+            let replicateMrev l 0 = putMVar v l
+                replicateMrev l iter = do
                        low <- fetchOrIntArray mba 0 (orRaisesBit b)
                        high <- fetchAndIntArray mba 0 (andLowersBit b)
-                       return (low,high)
-            putMVar v outs
+                       replicateMrev ((low,high):l) (iter-1)
+             in replicateMrev [] iters
     void $ forkIO $ go out0 0
     void $ forkIO $ go out1 1
     res0 <- takeMVar out0
     res1 <- takeMVar out1
     let check b = all ( \(low,high)-> (not $ testBit low b) && testBit high b)
 
+    assertBool "fetchAndOrTest not broken" $ length (res0++res1) == iters*2
     assertBool "fetchAndOrTest thread1" $ check 0 res0
     assertBool "fetchAndOrTest thread2" $ check 1 res1
 
