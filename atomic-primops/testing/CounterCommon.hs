@@ -76,6 +76,7 @@ incrloop4B tries = do
        else loop r (i-1) 1
 
 -- | Here we let the counter overflow, which seems to be causing problems.
+-- NOTE 2/3/2015: THIS APPEARS TO BE WORKING NOW -Brandon 
 overflowTest :: Int -> IO ()
 overflowTest tries = do
   putStrLn " [incrloop4B] A test where we use the result of each incr."
@@ -87,11 +88,11 @@ overflowTest tries = do
                    putStrLn$"Final value: "++show v
                    return ()
    loop r i l = do
-     putStrLn$ " [incrloop4B] Looping with tries left "++show i 
+     --putStrLn$ " [incrloop4B] Looping with tries left "++show i 
      n <- C.incrCounter l r
      -- This is HANGING afer passing 2,147,483,648.  (using Unboxed)
      -- Is there some defect wrt overflow?
-     putStrLn$ " [incrloop4B] Done incr, received "++show n
+     --putStrLn$ " [incrloop4B] Done incr, received "++show n
      loop r (i-1) n
 
 --------------------------------------------------------------------------------
@@ -142,6 +143,7 @@ tests =
    ----------------------------------------
  , testCase (name++"_single_thread_repeat_incr") $ timeit case_incrloop
  , testCase (name++"_incr_with_result_feedback") $ timeit (incrloop4B default_seq_tries)
+ , testCase (name++"_overflow_test") $ timeit (overflowTest 100000)
    ----------------------------------------
 
    -- Parallel versions:
