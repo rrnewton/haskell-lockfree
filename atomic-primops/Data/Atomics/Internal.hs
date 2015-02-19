@@ -16,18 +16,17 @@ module Data.Atomics.Internal
   where 
 
 import GHC.Base (Int(I#))
-import GHC.Word (Word(W#))
-import GHC.Prim (RealWorld, Int#, Word#, State#, MutableArray#, MutVar#,
-                 MutableByteArray#, 
+import GHC.Prim (RealWorld, Int#, State#, MutableArray#, MutVar#,
                  unsafeCoerce#, reallyUnsafePtrEquality#) 
 
 #if MIN_VERSION_base(4,7,0)
 import GHC.Prim (casArray#, casIntArray#, fetchAddIntArray#, Any, readMutVar#, casMutVar#)
 #elif MIN_VERSION_base(4,6,0)
 -- Any is only supported in the FFI in the way we need in GHC 7.6+
-import GHC.Prim (readMutVar#, casMutVar#, Any)
+import GHC.Prim (readMutVar#, Any, MutableByteArray#)
 #else
 #error "Need to figure out how to emulate Any () in GHC <= 7.4 !"
+-- import GHC.Prim (Word#)
 -- type Any a = Word#
 #endif    
 

@@ -86,7 +86,7 @@ Description:
 
 Extra-Source-Files:  DEVLOG.md,
                      testing/Test.hs, testing/test-atomic-primops.cabal, testing/ghci-test.hs
-                     testing/Makefile, testing/CommonTesting.hs, testing/Counter.hs, testing/hello.hs
+                     testing/Makefile, testing/CommonTesting.hs, testing/Counter.hs, testing/CounterCommon.hs, testing/hello.hs
                      testing/Issue28.hs
                      testing/TemplateHaskellSplices.hs
                      testing/Raw781_test.hs
@@ -101,6 +101,7 @@ Library
                      Data.Atomics.Internal
                      Data.Atomics.Counter
   ghc-options: -O2 -funbox-strict-fields
+  ghc-options: -Wall
 
   -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
   -- (base 4.5 or greater). We also need the "Any" kind.

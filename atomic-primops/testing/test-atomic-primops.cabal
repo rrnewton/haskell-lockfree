@@ -19,7 +19,7 @@ Flag threaded
 Test-Suite test-atomic-primops
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
-    ghc-options: -rtsopts -main-is Test.main
+    ghc-options: -rtsopts -main-is Test.main -Wall
 
     if flag(opt)
        ghc-options: -O2 -funbox-strict-fields

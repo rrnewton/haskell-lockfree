@@ -13,7 +13,7 @@ import GHC.IO (unsafePerformIO)
 import System.CPUTime
 import System.Mem.StableName (makeStableName, hashStableName)
 import System.Environment (getEnvironment)
-import System.IO        (stdout, stderr, hPutStrLn, hFlush)
+import System.IO        (stderr, hPutStrLn, hFlush)
 import Debug.Trace      (trace)
 
 -- import Test.Framework.TH (defaultMainGenerator)
@@ -84,8 +84,8 @@ cputime a = do
     start <- getCPUTime
     v <- a
     end   <- getCPUTime
-    let diff = (fromIntegral (end - start)) / (10^12)
-    printf "SELFTIMED: %0.3f sec\n" (diff :: Double)
+    let diff = (fromIntegral (end - start)) / (10^(12::Int))
+    _ <- printf "SELFTIMED: %0.3f sec\n" (diff :: Double)
     return v
 
 
@@ -106,7 +106,7 @@ nTimes :: Int -> IO () -> IO ()
 --
 --  INLINE should not affect recursive functions.  But here it seems to have a
 --  deleterious effect!
-nTimes 0 !c = return ()
+nTimes 0  _  = return ()
 nTimes !n !c = c >> nTimes (n-1) c
 
 

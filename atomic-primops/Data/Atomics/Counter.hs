@@ -32,17 +32,12 @@ module Data.Atomics.Counter
  where
 
 
-import GHC.Ptr
-import Data.Atomics          (casByteArrayInt)
--- import Data.Atomics.Internal (casIntArray#, fetchAddIntArray#)
 import Data.Atomics.Internal
 #if MIN_VERSION_base(4,7,0)
 import GHC.Base  hiding ((==#))
-import GHC.Prim hiding ((==#))
 import qualified GHC.PrimopWrappers as GPW
 #else
 import GHC.Base
-import GHC.Prim
 #endif
 
 
@@ -83,23 +78,23 @@ newCounter n = do
 {-# INLINE newRawCounter #-}
 newRawCounter :: IO AtomicCounter  
 newRawCounter = IO $ \s ->
-  case newByteArray# size s of { (# s, arr #) ->
-  (# s, AtomicCounter arr #) }
+  case newByteArray# size s of { (# s', arr #) ->
+  (# s', AtomicCounter arr #) }
   where !(I# size) = SIZEOF_HSINT
 
 {-# INLINE readCounter #-}
 -- | Equivalent to `readCounterForCAS` followed by `peekCTicket`.        
 readCounter :: AtomicCounter -> IO Int
 readCounter (AtomicCounter arr) = IO $ \s ->
-  case readIntArray# arr 0# s of { (# s, i #) ->
-  (# s, I# i #) }
+  case readIntArray# arr 0# s of { (# s', i #) ->
+  (# s', I# i #) }
 
 {-# INLINE writeCounter #-}
 -- | Make a non-atomic write to the counter.  No memory-barrier.
 writeCounter :: AtomicCounter -> Int -> IO ()
 writeCounter (AtomicCounter arr) (I# i) = IO $ \s ->
-  case writeIntArray# arr 0# i s of { s ->
-  (# s, () #) }
+  case writeIntArray# arr 0# i s of { s' ->
+  (# s', () #) }
 
 {-# INLINE readCounterForCAS #-}
 -- | Just like the "Data.Atomics" CAS interface, this routine returns an opaque
@@ -127,9 +122,9 @@ casCounter (AtomicCounter mba#) (I# old#) newBox@(I# new#) = IO$ \s1# ->
     False -> (# s2#, (False, I# res# ) #) -- Failure
     True  -> (# s2#, (True , newBox ) #) -- Success
 
-{-# INLINE sameCTicket #-}
-sameCTicket :: CTicket -> CTicket -> Bool
-sameCTicket = (==)
+-- {-# INLINE sameCTicket #-}
+-- sameCTicket :: CTicket -> CTicket -> Bool
+-- sameCTicket = (==)
 
 {-# INLINE incrCounter #-}
 -- | Increment the counter by a given amount.  Returns the value AFTER the increment
@@ -154,5 +149,7 @@ incrCounter (I# incr#) (AtomicCounter mba#) = IO $ \ s1# ->
 -- | An alternate version for when you don't care about the old value.
 incrCounter_ :: Int -> AtomicCounter -> IO ()
 incrCounter_ (I# incr#) (AtomicCounter mba#) = IO $ \ s1# -> 
-  let (# s2#, res #) = fetchAddIntArray# mba# 0# incr# s1# in
+  -- NOTE: either old or new behavior of fetchAddIntArray# is fine here, since
+  -- we don't inspect the return value:
+  let (# s2#, _ #) = fetchAddIntArray# mba# 0# incr# s1# in
   (# s2#, () #)

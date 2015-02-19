@@ -1,11 +1,12 @@
 
 module Issue28 (main) where
 
-import Control.Monad
+-- import Control.Monad
 import Data.IORef
 import Data.Atomics
 -- import Data.Atomics.Internal (ptrEq)
 
+main :: IO ()
 main = do
   putStrLn "Issue28: Conducting the simplest possible read-then-CAS test."
   r <- newIORef "hi"
@@ -18,4 +19,3 @@ main = do
   -- unless (b1 == True) $ error "Test failed"  
 
   putStrLn$  "Issue28: test passed "++show t1
-  return ()
