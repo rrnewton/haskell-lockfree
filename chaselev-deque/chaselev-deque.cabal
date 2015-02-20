@@ -1,5 +1,5 @@
 Name:                chaselev-deque
-Version:             0.5.0.3
+Version:             0.5.0.4
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan R. Newton, Edward Kmett 
@@ -16,6 +16,7 @@ Cabal-version:       >=1.8
 -- 0.4   -- bump to go along with atomic-primops 0.4
 -- 0.5.0.2 -- bump to go along with MAJOR bugfix in atomic-primops 0.5.0.2
 -- 0.5.0.3 -- minor bump to change abstract-deque dep.
+-- 0.5.0.4 -- bugfix
 
 Homepage: https://github.com/rrnewton/haskell-lockfree/wiki
 Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
