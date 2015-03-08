@@ -24,8 +24,8 @@ Library
   build-depends: bits-atomic >= 0.1.3
 
   -- This can go back further than the atomic-primops package in supporting old GHC's:
-  -- For now let's say GHC 7.0 through 7.8:
-  build-depends: base >= 4.3.0.0 && < 4.8.0.0
+  -- For now let's say GHC 7.0 through 7.8 and 7.10 (RC)
+  build-depends: base >= 4.3.0.0 && < 4.9.0.0
   CC-Options:       -Wall 
 
 Test-Suite test-atomic-primops-foreign
