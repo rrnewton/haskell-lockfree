@@ -1,5 +1,5 @@
 Name:                chaselev-deque
-Version:             0.5.0.4
+Version:             0.5.0.5
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan R. Newton, Edward Kmett 
@@ -45,9 +45,11 @@ Library
 --                     Data.Concurrent.Deque.ReactorDeque
   other-modules:     Data.Concurrent.Deque.ChaseLevUnboxed
 
-  build-depends:     base >= 4.4.0.0 && < 5, array, transformers, bits-atomic,
+  build-depends:     base >= 4.4.0.0 && < 5, array, transformers, 
                      abstract-deque >= 0.3 && < 0.4, vector, ghc-prim,
                      atomic-primops >= 0.5.0.2
+-- This was for reactordeque:
+--		     bits-atomic,
   build-depends: ghc-prim
   ghc-options: -O2
   if flag(debug)
