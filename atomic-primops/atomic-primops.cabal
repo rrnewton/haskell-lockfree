@@ -1,5 +1,5 @@
 Name:                atomic-primops
-Version:             0.7
+Version:             0.8
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan Newton
@@ -34,7 +34,7 @@ Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
 -- 0.6.0.1 -- minor ghc 7.8 fix
 -- 0.6.0.5 -- fix for GHC 7.8
 -- 0.6.1   -- several bug fixes, mainly re: platform portability
--- 0.7     -- support for GHC 7.10 and several new primops
+-- 0.8     -- support for GHC 7.10 and several new primops
 
 Synopsis: A safe approach to CAS and other atomic ops in Haskell.
 
@@ -82,6 +82,10 @@ Description:
  Changes in 0.7: 
  .
  * This release adds support for GHC 7.10 and its expanded library of (now inline) primops.
+ .
+ Changes in 0.8: 
+ .
+ * Implements additional fetch primops available in GHC 7.10
 
 
 Extra-Source-Files:  DEVLOG.md,
