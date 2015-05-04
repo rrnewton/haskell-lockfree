@@ -10,17 +10,17 @@
 --   (`Tickets`).  Currently, the user cannot coin new tickets, rather a `Ticket`
 --   provides evidence of a past observation, and grants permission to make a future
 --   change.
-module Data.Atomics 
+module Data.Atomics
  (
    -- * Types for atomic operations
    Ticket, peekTicket, -- CASResult(..),
 
    -- * Atomic operations on IORefs
-   readForCAS, casIORef, casIORef2, 
+   readForCAS, casIORef, casIORef2,
    atomicModifyIORefCAS, atomicModifyIORefCAS_,
-   
+
    -- * Atomic operations on mutable arrays
-   casArrayElem, casArrayElem2, readArrayElem, 
+   casArrayElem, casArrayElem2, readArrayElem,
 
    -- * Atomic operations on byte arrays
    casByteArrayInt,
@@ -33,7 +33,7 @@ module Data.Atomics
    -- -- ** Reading and writing with barriers
    -- atomicReadIntArray,
    -- atomicWriteIntArray,
-      
+
    -- * Atomic operations on raw MutVars
    -- | A lower-level version of the IORef interface.
    readMutVarForCAS, casMutVar, casMutVar2,
@@ -50,7 +50,7 @@ import Data.Primitive.Array (MutableArray(MutableArray))
 import Data.Primitive.ByteArray (MutableByteArray(MutableByteArray))
 import Data.Atomics.Internal
 
-import Data.IORef 
+import Data.IORef
 import GHC.IORef hiding (atomicModifyIORef)
 import GHC.STRef
 #if MIN_VERSION_base(4,7,0)
@@ -75,7 +75,7 @@ import Data.Primitive.ByteArray (readByteArray)
 {-# NOINLINE seal #-}
 
 {-# NOINLINE casIORef #-}
-{-# NOINLINE casArrayElem2 #-}   
+{-# NOINLINE casArrayElem2 #-}
 {-# NOINLINE readArrayElem #-}
 {-# NOINLINE readForCAS #-}
 {-# NOINLINE casArrayElem #-}
@@ -92,7 +92,7 @@ import Data.Primitive.ByteArray (readByteArray)
 {-# NOINLINE fetchXorIntArray #-}
 #else
 {-# INLINE casIORef #-}
-{-# INLINE casArrayElem2 #-}   
+{-# INLINE casArrayElem2 #-}
 {-# INLINE readArrayElem #-}
 {-# INLINE readForCAS #-}
 {-# INLINE casArrayElem #-}
@@ -119,11 +119,11 @@ import Data.Primitive.ByteArray (readByteArray)
 
 -- | Compare-and-swap.  Follows the same rules as `casIORef`, returning the ticket for
 --   then next operation.
--- 
+--
 --   By convention this is WHNF strict in the "new" value provided.
 casArrayElem :: MutableArray RealWorld a -> Int -> Ticket a -> a -> IO (Bool, Ticket a)
 -- casArrayElem (MutableArray arr#) (I# i#) old new = IO$ \s1# ->
---  case casArray# arr# i# old new s1# of 
+--  case casArray# arr# i# old new s1# of
 --    (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, res) #)
 casArrayElem arr i old !new = casArrayElem2 arr i old (seal new)
 
@@ -131,7 +131,7 @@ casArrayElem arr i old !new = casArrayElem2 arr i old (seal new)
 -- arbitrary, lifted, Haskell value.
 casArrayElem2 :: MutableArray RealWorld a -> Int -> Ticket a -> Ticket a -> IO (Bool, Ticket a)
 casArrayElem2 (MutableArray arr#) (I# i#) old new = IO$ \s1# ->
- case casArrayTicketed# arr# i# old new s1# of 
+ case casArrayTicketed# arr# i# old new s1# of
    (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, res) #)
 
 -- | Ordinary processor load instruction (non-atomic, not implying any memory barriers).
@@ -171,11 +171,11 @@ casByteArrayInt (MutableByteArray mba#) (I# ix#) (I# old#) (I# new#) =
 
 -- | Atomically add to a word of memory within a `MutableByteArray`, returning
 -- the value *before* the operation. Implies a full memory barrier.
-fetchAddIntArray :: MutableByteArray RealWorld 
+fetchAddIntArray :: MutableByteArray RealWorld
                      -> Int    -- ^ The offset into the array
                      -> Int    -- ^ The value to be added
                      -> IO Int -- ^ The value *before* the addition
-fetchAddIntArray (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1# -> 
+fetchAddIntArray (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1# ->
   let (# s2#, res #) = fetchAddIntArray# mba# offset# incr# s1# in
 -- fetchAddIntArray# changed behavior in 7.10 to return the OLD value, so we
 -- need this to maintain backwards compatibility:
@@ -188,39 +188,39 @@ fetchAddIntArray (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1# ->
 
 -- | Atomically subtract to a word of memory within a `MutableByteArray`,
 -- returning the value *before* the operation. Implies a full memory barrier.
-fetchSubIntArray :: MutableByteArray RealWorld 
+fetchSubIntArray :: MutableByteArray RealWorld
                      -> Int    -- ^ The offset into the array
                      -> Int    -- ^ The value to be subtracted
                      -> IO Int -- ^ The value *before* the addition
-fetchSubIntArray = doAtomicRMW 
+fetchSubIntArray = doAtomicRMW
 #if MIN_VERSION_base(4,8,0)
-                     fetchSubIntArray# 
+                     fetchSubIntArray#
 #else
                      (-)
 #endif
 
 -- | Atomically bitwise AND to a word of memory within a `MutableByteArray`,
 -- returning the value *before* the operation. Implies a full memory barrier.
-fetchAndIntArray :: MutableByteArray RealWorld 
+fetchAndIntArray :: MutableByteArray RealWorld
                      -> Int    -- ^ The offset into the array
                      -> Int    -- ^ The value to be AND-ed
                      -> IO Int -- ^ The value *before* the addition
-fetchAndIntArray = doAtomicRMW 
+fetchAndIntArray = doAtomicRMW
 #if MIN_VERSION_base(4,8,0)
-                    fetchAndIntArray# 
+                    fetchAndIntArray#
 #else
                     (.&.)
 #endif
 
 -- | Atomically bitwise NAND to a word of memory within a `MutableByteArray`,
 -- returning the value *before* the operation. Implies a full memory barrier.
-fetchNandIntArray :: MutableByteArray RealWorld 
+fetchNandIntArray :: MutableByteArray RealWorld
                      -> Int    -- ^ The offset into the array
                      -> Int    -- ^ The value to be NAND-ed
                      -> IO Int -- ^ The value *before* the addition
-fetchNandIntArray = doAtomicRMW 
+fetchNandIntArray = doAtomicRMW
 #if MIN_VERSION_base(4,8,0)
-                      fetchNandIntArray# 
+                      fetchNandIntArray#
 #else
                       nand
     where nand x y = complement (x .&. y)
@@ -228,26 +228,26 @@ fetchNandIntArray = doAtomicRMW
 
 -- | Atomically bitwise OR to a word of memory within a `MutableByteArray`,
 -- returning the value *before* the operation. Implies a full memory barrier.
-fetchOrIntArray :: MutableByteArray RealWorld 
+fetchOrIntArray :: MutableByteArray RealWorld
                      -> Int    -- ^ The offset into the array
                      -> Int    -- ^ The value to be OR-ed
                      -> IO Int -- ^ The value *before* the addition
-fetchOrIntArray = doAtomicRMW 
+fetchOrIntArray = doAtomicRMW
 #if MIN_VERSION_base(4,8,0)
-                    fetchOrIntArray# 
+                    fetchOrIntArray#
 #else
                     (.|.)
 #endif
 
 -- | Atomically bitwise XOR to a word of memory within a `MutableByteArray`,
 -- returning the value *before* the operation. Implies a full memory barrier.
-fetchXorIntArray :: MutableByteArray RealWorld 
+fetchXorIntArray :: MutableByteArray RealWorld
                      -> Int    -- ^ The offset into the array
                      -> Int    -- ^ The value to be XOR-ed
                      -> IO Int -- ^ The value *before* the addition
-fetchXorIntArray = doAtomicRMW 
+fetchXorIntArray = doAtomicRMW
 #if MIN_VERSION_base(4,8,0)
-                     fetchXorIntArray# 
+                     fetchXorIntArray#
 #else
                      xor
 #endif
@@ -261,7 +261,7 @@ doAtomicRMW :: (MutableByteArray# RealWorld -> Int# -> Int# -> State# RealWorld 
             -> MutableByteArray RealWorld -> Int -> Int -> IO Int      --  exported function
 doAtomicRMW atomicOp# =
   \(MutableByteArray mba#) (I# offset#) (I# val#) ->
-    IO $ \ s1# -> 
+    IO $ \ s1# ->
       let (# s2#, res #) = atomicOp# mba# offset# val# s1# in
       (# s2#, (I# res) #)
 #else
@@ -287,12 +287,12 @@ doAtomicRMW op =
 
 {-# DEPRECATED fetchAddByteArrayInt "Replaced by fetchAddIntArray which returns the OLD value" #-}
 -- | Atomically add to a word of memory within a `MutableByteArray`.
--- 
+--
 --   This function returns the NEW value of the location after the increment.
 --   Thus, it is a bit misnamed, and in other contexts might be called "add-and-fetch",
 --   such as in GCC's `__sync_add_and_fetch`.
 fetchAddByteArrayInt ::  MutableByteArray RealWorld -> Int -> Int -> IO Int
-fetchAddByteArrayInt (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1# -> 
+fetchAddByteArrayInt (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1# ->
   let (# s2#, res #) = fetchAddIntArray# mba# offset# incr# s1# in
 -- fetchAddIntArray# changed behavior in 7.10 to return the OLD value, so we
 -- need this to maintain forwards compatibility until removed:
@@ -314,7 +314,7 @@ fetchAddByteArrayInt (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1
 #else
 import Control.Monad (void)
 import Data.Primitive.ByteArray (writeByteArray)
-#endif 
+#endif
 
 
 -- | Given an array and an offset in Int units, read an element. The index is
@@ -355,7 +355,7 @@ atomicWriteIntArray mba ix n = do
 --------------------------------------------------------------------------------
 
 -- | Ordinary processor load instruction (non-atomic, not implying any memory barriers).
--- 
+--
 --   The difference between this function and `readIORef`, is that it returns a /ticket/,
 --   for use in future compare-and-swap operations.
 readForCAS :: IORef a -> IO ( Ticket a )
@@ -370,8 +370,8 @@ readForCAS (IORef (STRef mv)) = readMutVarForCAS mv
 -- The reason for the difference is the ticket API.  This function always returns the
 -- ticket that you should use in your next CAS attempt.  In case of success, this ticket
 -- corresponds to the `new` value which you yourself installed in the `IORef`, whereas
--- in the case of failure it represents the preexisting value currently in the IORef. 
--- 
+-- in the case of failure it represents the preexisting value currently in the IORef.
+--
 -- Note \"compare\" here means pointer equality in the sense of
 -- 'GHC.Prim.reallyUnsafePtrEquality#'.  However, the ticket API absolves
 -- the user of this module from needing to worry about the pointer equality of their
@@ -385,15 +385,15 @@ casIORef :: IORef a  -- ^ The 'IORef' containing a value 'current'
          -> Ticket a -- ^ A ticket for the 'old' value
          -> a        -- ^ The 'new' value to replace 'current' if @old == current@
          -> IO (Bool, Ticket a) -- ^ Success flag, plus ticket for the NEXT operation.
-casIORef (IORef (STRef var)) old !new = casMutVar var old new 
+casIORef (IORef (STRef var)) old !new = casMutVar var old new
 
 -- | This variant takes two tickets, i.e. the 'new' value is a ticket rather than an
 -- arbitrary, lifted, Haskell value.
-casIORef2 :: IORef a 
+casIORef2 :: IORef a
          -> Ticket a -- ^ A ticket for the 'old' value
          -> Ticket a -- ^ A ticket for the 'new' value
          -> IO (Bool, Ticket a)
-casIORef2 (IORef (STRef var)) old new = casMutVar2 var old new 
+casIORef2 (IORef (STRef var)) old new = casMutVar2 var old new
 
 
 --------------------------------------------------------------------------------
@@ -403,12 +403,12 @@ casIORef2 (IORef (STRef var)) old new = casMutVar2 var old new
 {-# NOINLINE peekTicket #-}
 -- At least this function MUST remain NOINLINE.  Issue5 is an example of a bug that
 -- ensues otherwise.
-peekTicket :: Ticket a -> a 
+peekTicket :: Ticket a -> a
 peekTicket = unsafeCoerce#
 
 -- Not exposing this for now.  Presently the idea is that you must read from the
 -- mutable data structure itself to get a ticket.
-seal :: a -> Ticket a 
+seal :: a -> Ticket a
 seal = unsafeCoerce#
 
 -- | Like `readForCAS`, but for `MutVar#`.
@@ -419,15 +419,15 @@ readMutVarForCAS mv = IO$ \ st -> readForCAS# mv st
 --
 --   By convention this is WHNF strict in the "new" value provided.
 casMutVar :: MutVar# RealWorld a -> Ticket a -> a -> IO (Bool, Ticket a)
-casMutVar mv tick !new = 
-  -- trace ("TEMPDBG: Inside casMutVar.. ") $ 
+casMutVar mv tick !new =
+  -- trace ("TEMPDBG: Inside casMutVar.. ") $
   casMutVar2 mv tick (seal new)
 
 -- | This variant takes two tickets, i.e. the 'new' value is a ticket rather than an
 -- arbitrary, lifted, Haskell value.
 casMutVar2 :: MutVar# RealWorld a -> Ticket a -> Ticket a -> IO (Bool, Ticket a)
-casMutVar2 mv tick new = IO$ \st -> 
-  case casMutVarTicketed# mv tick new st of 
+casMutVar2 mv tick new = IO$ \st ->
+  case casMutVarTicketed# mv tick new st of
     (# st', flag, tick' #) ->
       (# st', (flag ==# 0#, tick') #)
 --      (# st, if flag ==# 0# then Succeed tick' else Fail tick' #)
@@ -449,7 +449,7 @@ writeBarrier :: IO ()
 -- GHC 7.8 consistently exposes these symbols while linking:
 #if MIN_VERSION_base(4,7,0) && !defined(_WIN32) && !defined(_WIN64)
 foreign import ccall  unsafe "store_load_barrier" storeLoadBarrier
-  :: IO () 
+  :: IO ()
 
 foreign import ccall unsafe "load_load_barrier" loadLoadBarrier
   :: IO ()
@@ -461,7 +461,7 @@ foreign import ccall unsafe "write_barrier" writeBarrier
 -- GHC 7.6 did not consistently expose them (e.g. in the non-threaded RTS),
 -- so rather we grab this functionality from RtsDup.c:
 foreign import ccall  unsafe "DUP_store_load_barrier" storeLoadBarrier
-  :: IO () 
+  :: IO ()
 
 foreign import ccall unsafe "DUP_load_load_barrier" loadLoadBarrier
   :: IO ()
@@ -479,9 +479,9 @@ foreign import ccall unsafe "DUP_write_barrier" writeBarrier
 --   place without introducing new thunks or locking anything.  Note
 --   that this is more STRICT than its standard counterpart and will only
 --   place evaluated (WHNF) values in the IORef.
--- 
---   The upside is that sometimes we see a performance benefit.  
---   The downside is that this version is speculative -- when it 
+--
+--   The upside is that sometimes we see a performance benefit.
+--   The downside is that this version is speculative -- when it
 --   retries, it must reexecute the compution.
 atomicModifyIORefCAS :: IORef a      -- ^ Mutable location to modify
                      -> (a -> (a,b)) -- ^ Computation runs one or more times (speculation)
@@ -490,13 +490,13 @@ atomicModifyIORefCAS ref fn = do
    -- TODO: Should handle contention in a better way...
    tick <- readForCAS ref
    loop tick effort
-  where 
+  where
    effort = 30 :: Int -- TODO: Tune this.
    loop _   0     = atomicModifyIORef ref fn -- Fall back to the regular version.
-   loop old tries = do 
+   loop old tries = do
      (new,result) <- evaluate $ fn $ peekTicket old
      (b,tick) <- casIORef ref old new
-     if b 
+     if b
       then return result
       else loop tick (tries-1)
 
@@ -509,14 +509,13 @@ atomicModifyIORefCAS_ :: IORef t -> (t -> t) -> IO ()
 atomicModifyIORefCAS_ ref fn = do
    tick <- readForCAS ref
    loop tick effort
-  where 
+  where
    effort = 30 :: Int -- TODO: Tune this.
    loop _   0     = atomicModifyIORef ref (\ x -> (fn x, ()))
-   loop old tries = do 
+   loop old tries = do
      new <- evaluate $ fn $ peekTicket old
      (b,val) <- casIORef ref old new
-     if b 
+     if b
       then return ()
       else loop val (tries-1)
 -- </duplicated code>
-
