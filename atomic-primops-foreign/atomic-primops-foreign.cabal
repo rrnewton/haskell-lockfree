@@ -36,7 +36,7 @@ Test-Suite test-atomic-primops-foreign
 
     ghc-options: -threaded -rtsopts -with-rtsopts=-N4
     build-depends: bits-atomic
-    build-depends: base >= 4.3.0.0 && <= 4.8.0.0, 
+    build-depends: base >= 4.3.0.0 && < 4.9,
                    -- For Testing:
                    time, HUnit, test-framework, test-framework-hunit
 
