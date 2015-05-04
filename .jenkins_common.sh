@@ -31,7 +31,7 @@ which -a llc || echo "No LLVM"
 
 
 # Pass OPTLVL directly to cabal:
-CBLARGS=" -j $OPTLVL "
+CBLARGS=" $OPTLVL "
 
 if [ "$PROF" == "prof" ]; then
   CBLARGS="$CBLARGS --enable-library-profiling $ENABLE_EXEC_PROF"
@@ -63,9 +63,11 @@ for subdir in $ALLPKGS; do
 done
 cd "$root"
 
+# TODO: This should really be set dynamically.
+CBLPAR="-j8"
 
 # First install everything without testing:
-CMDROOT="$CABAL install --reinstall --with-ghc=ghc-$JENKINS_GHC --force-reinstalls"
+CMDROOT="$CABAL install --reinstall --with-ghc=ghc-$JENKINS_GHC --force-reinstalls $CBLPAR"
 $CMDROOT $CBLARGS $ALLPKGS
 
 # Now install the DEPENDENCIES for testing
