@@ -66,8 +66,10 @@ cd "$root"
 # TODO: This should really be set dynamically.
 CBLPAR="-j8"
 
+GHC=ghc-$JENKINS_GHC
+
 # First install everything without testing:
-CMDROOT="$CABAL install --reinstall --with-ghc=ghc-$JENKINS_GHC --force-reinstalls $CBLPAR"
+CMDROOT="$CABAL install --reinstall --with-ghc=$GHC --force-reinstalls $CBLPAR"
 $CMDROOT $CBLARGS $ALLPKGS
 
 # Now install the DEPENDENCIES for testing
