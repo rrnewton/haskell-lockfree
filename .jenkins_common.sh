@@ -72,7 +72,7 @@ CBLPAR="-j8"
 GHC=ghc-$JENKINS_GHC
 
 # First install everything without testing:
-CMDROOT="$CABAL install --reinstall --with-ghc=$GHC --force-reinstalls $CBLPAR"
+CMDROOT="$CABAL install --reinstall --force-reinstalls $CBLPAR"
 
 # ------------------------------------------------------------
 # Method 1: Separate compile and then test.
@@ -91,9 +91,9 @@ $CABAL sandbox hc-pkg list
 echo "Everything installed, now to test."
 for subdir in $PKGS; do
   cd "$root/$subdir"
-  $CABAL configure --with-ghc=$GHC --enable-tests $CBLARGS
+  $CABAL configure --enable-tests $CBLARGS
   # Print the individual test outputs:
-  $CABAL test --with-ghc=$GHC --show-details=streaming
+  $CABAL test --show-details=streaming
 done
 
 # ------------------------------------------------------------
