@@ -93,7 +93,7 @@ for subdir in $PKGS; do
   cd "$root/$subdir"
   $CABAL configure --with-ghc=$GHC --enable-tests $CBLARGS
   # Print the individual test outputs:
-  $CABAL test --show-details=streaming
+  $CABAL test --with-ghc=$GHC --show-details=streaming
 done
 
 # ------------------------------------------------------------
