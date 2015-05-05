@@ -1,4 +1,15 @@
 
+Build Status and unit tests
+===========================
+
+Basic primops, i.e. `atomic-primops` package:
+
+ * Jenkins: [![Build Status](http://tester-lin.soic.indiana.edu:8080/buildStatus/icon?job=Haskell-LockFree_primops)](http://tester-lin.soic.indiana.edu:8080/job/Haskell-LockFree_primops/)
+
+Queue and Deque data structures in this package:
+
+ * Jenkins: [![Build Status](http://tester-lin.soic.indiana.edu:8080/buildStatus/icon?job=Haskell-LockFree_dataStructs)](http://tester-lin.soic.indiana.edu:8080/job/Haskell-LockFree_dataStructs)
+
 Contents of this Repository
 ================================================================================
 
@@ -6,16 +17,16 @@ This is a multi-package repository.  The following directories
 each correspond to exactly one cabal package:
 
  * [abstract-deque]: AbstractDeque - abstract interface for single and
-    double ended queues, plus reference implementation in pure Haskell 
+    double ended queues, plus reference implementation in pure Haskell
  * [lockefree-queue]: classic Michael & Scott algorithm for single ended queues
  * [chaselev-deque]: work-stealing "1.5" ended deques.
  * [mega-deque]: a package that picks the best implementation for the
     interface constraints, which are expressed at the type level.
- * [atomic-primops]: *safe* CAS/FAA on various kinds of mutable locations 
+ * [atomic-primops]: *safe* CAS/FAA on various kinds of mutable locations
  * [atomic-primops-foreign]: Add on package that provides an FFI based
    implementation of counters.
- 
-Please see the .cabal files for more detailed descriptions of each package.  
+
+Please see the .cabal files for more detailed descriptions of each package.
 
 
 How to Test and Install
@@ -44,7 +55,7 @@ can also configure which executables for `cabal` and `ghc` it uses,
 for example:
 
     GHC=ghc-7.4.1 CABAL=cabal-0.10.2 ./install_all.sh --enable-tests
-    
+
 Next, you can run the tests like this:
 
     ./MichaelScott/dist/build/test-lockfree-queue/test-lockfree-queue
@@ -66,7 +77,7 @@ Building with Profiling for debugging:
 You might have to reinstall some of the dependencies with profiling
 enabled:
 
-    cabal install -p hostname xml regex-base regex-posix ansi-terminal ansi-wl-pprint test-framework test-framework-hunit --reinstall           
+    cabal install -p hostname xml regex-base regex-posix ansi-terminal ansi-wl-pprint test-framework test-framework-hunit --reinstall
 
 Reinstalling with profiling can be REALLY annoying once the libraries
 are already installed.  For example, if you forget a dependency above
