@@ -4,5 +4,6 @@
 
 NOTEST_PKGS="atomic-primops/ atomic-primops-foreign/"
 PKGS="abstract-deque/ abstract-deque-tests/ lockfree-queue/ chaselev-deque/ mega-deque/"
+TESTPKGS="$PKGS"
 
 source .jenkins_common.sh

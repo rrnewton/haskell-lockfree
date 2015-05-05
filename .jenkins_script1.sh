@@ -4,5 +4,6 @@
 
 NOTEST_PKGS=""
 PKGS="atomic-primops/ atomic-primops/testing/ atomic-primops-foreign/"
+TESTPKGS="atomic-primops/testing/ atomic-primops-foreign/"
 
 source .jenkins_common.sh

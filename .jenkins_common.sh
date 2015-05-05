@@ -89,7 +89,7 @@ $CMDROOT $CBLARGS --enable-tests $PKGS
 $CABAL sandbox hc-pkg list
 
 echo "Everything installed, now to test."
-for subdir in $PKGS; do
+for subdir in $TESTPKGS; do
   cd "$root/$subdir"
   $CABAL configure --enable-tests $CBLARGS
   # Print the individual test outputs:
