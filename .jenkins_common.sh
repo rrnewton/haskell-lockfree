@@ -79,26 +79,25 @@ CMDROOT="$CABAL install --reinstall --with-ghc=$GHC --force-reinstalls $CBLPAR"
 #   ++ cabal-1.20 test --show-details=always
 #   cabal-1.20: dist/setup-config: invalid argument
 # ------------------------------------------------------------
-# $CMDROOT $CBLARGS $ALLPKGS
 
-# # Now install the DEPENDENCIES for testing
-# $CMDROOT $CBLARGS $PKGS --enable-tests --only-dependencies
+# Install the DEPENDENCIES for packages and tests:
+# And install the packages themselves to satisy interdependencies.
+$CMDROOT $CBLARGS --enable-tests $PKGS
 
-# # List what we've got:
-# $CABAL sandbox hc-pkg list
-
-# echo "Everything installed, now to test."
-# for subdir in $PKGS; do
-#   cd "$root/$subdir"
-#   # Print the individual test outputs:
-#   $CABAL configure --with-ghc=$GHC --enable-tests $CBLARGS
-#   $CABAL test --show-details=always
-# done
-
-# ------------------------------------------------------------
-# Method 2: A single command
-# ------------------------------------------------------------
-
-$CMDROOT $CBLARGS $PKGS --run-tests
-
+# List what we've got:
 $CABAL sandbox hc-pkg list
+
+echo "Everything installed, now to test."
+for subdir in $PKGS; do
+  cd "$root/$subdir"
+  $CABAL configure --with-ghc=$GHC --enable-tests $CBLARGS
+  # Print the individual test outputs:
+  $CABAL test --show-details=streaming
+done
+
+# ------------------------------------------------------------
+# Method 2: A single install/test command
+# ------------------------------------------------------------
+
+# $CMDROOT $CBLARGS $PKGS --run-tests
+# $CABAL sandbox hc-pkg list
