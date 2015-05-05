@@ -10,8 +10,8 @@ fi
 # if [ "$CABAL" == "" ]; then
 #   if [ "$GHC" == "ghc-7.10.1" ]; then
 #       CABAL=cabal-1.22
-#       DISABLE_EXEC_PROF="--disable-profiling"
-#       ENABLE_EXEC_PROF="--enable-profiling"
+       DISABLE_EXEC_PROF="--disable-profiling"
+       ENABLE_EXEC_PROF="--enable-profiling"
 #   else
 #       CABAL=cabal-1.20
 #       DISABLE_EXEC_PROF="--disable-executable-profiling"
@@ -42,9 +42,10 @@ else
 fi
 
 if [ "$HPC" == "hpc" ]; then
-  CBLARGS="$CBLARGS --enable-library-coverage"
+  # Remove obsolete --enable-library-coverage:
+  CBLARGS="$CBLARGS --enable-coverage"
 else
-  CBLARGS="$CBLARGS --disable-library-coverage"
+  CBLARGS="$CBLARGS --disable-coverage"
 fi
 
 if [ "$THREADING" == "nothreads" ]; then
