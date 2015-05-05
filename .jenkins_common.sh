@@ -7,18 +7,20 @@ if [ "$JENKINS_GHC" == "" ]; then
   exit 1
 fi
 
-if [ "$CABAL" == "" ]; then
-  if [ "$GHC" == "ghc-7.10.1" ]; then
-      CABAL=cabal-1.22
-      DISABLE_EXEC_PROF="--disable-profiling"
-      ENABLE_EXEC_PROF="--enable-profiling"
-  else
-      CABAL=cabal-1.20
-      DISABLE_EXEC_PROF="--disable-executable-profiling"
-      ENABLE_EXEC_PROF="--enable-executable-profiling"
-  fi
-fi
+# if [ "$CABAL" == "" ]; then
+#   if [ "$GHC" == "ghc-7.10.1" ]; then
+#       CABAL=cabal-1.22
+#       DISABLE_EXEC_PROF="--disable-profiling"
+#       ENABLE_EXEC_PROF="--enable-profiling"
+#   else
+#       CABAL=cabal-1.20
+#       DISABLE_EXEC_PROF="--disable-executable-profiling"
+#       ENABLE_EXEC_PROF="--enable-executable-profiling"
+#   fi
+# fi
 
+# Temp: trying this [2015.05.04]:
+CABAL=cabal-1.22
 
 # IU-specific environment setup.
 source $HOME/rn_jenkins_scripts/acquire_ghc.sh
