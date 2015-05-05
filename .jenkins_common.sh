@@ -70,18 +70,33 @@ GHC=ghc-$JENKINS_GHC
 
 # First install everything without testing:
 CMDROOT="$CABAL install --reinstall --with-ghc=$GHC --force-reinstalls $CBLPAR"
-$CMDROOT $CBLARGS $ALLPKGS
 
-# Now install the DEPENDENCIES for testing
-$CMDROOT $CBLARGS $PKGS --enable-tests --only-dependencies
+# ------------------------------------------------------------
+# Method 1: Separate compile and then test.
+# Problem is, this is triggering what looks like a cabal-1.20 bug:
+#   ++ cabal-1.20 test --show-details=always
+#   cabal-1.20: dist/setup-config: invalid argument
+# ------------------------------------------------------------
+# $CMDROOT $CBLARGS $ALLPKGS
 
-# List what we've got:
+# # Now install the DEPENDENCIES for testing
+# $CMDROOT $CBLARGS $PKGS --enable-tests --only-dependencies
+
+# # List what we've got:
+# $CABAL sandbox hc-pkg list
+
+# echo "Everything installed, now to test."
+# for subdir in $PKGS; do
+#   cd "$root/$subdir"
+#   # Print the individual test outputs:
+#   $CABAL configure --with-ghc=$GHC --enable-tests $CBLARGS
+#   $CABAL test --show-details=always
+# done
+
+# ------------------------------------------------------------
+# Method 2: A single command
+# ------------------------------------------------------------
+
+$CMDROOT $CBLARGS $PKGS --run-tests
+
 $CABAL sandbox hc-pkg list
-
-echo "Everything installed, now to test."
-for subdir in $PKGS; do
-  cd "$root/$subdir"
-  # Print the individual test outputs:
-  $CABAL configure --with-ghc=$GHC --enable-tests $CBLARGS
-  $CABAL test --show-details=always
-done
