@@ -2,13 +2,9 @@
 Build Status and unit tests
 ===========================
 
-Basic primops, i.e. `atomic-primops` package:
-
- * Jenkins: [![Build Status](http://tester-lin.soic.indiana.edu:8080/buildStatus/icon?job=Haskell-LockFree_primops)](http://tester-lin.soic.indiana.edu:8080/job/Haskell-LockFree_primops/)
-
-Queue and Deque data structures in this package:
-
- * Jenkins: [![Build Status](http://tester-lin.soic.indiana.edu:8080/buildStatus/icon?job=Haskell-LockFree_dataStructs)](http://tester-lin.soic.indiana.edu:8080/job/Haskell-LockFree_dataStructs)
+ * Jenkins: [![Build Status](http://tester-lin.soic.indiana.edu:8080/buildStatus/icon?job=Haskell-LockFree_primops)](http://tester-lin.soic.indiana.edu:8080/job/Haskell-LockFree_primops/) -- Basic primops only, i.e. `atomic-primops` package:
+ * Jenkins: [![Build Status](http://tester-lin.soic.indiana.edu:8080/buildStatus/icon?job=Haskell-LockFree_dataStructs)](http://tester-lin.soic.indiana.edu:8080/job/Haskell-LockFree_dataStructs) -- all Queue and Deque data structures in this package.
+ * Travis: [![Build Status](https://travis-ci.org/rrnewton/haskell-lockfree.svg?branch=master)](https://travis-ci.org/rrnewton/haskell-lockfree) -- combined build&test for all packages in the repo.
 
 Contents of this Repository
 ================================================================================
