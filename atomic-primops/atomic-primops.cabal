@@ -1,5 +1,5 @@
 Name:                atomic-primops
-Version:             0.8
+Version:             0.8.0.1
 License:             BSD3
 License-file:        LICENSE
 Author:              Ryan Newton
@@ -50,40 +50,40 @@ Description:
   interest, specifically, compare and swap inside an array.
  .
   Note that as of GHC 7.8, the relevant primops have been included in GHC itself.
-  This library is engineered to work pre- and post-GHC-7.8, while exposing the 
+  This library is engineered to work pre- and post-GHC-7.8, while exposing the
   same interface.
  .
  Changes in 0.3:
  .
- * Major internal change.  Duplicate the barrier code from the GHC RTS and thus 
+ * Major internal change.  Duplicate the barrier code from the GHC RTS and thus
    enable support for executables that are NOT built with '-threaded'.
  .
  Changes in 0.4:
- . 
- * Further internal changes, duplicate 'cas' routine well as barriers.  
+ .
+ * Further internal changes, duplicate 'cas' routine well as barriers.
  .
  * Add `fetchAddByteArrayInt`
  .
  * Add an `Unboxed` counter variant that uses movable "ByteArray"s on the GHC heap.
  .
  Changes in 0.5:
- . 
+ .
  * Remove dependency on bits-atomic unless a flag is turned on.
- . 
+ .
  Changes in 0.5.0.2:
  .
  * IMPORTANT BUGFIXES - don't use earlier versions.  They have been marked deprecated.
  .
  Changes in 0.6.1
  .
- * This is a good version to use for GHC 7.8.3.  It includes portability and bug fixes 
+ * This is a good version to use for GHC 7.8.3.  It includes portability and bug fixes
    and adds atomicModifyIORefCAS.
  .
- Changes in 0.7: 
+ Changes in 0.7:
  .
  * This release adds support for GHC 7.10 and its expanded library of (now inline) primops.
  .
- Changes in 0.8: 
+ Changes in 0.8:
  .
  * Implements additional fetch primops available in GHC 7.10
 
@@ -123,19 +123,19 @@ Library
      -- Duplicate RTS functionality for GHC 7.6:
      C-Sources:        cbits/RtsDup.c
   }
-  CC-Options:       -Wall 
+  CC-Options:       -Wall
 
   -- if( cabal-version < 1.17 ) {
   --   ghc-prof-options: ERROR_DO_NOT_BUILD_THIS_WITH_PROFILING_YET__SEE_CABAL_ISSUE_1284
   -- }
 
   if flag(debug)
-    cpp-options: -DDEBUG_ATOMICS 
+    cpp-options: -DDEBUG_ATOMICS
 
 
 -- -- [2013.04.08] This isn't working presently:
 -- -- I'm having problems with building it along with the library; see DEVLOG.
--- -- Switching to a separate package in ./testing/ 
+-- -- Switching to a separate package in ./testing/
 -- Test-Suite test-atomic-primops
 --     type:       exitcode-stdio-1.0
 --     ...
