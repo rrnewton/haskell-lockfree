@@ -447,7 +447,9 @@ loadLoadBarrier :: IO ()
 writeBarrier :: IO ()
 
 -- GHC 7.8 consistently exposes these symbols while linking:
-#if MIN_VERSION_base(4,7,0) && !defined(_WIN32) && !defined(_WIN64)
+
+#if MIN_VERSION_base(4,7,0) && !defined(mingw32_HOST_OS)
+
 foreign import ccall  unsafe "store_load_barrier" storeLoadBarrier
   :: IO ()
 

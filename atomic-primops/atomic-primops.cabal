@@ -122,6 +122,11 @@ Library
      C-Sources:        cbits/primops.cmm
      -- Duplicate RTS functionality for GHC 7.6:
      C-Sources:        cbits/RtsDup.c
+  } else {
+     if os(windows) {
+        Include-Dirs:     cbits
+        C-Sources:        cbits/RtsDup.c
+     }
   }
   CC-Options:       -Wall
 
