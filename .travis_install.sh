@@ -33,6 +33,8 @@ else
 
     # In this mode we just grab the latest from hackage:
     if [ ${STACK_RESOLVER%-*} = "ghc" ]; then
+        which -a ghc
+        ghc --version
         stack --resolver=${STACK_RESOLVER} solver --modify-stack-yaml
     fi
 
