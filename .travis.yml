@@ -31,10 +31,11 @@ matrix:
     - env: STACKVER=0.1.3.1 STACK_RESOLVER=ghc-7.10
       addons: {apt: {packages: [ghc-7.10.1,happy-1.19.4,alex-3.1.3],sources: [hvr-ghc]}}
 
+# This needs ghc 7.10.2:
     - env: STACKVER=0.1.3.1 STACK_RESOLVER=nightly-2015-08-21
-      addons: {apt: {packages: [happy-1.19.4,alex-3.1.3],sources: [hvr-ghc]}}
+      addons: {apt: {packages: [libgmp-dev,happy-1.19.4,alex-3.1.3],sources: [hvr-ghc]}}
     - env: STACKVER=0.1.3.1 STACK_RESOLVER=nightly
-      addons: {apt: {packages: [happy-1.19.4,alex-3.1.3],sources: [hvr-ghc]}}
+      addons: {apt: {packages: [libgmp-dev,happy-1.19.4,alex-3.1.3],sources: [hvr-ghc]}}
 
     - env: CABALVER=head GHCVER=head
       addons: {apt: {packages: [cabal-install-head,ghc-head],  sources: [hvr-ghc]}}
@@ -49,6 +50,7 @@ matrix:
     # Still debuging these:
     - env: STACKVER=0.1.3.1 STACK_RESOLVER=ghc-7.8
     - env: STACKVER=0.1.3.1 STACK_RESOLVER=ghc-7.10
+    - env: STACKVER=0.1.3.1 STACK_RESOLVER=nightly-2015-08-21
 
 # This is stack-specific.  Oh well.
 before_install:
