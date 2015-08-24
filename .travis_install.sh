@@ -22,7 +22,10 @@ if [ "$STACKVER" == "" ]; then
     # Now enable benchmarks and tests and add the extra dependencies:
     cabal install -j --only-dependencies --enable-tests --enable-benchmarks $PKGS
 else
+    cat stack.yaml | grep -v resolver > stack-${STACK_RESOLVER}.yaml
+    echo "resolver: ${STACK_RESOLVER}" >> stack-${STACK_RESOLVER}.yaml
+
     # Sweet and simple:
-    stack setup --no-terminal
-    stack test --only-snapshot --no-terminal
+    stack --stack-yaml=stack-${STACK_RESOLVER}.yaml setup --no-terminal
+    stack --stack-yaml=stack-${STACK_RESOLVER}.yaml test --only-snapshot --no-terminal
 fi
