@@ -7,7 +7,7 @@ echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo
 which -a ghc
 ghc --version
 
-travis_retry cabal update
+cabal update # Can put a retry here...
 
 # This is a hack to make Travis happy because it doesn't install happy/alex by default
 cabal install -j happy alex
