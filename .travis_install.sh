@@ -10,7 +10,7 @@ ghc --version
 cabal update # Can put a retry here...
 
 # This is a hack to make Travis happy because it doesn't install happy/alex by default
-cabal install -j happy alex
+# cabal install -j happy alex
 
 # And now we install the main packages:
 PKGS="./atomic-primops ./atomic-primops-foreign ./abstract-deque/ ./abstract-deque-tests/ ./lockfree-queue/ ./chaselev-deque/ ./mega-deque"
