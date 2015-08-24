@@ -44,7 +44,6 @@ matrix:
     # Still debuging these:
     - env: STACKVER=0.1.3.1 STACK_RESOLVER=ghc-7.8
     - env: STACKVER=0.1.3.1 STACK_RESOLVER=ghc-7.10
-    - env: STACKVER=0.1.3.1 STACK_RESOLVER=nightly-2015-08-21
 
 # This is stack-specific.  Oh well.
 before_install:
