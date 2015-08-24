@@ -24,8 +24,19 @@ if [ "$STACKVER" == "" ]; then
 else
     cat stack.yaml | grep -v resolver > stack-${STACK_RESOLVER}.yaml
     echo "resolver: ${STACK_RESOLVER}" >> stack-${STACK_RESOLVER}.yaml
+    rm -f stack.yaml # Just to make sure.
+
+    URL="https://github.com/commercialhaskell/stack/releases/download/v"${STACKVER}"/stack-${STACKVER}-x86_64-linux.gz"
+    # travis_retry:
+    curl -L $URL | gunzip > ~/.local/bin/stack
+    chmod a+x ~/.local/bin/stack
+
+    # In this mode we just grab the latest from hackage:
+    if [ ${STACK_RESOLVER%-*} = "ghc" ]; then
+        stack --resolver=${STACK_RESOLVER} solver --modify-stack-yaml
+    fi
 
     # Sweet and simple:
-    stack --stack-yaml=stack-${STACK_RESOLVER}.yaml setup --no-terminal
-    stack --stack-yaml=stack-${STACK_RESOLVER}.yaml test --only-snapshot --no-terminal
+    stack setup --no-terminal
+    stack test --only-snapshot --no-terminal
 fi

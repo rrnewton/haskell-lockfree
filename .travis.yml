@@ -3,6 +3,9 @@
 # NB: don't set `language: haskell` here
 
 sudo: false
+cache:
+  directories:
+  - $HOME/.stack/
 
 matrix:
   include:
@@ -10,10 +13,10 @@ matrix:
       addons: {apt: {packages: [cabal-install-1.16,ghc-7.6.3,happy,alex], sources: [hvr-ghc]}}
     - env: CABALVER=1.18 GHCVER=7.8.3
       addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.3,happy-1.19.4,alex-3.1.3], sources: [hvr-ghc]}}
-    - env: CABALVER=1.18 GHCVER=7.8.4
-      addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.4,happy-1.19.4,alex-3.1.3], sources: [hvr-ghc]}}
-    - env: CABALVER=1.22 GHCVER=7.10.1
-      addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.1,happy-1.19.4,alex-3.1.3],sources: [hvr-ghc]}}
+    # - env: CABALVER=1.18 GHCVER=7.8.4
+    #   addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.4,happy-1.19.4,alex-3.1.3], sources: [hvr-ghc]}}
+    # - env: CABALVER=1.22 GHCVER=7.10.1
+    #   addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.1,happy-1.19.4,alex-3.1.3],sources: [hvr-ghc]}}
 # Huh, not approved yet [2015.08.23]:
 #    - env: CABALVER=1.22 GHCVER=7.10.2
 #      addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.2],sources: [hvr-ghc]}}
@@ -21,6 +24,11 @@ matrix:
     - env: STACKVER=0.1.3.1 STACK_RESOLVER=lts-2.22
       addons: {apt: {packages: [ghc-7.8.4,happy-1.19.4,alex-3.1.3],sources: [hvr-ghc]}}
     - env: STACKVER=0.1.3.1 STACK_RESOLVER=lts-3.2
+      addons: {apt: {packages: [ghc-7.10.1,happy-1.19.4,alex-3.1.3],sources: [hvr-ghc]}}
+
+    - env: STACKVER=0.1.3.1 STACK_RESOLVER=ghc-7.8
+      addons: {apt: {packages: [ghc-7.8.4,happy-1.19.4,alex-3.1.3],sources: [hvr-ghc]}}
+    - env: STACKVER=0.1.3.1 STACK_RESOLVER=ghc-7.10
       addons: {apt: {packages: [ghc-7.10.1,happy-1.19.4,alex-3.1.3],sources: [hvr-ghc]}}
 
     - env: CABALVER=head GHCVER=head
@@ -31,13 +39,18 @@ matrix:
     # Too many headaches maintaining this for old cabal/ghc:
     - env: CABALVER=1.16 GHCVER=7.6.3
 
+    - env: STACKVER=0.1.3.1 STACK_RESOLVER=nightly
+      addons: {apt: {packages: [happy-1.19.4,alex-3.1.3],sources: [hvr-ghc]}}
+
+    - env: STACKVER=0.1.3.1 STACK_RESOLVER=nightly-2015-08-21
+      addons: {apt: {packages: [happy-1.19.4,alex-3.1.3],sources: [hvr-ghc]}}
+
 # This is stack-specific.  Oh well.
 before_install:
  - mkdir -p ~/.local/bin
  - export PATH=~/.local/bin:$PATH
- - travis_retry curl -L https://github.com/commercialhaskell/stack/releases/download/v0.1.1.0/stack-0.1.1.0-x86_64-linux.gz | gunzip > ~/.local/bin/stack
- - chmod a+x ~/.local/bin/stack
  - cat /proc/cpuinfo | grep name
+ - export STACK_YAML=stack-${STACK_RESOLVER}.yaml
 
 install:
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH

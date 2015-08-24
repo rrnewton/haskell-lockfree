@@ -13,5 +13,5 @@ if [ "$STACKVER" == "" ]; then
  (cd ./mega-deque/      &&       cabal configure --enable-tests && cabal test --show-details=always)
 
 else
- stack --stack-yaml=stack-${STACK_RESOLVER}.yaml test --no-terminal
+ stack test --no-terminal
 fi
