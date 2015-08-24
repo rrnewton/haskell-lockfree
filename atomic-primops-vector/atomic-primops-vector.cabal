@@ -19,7 +19,7 @@ library
   exposed-modules: Data.Atomics.Vector
   -- other-modules:
   -- other-extensions:
-  build-depends: base           >= 4.6
+  build-depends: base           >= 4.7
                , vector         >= 0.10
                , atomic-primops >= 0.7
                , primitive      >= 0.5
@@ -31,7 +31,7 @@ Test-Suite test-atomic-primops-vector
     type:       exitcode-stdio-1.0
     hs-source-dirs: ./tests/
     main-is:    Main.hs
-    build-depends: base   >= 4.8
+    build-depends: base   >= 4.7
                  , vector >= 0.10
                  , atomic-primops-vector
     ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-N4
