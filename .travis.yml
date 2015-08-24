@@ -28,7 +28,8 @@ matrix:
 
   allow_failures:
     - env: CABALVER=head GHCVER=head
-
+    # Too many headaches maintaining this for old cabal/ghc:
+    - env: CABALVER=1.16 GHCVER=7.6.3
 
 # This is stack-specific.  Oh well.
 before_install:
