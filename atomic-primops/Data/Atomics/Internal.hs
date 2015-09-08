@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP, TypeSynonymInstances, BangPatterns #-}
 {-# LANGUAGE ForeignFunctionInterface, GHCForeignImportPrim, MagicHash, UnboxedTuples, UnliftedFFITypes #-}
+{-# LANGUAGE KindSignatures #-}
 
 #define CASTFUN
 
@@ -9,14 +10,14 @@ module Data.Atomics.Internal
    (
     casIntArray#, fetchAddIntArray#, 
     readForCAS#, casMutVarTicketed#, casArrayTicketed#, 
-    Ticket,
+    Ticket, peekTicket,
     -- * Very unsafe, not to be used
     ptrEq
    )
   where 
 
 import GHC.Base (Int(I#))
-import GHC.Prim (RealWorld, Int#, State#, MutableArray#, MutVar#,
+import GHC.Prim (Int#, State#, MutableArray#, MutVar#,
                  unsafeCoerce#, reallyUnsafePtrEquality#) 
 
 #if MIN_VERSION_base(4,7,0)
@@ -45,8 +46,8 @@ import GHC.Prim (readMutVar#, Any, MutableByteArray#)
 --------------------------------------------------------------------------------
 
 -- | Unsafe, machine-level atomic compare and swap on an element within an Array.  
-casArrayTicketed# :: MutableArray# RealWorld a -> Int# -> Ticket a -> Ticket a 
-          -> State# RealWorld -> (# State# RealWorld, Int#, Ticket a #)
+casArrayTicketed# :: MutableArray# s a -> Int# -> Ticket m a -> Ticket m a
+          -> State# s -> (# State# s, Int#, Ticket m a #)
 -- WARNING: cast of a function -- need to verify these are safe or eta expand.
 casArrayTicketed# = unsafeCoerce#
 #if MIN_VERSION_base(4,7,0)
@@ -66,24 +67,32 @@ casArrayTicketed# = unsafeCoerce#
 -- on the other hand, is a first-class object that can be handled by the user,
 -- but will not have its pointer identity changed by compiler optimizations
 -- (but will of course, change addresses during garbage collection).
-newtype Ticket a = Ticket Any
+newtype Ticket (m :: * -> *) a = Ticket Any
 -- If we allow tickets to be a pointer type, then the garbage collector will update
 -- the pointer when the object moves.
 
-instance Show (Ticket a) where
+instance Show (Ticket m a) where
   show _ = "<CAS_ticket>"
 
 {-# NOINLINE ptrEq #-}
 ptrEq :: a -> a -> Bool
 ptrEq !x !y = I# (reallyUnsafePtrEquality# x y) == 1
 
-instance Eq (Ticket a) where
+instance Eq (Ticket m a) where
   (==) = ptrEq
+
+-- | A ticket contains or can get the usable Haskell value.  This
+-- function does just that.
+{-# NOINLINE peekTicket #-}
+-- At least this function MUST remain NOINLINE.  Issue5 is an example
+-- of a bug that ensues otherwise.
+peekTicket :: Ticket m a -> a
+peekTicket = unsafeCoerce#
 
 --------------------------------------------------------------------------------
 
-readForCAS# :: MutVar# RealWorld a ->
-               State# RealWorld -> (# State# RealWorld, Ticket a #)
+readForCAS# :: MutVar# s a ->
+               State# s -> (# State# s, Ticket m a #)
 -- WARNING: cast of a function -- need to verify these are safe or eta expand:
 #ifdef CASTFUN
 readForCAS# = unsafeCoerce# readMutVar#
@@ -94,8 +103,8 @@ readForCAS# mv rw =
 #endif
 
 
-casMutVarTicketed# :: MutVar# RealWorld a -> Ticket a -> Ticket a ->
-               State# RealWorld -> (# State# RealWorld, Int#, Ticket a #)
+casMutVarTicketed# :: MutVar# s a -> Ticket m a -> Ticket m a ->
+               State# s -> (# State# s, Int#, Ticket m a #)
 -- WARNING: cast of a function -- need to verify these are safe or eta expand:
 casMutVarTicketed# =
 #if MIN_VERSION_base(4,7,0) 
@@ -115,16 +124,16 @@ casMutVarTicketed# =
 #else
 
 foreign import prim "stg_casArrayzh" casArrayTypeErased#
-  :: MutableArray# RealWorld () -> Int# -> Any () -> Any () -> 
-     State# RealWorld  -> (# State# RealWorld, Int#, Any () #) 
+  :: MutableArray# s () -> Int# -> Any () -> Any () ->
+     State# s  -> (# State# s, Int#, Any () #)
 --   out_of_line = True
 --   has_side_effects = True
 
 -- | This alternate version of casMutVar returns an opaque "ticket" for
 --   future CAS operations.
 foreign import prim "stg_casMutVar2zh" casMutVar_TypeErased#
-  :: MutVar# RealWorld () -> Any () -> Any () ->
-     State# RealWorld -> (# State# RealWorld, Int#, Any () #)
+  :: MutVar# s () -> Any () -> Any () ->
+     State# s -> (# State# s, Int#, Any () #)
 
 -- foreign import prim "stg_readMutVar2zh" readMutVar_TypeErased#
 --   :: MutVar# RealWorld () -> 

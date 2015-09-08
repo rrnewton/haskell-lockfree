@@ -102,6 +102,7 @@ Flag debug
 Library
   Default-Language: Haskell2010
   exposed-modules:   Data.Atomics
+                     Data.Atomics.Class
                      Data.Atomics.Internal
                      Data.Atomics.Counter
   ghc-options: -O2 -funbox-strict-fields
