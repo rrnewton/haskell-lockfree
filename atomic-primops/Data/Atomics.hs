@@ -438,13 +438,13 @@ casMutVar2 mv tick new = IO$ \st ->
 --------------------------------------------------------------------------------
 
 -- | Memory barrier implemented by the GHC rts (see SMP.h).
-storeLoadBarrier :: IO ()
+-- storeLoadBarrier :: IO ()
 
 -- | Memory barrier implemented by the GHC rts (see SMP.h).
-loadLoadBarrier :: IO ()
+-- loadLoadBarrier :: IO ()
 
 -- | Memory barrier implemented by the GHC rts (see SMP.h).
-writeBarrier :: IO ()
+-- writeBarrier :: IO ()
 
 -- GHC 7.8 consistently exposes these symbols while linking:
 
