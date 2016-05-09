@@ -23,7 +23,8 @@ import GHC.Prim (RealWorld, Int#, State#, MutableArray#, MutVar#,
 import GHC.Prim (casArray#, casIntArray#, fetchAddIntArray#, Any, readMutVar#, casMutVar#)
 #elif MIN_VERSION_base(4,6,0)
 -- Any is only supported in the FFI in the way we need in GHC 7.6+
-import GHC.Prim (readMutVar#, Any, MutableByteArray#)
+import GHC.Prim (readMutVar#, MutableByteArray#)
+import GHC.Base (Any)
 #else
 #error "Need to figure out how to emulate Any () in GHC <= 7.4 !"
 -- import GHC.Prim (Word#)
