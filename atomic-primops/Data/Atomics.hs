@@ -437,6 +437,15 @@ casMutVar2 mv tick new = IO$ \st ->
 -- Memory barriers
 --------------------------------------------------------------------------------
 
+-- | Memory barrier implemented by the GHC rts (see SMP.h).
+-- storeLoadBarrier :: IO ()
+
+-- | Memory barrier implemented by the GHC rts (see SMP.h).
+-- loadLoadBarrier :: IO ()
+
+-- | Memory barrier implemented by the GHC rts (see SMP.h).
+-- writeBarrier :: IO ()
+
 -- GHC 7.8 consistently exposes these symbols while linking:
 
 #if MIN_VERSION_base(4,7,0) && !defined(mingw32_HOST_OS)
