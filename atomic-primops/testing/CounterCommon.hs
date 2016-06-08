@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -- Common tests to the different counter implementations. N.B. #included from
 -- other projects via soft links!
 
@@ -42,7 +43,7 @@ case_basic4 = do
     (True,_) <- C.casCounter r t (C.peekCTicket t + 1)
     return ()
   cnt <- C.readCounter r
-  assertEqual "Every CAS should succeed on one thread" tries cnt 
+  assertEqual "Every CAS should succeed on one thread" tries cnt
 
 --------------------------------------------------------------------------------
 -- Repeated increments
@@ -132,9 +133,21 @@ case_parincrloop_wCAS = do
                    
 
 --------------------------------------------------------------------------------
+-- Repeated decrements
+
+#if MIN_VERSION_base(4,8,0)
+decrloop :: Int -> IO Int
+decrloop tries = do r <- C.newCounter tries; nTimes tries $ void$ C.decrCounter 1 r
+                    C.readCounter r
+
+case_decrloop :: IO ()
+case_decrloop = do
+   cnt <- decrloop default_seq_tries
+   assertEqual "decrloop sum" 0 cnt
+#endif
 
 tests :: [Test]
-tests = 
+tests =
  [
    testCase (name++"_basic1_incrCounter") $ case_basic1
  , testCase (name++"_basic2_casCounter") $ case_basic2
@@ -144,6 +157,10 @@ tests =
  , testCase (name++"_single_thread_repeat_incr") $ timeit case_incrloop
  , testCase (name++"_incr_with_result_feedback") $ timeit (incrloop4B default_seq_tries)
  , testCase (name++"_overflow_test") $ timeit (overflowTest 100000)
+   ----------------------------------------
+#if MIN_VERSION_base(4,8,0)
+ , testCase (name++"_single_thread_repeat_decr") $ timeit case_decrloop
+#endif
    ----------------------------------------
 
    -- Parallel versions:
