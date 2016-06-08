@@ -10,7 +10,7 @@
 module Data.Atomics.Counter.Foreign
        (AtomicCounter, CTicket,
         newCounter, readCounterForCAS, readCounter, peekCTicket,
-        writeCounter, casCounter, incrCounter, incrCounter_)
+        writeCounter, casCounter, incrCounter, incrCounter_, decrCounter, decrCounter_)
    where
 import Control.Monad (void)
 import Data.Bits.Atomic
@@ -46,6 +46,17 @@ incrCounter bump r = withForeignPtr r$ \r' -> addAndFetch r' bump
 -- | An alternate version for when you don't care about the old value.
 incrCounter_ :: Int -> AtomicCounter -> IO ()
 incrCounter_ bump r = withForeignPtr r$ \r' -> void (addAndFetch r' bump)
+
+{-# INLINE decrCounter #-}
+-- | Decrement the counter by a given amount.
+--   Returns the value after the decrement.
+decrCounter :: Int -> AtomicCounter -> IO Int
+decrCounter bump r = withForeignPtr r$ \r' -> subAndFetch r' bump
+
+{-# INLINE decrCounter_ #-}
+-- | An alternate version for when you don't care about the old value.
+decrCounter_ :: Int -> AtomicCounter -> IO ()
+decrCounter_ bump r = withForeignPtr r$ \r' -> void (subAndFetch r' bump)
 
 {-# INLINE readCounterForCAS #-}
 -- | Just like the "Data.Atomics" CAS interface, this routine returns an opaque
