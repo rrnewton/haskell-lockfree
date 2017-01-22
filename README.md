@@ -18,7 +18,7 @@ each correspond to exactly one cabal package:
  * [chaselev-deque]: work-stealing "1.5" ended deques.
  * [mega-deque]: a package that picks the best implementation for the
     interface constraints, which are expressed at the type level.
- * [atomic-primops]: *safe* CAS/FAA on various kinds of mutable locations
+ * [atomic-primops]: *safe* CAS/FAA (compare-and-swap/fetch-and-add) on various kinds of mutable locations
  * [atomic-primops-foreign]: Add on package that provides an FFI based
    implementation of counters.
 
