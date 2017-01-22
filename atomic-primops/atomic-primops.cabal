@@ -19,24 +19,6 @@ Cabal-version:       >=1.10
 HomePage: https://github.com/rrnewton/haskell-lockfree/wiki
 Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
 
--- Version History:
--- 0.1.0.0 -- initial release
--- 0.1.0.2 -- disable profiling
--- 0.2 -- Critical bugfix and add Counter.
--- 0.2.2 -- Add more counters
--- 0.2.2.1 -- Minor, add warning.
--- 0.3 -- Major internal change.  Duplicate GHC RTS barriers and support non -threaded.
--- 0.4 -- Duplicate 'cas' as well as barriers.  Add fetchAdd on ByteArray, Counter.Unboxed.
--- 0.4.1 -- Add advance support for GHC 7.8
--- 0.5 -- Nix Data.Atomics.Counter.Foreign and the bits-atomic dependency.
--- 0.5.0.2 -- IMPORTANT Bugfix release.
--- 0.6 -- add atomicModifyIORefCAS, and bump due to prev bugfixes
--- 0.6.0.1 -- minor ghc 7.8 fix
--- 0.6.0.5 -- fix for GHC 7.8
--- 0.6.1   -- several bug fixes, mainly re: platform portability
--- 0.8     -- support for GHC 7.10 and several new primops
--- 0.8.0.4 -- support for GHC 8.0 series
-   
 Synopsis: A safe approach to CAS and other atomic ops in Haskell.
 
 Description:
@@ -53,47 +35,8 @@ Description:
   Note that as of GHC 7.8, the relevant primops have been included in GHC itself.
   This library is engineered to work pre- and post-GHC-7.8, while exposing the
   same interface.
- .
- Changes in 0.3:
- .
- * Major internal change.  Duplicate the barrier code from the GHC RTS and thus
-   enable support for executables that are NOT built with '-threaded'.
- .
- Changes in 0.4:
- .
- * Further internal changes, duplicate 'cas' routine well as barriers.
- .
- * Add `fetchAddByteArrayInt`
- .
- * Add an `Unboxed` counter variant that uses movable "ByteArray"s on the GHC heap.
- .
- Changes in 0.5:
- .
- * Remove dependency on bits-atomic unless a flag is turned on.
- .
- Changes in 0.5.0.2:
- .
- * IMPORTANT BUGFIXES - don't use earlier versions.  They have been marked deprecated.
- .
- Changes in 0.6.1
- .
- * This is a good version to use for GHC 7.8.3.  It includes portability and bug fixes
-   and adds atomicModifyIORefCAS.
- .
- Changes in 0.7:
- .
- * This release adds support for GHC 7.10 and its expanded library of (now inline) primops.
- .
- Changes in 0.8:
- .
- * Implements additional fetch primops available in GHC 7.10
- .
- Changes in 0.8.0.4:
- .
- * Internal changes to support forthcoming GHC 8.0
 
- 
-Extra-Source-Files:  DEVLOG.md,
+Extra-Source-Files:  CHANGELOG.md, DEVLOG.md,
                      testing/Test.hs, testing/test-atomic-primops.cabal, testing/ghci-test.hs
                      testing/Makefile, testing/CommonTesting.hs, testing/Counter.hs, testing/CounterCommon.hs, testing/hello.hs
                      testing/Issue28.hs
