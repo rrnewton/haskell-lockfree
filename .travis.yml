@@ -9,8 +9,8 @@ cache:
 
 matrix:
   include:
-    - env: CABALVER=1.16 GHCVER=7.6.3
-      addons: {apt: {packages: [cabal-install-1.16,ghc-7.6.3,happy,alex], sources: [hvr-ghc]}}
+    - env: CABALVER=1.18 GHCVER=7.6.3
+      addons: {apt: {packages: [cabal-install-1.18,ghc-7.6.3,happy,alex], sources: [hvr-ghc]}}
     - env: CABALVER=1.18 GHCVER=7.8.3
       addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.3,happy-1.19.4,alex-3.1.3], sources: [hvr-ghc]}}
     # - env: CABALVER=1.18 GHCVER=7.8.4
@@ -39,7 +39,7 @@ matrix:
   allow_failures:
     - env: CABALVER=head GHCVER=head
     # Too many headaches maintaining this for old cabal/ghc:
-    - env: CABALVER=1.16 GHCVER=7.6.3
+    - env: CABALVER=1.18 GHCVER=7.6.3
 
     # Still debuging these:
     - env: STACKVER=0.1.3.1 STACK_RESOLVER=ghc-7.8
