@@ -1,3 +1,8 @@
+## next
+* Simplify `Setup.hs` to support `Cabal-2.0`/GHC 8.2
+* Properly link `store_load_barrier` and friends against the GHC RTS on Windows
+  when using GHC 8.2 or later
+
 ## 0.8.0.4
 * Internal changes to support forthcoming GHC 8.0
 
