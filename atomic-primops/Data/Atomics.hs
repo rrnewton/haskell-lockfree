@@ -448,7 +448,7 @@ casMutVar2 mv tick new = IO$ \st ->
 
 -- GHC 7.8 consistently exposes these symbols while linking:
 
-#if MIN_VERSION_base(4,7,0) && !defined(mingw32_HOST_OS)
+#if MIN_VERSION_base(4,7,0) && !(defined(mingw32_HOST_OS) && __GLASGOW_HASKELL__ < 802)
 #warning "Assuming that store_load_barrier and friends are defined in the GHC RTS."
 
 -- | Memory barrier implemented by the GHC rts (see SMP.h).
