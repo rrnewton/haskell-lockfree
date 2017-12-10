@@ -1,3 +1,6 @@
+## next [????.??.??]
+* Bundle `testing/Fetch.hs` with the package tarball
+
 ## 0.8.1
 * Simplify `Setup.hs` to support `Cabal-2.0`/GHC 8.2
 * Properly link `store_load_barrier` and friends against the GHC RTS on Windows

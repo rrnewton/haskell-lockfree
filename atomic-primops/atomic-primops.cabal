@@ -30,7 +30,7 @@ Description:
 
 Extra-Source-Files:  CHANGELOG.md, DEVLOG.md,
                      testing/Test.hs, testing/test-atomic-primops.cabal, testing/ghci-test.hs
-                     testing/Makefile, testing/CommonTesting.hs, testing/Counter.hs, testing/CounterCommon.hs, testing/hello.hs
+                     testing/Makefile, testing/CommonTesting.hs, testing/Counter.hs, testing/CounterCommon.hs, testing/hello.hs, testing/Fetch.hs
                      testing/Issue28.hs
                      testing/TemplateHaskellSplices.hs
                      testing/Raw781_test.hs
