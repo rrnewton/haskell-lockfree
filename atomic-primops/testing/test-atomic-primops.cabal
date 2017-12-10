@@ -19,12 +19,17 @@ Flag threaded
 Test-Suite test-atomic-primops
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
+    other-modules:
+        CommonTesting
+        Counter
+        Fetch
+        Issue28
     ghc-options: -rtsopts -main-is Test.main -Wall
 
     if flag(opt)
        ghc-options: -O2 -funbox-strict-fields
     if flag(threaded)
-       ghc-options: -threaded 
+       ghc-options: -threaded
        ghc-options: -rtsopts -with-rtsopts=-N4
 
     -- Set it to always run with some parallelism.
@@ -45,6 +50,7 @@ Executable hello-world-atomic-primops
 Test-suite template-haskell-atomic-primops
   type:       exitcode-stdio-1.0
   main-is: ghci-test.hs
+  other-modules: TemplateHaskellSplices
   if impl(ghc >= 7.8) {
     Buildable: True
     build-depends: base >= 4.5, atomic-primops >= 0.6.0.5, template-haskell,
@@ -61,7 +67,7 @@ Test-suite raw_CAS
 -- ghc-prim, primitive, containers, random, atomic-primops >= 0.5.0.2,
   main-is: Raw781_test.hs
   if impl(ghc < 7.7) {
-    Buildable: False  
+    Buildable: False
   }
 
 
@@ -71,14 +77,14 @@ Test-suite Issue28
   main-is: Issue28.hs
   ghc-options: -main-is Issue28.main
   -- if impl(ghc < 7.7) {
-  --   Buildable: False  
+  --   Buildable: False
   -- }
 
 Benchmark atomic-primops-MicroBench
   type:    exitcode-stdio-1.0
   build-depends: base, ghc-prim, primitive, containers, random,
-                 atomic-primops >= 0.6.0.5, 
-                 deepseq >= 1.3, 
+                 atomic-primops >= 0.6.0.5,
+                 deepseq >= 1.3,
                  time, HUnit, test-framework, test-framework-hunit
   build-depends: criterion >= 1.0
   main-is: MicroBench.hs
