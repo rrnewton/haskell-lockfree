@@ -1,4 +1,4 @@
-## next [????.??.??]
+## 0.8.1.1 [2017.12.10]
 * Bundle `testing/Fetch.hs` with the package tarball
 
 ## 0.8.1
