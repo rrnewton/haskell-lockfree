@@ -482,7 +482,7 @@ foreign import ccall unsafe "DUP_write_barrier" writeBarrier
 --------------------------------------------------------------------------------
 
 
--- | A drop-in replacement for `atomicModifyIORefCAS` that
+-- | A drop-in replacement for `atomicModifyIORef` that
 --   optimistically attempts to compute the new value and CAS it into
 --   place without introducing new thunks or locking anything.  Note
 --   that this is more STRICT than its standard counterpart and will only
