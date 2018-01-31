@@ -52,9 +52,10 @@ instance PopL d => PopL (DebugDeque d) where
     tryPopL q 
 
 -- | Mark the last thread to use this endpoint.
+markThread :: Bool -> IORef (Maybe ThreadId) -> IO ()
 markThread True _ = return () -- Don't bother tracking.
 markThread False ref = do
-  last <- readIORef ref
+  _last <- readIORef ref
   tid  <- myThreadId
 --  putStrLn$"Marking! "++show tid
   atomicModifyIORef ref $ \ x ->
