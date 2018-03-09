@@ -1,3 +1,6 @@
+## 0.8.2 [2018.03.08]
+* Allow building with `base-4.11`.
+
 ## 0.8.1.1 [2017.12.10]
 * Bundle `testing/Fetch.hs` with the package tarball
 
