@@ -19,7 +19,11 @@ import Text.Printf
 import GHC.Conc
 import GHC.STRef
 import GHC.IORef
+#if MIN_VERSION_base(4,10,0)
+import GHC.Stats (getRTSStats, RTSStats(..))
+#else
 import GHC.Stats (getGCStats, GCStats(..))
+#endif
 import System.Random (randomIO, randomRIO)
 import Test.HUnit (Assertion, assertEqual, assertBool)
 import Test.Framework  (defaultMain,testGroup,mutuallyExclusive)
@@ -31,7 +35,7 @@ import Data.Atomics as A
 
 import qualified Issue28
 
-import CommonTesting 
+import CommonTesting
 import qualified Counter
 import qualified Fetch
 
@@ -40,10 +44,15 @@ import qualified Fetch
 expect_false_positive_on_GC :: Bool
 expect_false_positive_on_GC = False
 
-getGCCount :: IO Int64 
-getGCCount | expect_false_positive_on_GC = 
+getGCCount :: IO Int64
+getGCCount | expect_false_positive_on_GC =
+#if MIN_VERSION_base(4,10,0)
+               do RTSStats{gcs} <- getRTSStats
+                  return (fromIntegral gcs)
+#else
                do GCStats{numGcs} <- getGCStats
                   return numGcs
+#endif
            | otherwise = return 0
 
 main :: IO ()
@@ -54,7 +63,7 @@ main = do
        let numcap = 4
        when (numCapabilities /= numcap) $ setNumCapabilities numcap
 
-       defaultMain $ 
+       defaultMain $
         -- Make these run sequentially (hopefully), so we don't interfere with
         -- concurrent tests. TODO I guess: figure out how to run tests that
         -- don't fork in parallel, but forking tests sequentially
@@ -103,7 +112,7 @@ setify = S.toList . S.fromList
 mynum :: Int
 mynum = 33
 
--- Expected output: 
+-- Expected output:
 {---------------------------------------
     Perform a CAS within a MutableArray#
       1st try should succeed: (True,33)
@@ -113,24 +122,24 @@ mynum = 33
     Done.
 -}
 case_casmutarray1 :: IO ()
-case_casmutarray1 = do 
+case_casmutarray1 = do
  putStrLn "Perform a CAS within a MutableArray#"
  arr <- newArray 5 mynum
 
  writeArray arr 4 33
  putStrLn "Wrote array elements..."
- 
+
  tick <- A.readArrayElem arr 4
  putStrLn$ "(Peeking at array gave: "++show (peekTicket tick)++")"
 
  (res1,_tick2) <- A.casArrayElem arr 4 tick 44
  (res2,_)     <- A.casArrayElem arr 4 tick 44
 -- res  <- stToIO$ casArrayST arr 4 mynum 44
--- res2 <- stToIO$ casArrayST arr 4 mynum 44 
+-- res2 <- stToIO$ casArrayST arr 4 mynum 44
 
  putStrLn "Printing array:"
  forM_ [0..4] $ \ i -> do
-   x <- readArray arr i 
+   x <- readArray arr i
    putStr ("  "++show x)
 
  assertBool "1st try should succeed: " res1
@@ -138,27 +147,27 @@ case_casmutarray1 = do
 
 
 -- case_casbytearray1 :: IO ()
--- case_casbytearray1 = do 
+-- case_casbytearray1 = do
 --  putStrLn "Perform a CAS within a MutableByteArray#"
 
 -- | This test uses a number of producer and consumer threads which push and pop
 -- elements from random positions in an array.
 test_random_array_comm :: Int -> Int -> Int -> IO ()
-test_random_array_comm threads size iters = do 
+test_random_array_comm threads size iters = do
   arr <- newArray size Nothing
   tick0 <- A.readArrayElem arr 0
   for_ 1 size $ \ i -> do
     t2 <- A.readArrayElem arr i
     assertEqual "All initial Nothings in the array should be ticket-equal:" tick0 t2
 
-  ls <- forkJoin threads $ \_tid -> do 
+  ls <- forkJoin threads $ \_tid -> do
     localAcc <- newIORef 0
     for_ 0 iters $ \iter -> do
       -- Randomly pick a position:
       ix <- randomRIO (0,size-1) :: IO Int
       -- Randomly either produce or consume:
       b <- randomIO :: IO Bool
-      if b then do 
+      if b then do
         void $ A.casArrayElem arr ix tick0 (Just iter)
        else do -- Consume:
         tick <- A.readArrayElem arr ix
@@ -169,7 +178,7 @@ test_random_array_comm threads size iters = do
           Nothing -> return ()
         return ()
     readIORef localAcc
-    
+
   let successes = sum ls
       -- Pidgeonhole principle.
       -- min_success =
@@ -183,8 +192,8 @@ test_random_array_comm threads size iters = do
     return ()
   putStrLn ""
   return ()
-  
-   
+
+
 ----------------------------------------------------------------------------------------------------
 -- Simple, non-parameterized tests
  ----------------------------------------------------------------------------------------------------
@@ -193,20 +202,20 @@ case_casTicket1 :: IO ()
 case_casTicket1 = do
   dbgPrint 1 "\nUsing new 'ticket' based compare and swap:"
 
-  IORef (STRef mutvar) <- newIORef (3::Int)  
+  IORef (STRef mutvar) <- newIORef (3::Int)
   tick <- A.readMutVarForCAS mutvar
   dbgPrint 1$"YAY, read the IORef, ticket "++show tick
   dbgPrint 1$"     and the value was:  "++show (peekTicket tick)
 
-  (True,tick2) <- A.casMutVar mutvar tick 99 
+  (True,tick2) <- A.casMutVar mutvar tick 99
   dbgPrint 1$"Hoorah!  Attempted compare and swap..."
 --  dbgPrint 1$"         Result was: "++show (True,tick2)
 
   dbgPrint 1$"Ok, next take a look at a SECOND CAS attempt, to see if the ticket from the first works..."
   res2 <- A.casMutVar mutvar tick2 12345678
   dbgPrint 1$"Result was: "++show res2
-  
---  res <- A.casMutVar mutvar tick 99 
+
+--  res <- A.casMutVar mutvar tick 99
   res3 <- A.readMutVarForCAS mutvar
   dbgPrint 1$"To check contents, did a SECOND read: "++show res3
 
@@ -216,7 +225,7 @@ case_issue28_standalone :: Assertion
 case_issue28_standalone = Issue28.main
 
 case_issue28_copied :: Assertion
-case_issue28_copied = do 
+case_issue28_copied = do
   r  <- newIORef "hi"
   t0 <- readForCAS r
   (True,_t1) <- casIORef r t0 "bye"
@@ -267,18 +276,18 @@ case_n_threads_mutate = do
         tick <- A.readForCAS(counter)
         let nxt = peekTicket tick + 1
         (b,was) <- A.casIORef counter tick nxt
-        if b then do 
+        if b then do
           putStr $ show (peekTicket was) ++ "_"
           assertEqual "Check that the value written was the one we put in." nxt (peekTicket was)
           return (ix, unsafeName tick, unsafeName was, peekTicket tick, nxt)
-         else do 
-          when (peekTicket was == peekTicket tick) $ 
+         else do
+          when (peekTicket was == peekTicket tick) $
              putStrLn ("(Spoofed by boxing, old val was indeed "++show was++")")
           putStr "!"
 --          putStrLn $ "("++ show ix ++ ": Fail when putting "++show nxt
 --                     ++", was already "++show (peekTicket was) ++")"
           work ix
-  arr <- forkJoin 120 work 
+  arr <- forkJoin 120 work
   ans <- readIORef counter
 
   let dups = [ n | (_,_,_,_,n) <- arr] \\ [1..120]
@@ -299,17 +308,17 @@ case_run_barriers = do
 ----------------------------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------------------------
--- Adapted Old tests from original CAS library:  
+-- Adapted Old tests from original CAS library:
 
 
 -- | First test: Run a simple CAS a small number of times.
 test_succeed_once :: (Show a, Num a, Eq a) => a -> Assertion
-test_succeed_once initialVal = 
+test_succeed_once initialVal =
   do
      performGC -- We *ASSUME* GC does not happen below.
      performGC -- We *ASSUME* GC does not happen below.
      checkGCStats
-     gc1 <- getGCCount 
+     gc1 <- getGCCount
      r <- newIORef initialVal
      bitls <- newIORef []
      tick1 <- A.readForCAS r
@@ -323,8 +332,8 @@ test_succeed_once initialVal =
 
      x <- readIORef r
      assertEqual "Finished with loop, read cell: " 100 x
-     
-     writeIORef r 111     
+
+     writeIORef r 111
      y <- readIORef r
      assertEqual "Wrote and read again read: " 111 y
 
@@ -336,7 +345,7 @@ test_succeed_once initialVal =
      gc2 <- getGCCount
      if gc1 /= gc2
        then putStrLn " [skipped] test couldn't be assessed properly due to GC."
-       else do      
+       else do
   --     print scrubbed
        assertBool "Only first succeeds" (all (/= hd) tl)
        assertBool "All but first fail" (all (== head tl) (tail tl))
@@ -353,18 +362,18 @@ test_succeed_once initialVal =
 -- time.  Adding a second thread can only foil the K attempts of the first thread by
 -- itself succeeding (leaving the total at or above K).  Likewise for the third
 -- thread and so on.
--- 
+--
 -- Conversely, for N threads each aiming to complete K operations,
 -- there should be at most N*N*K total operations required.
 test_all_hammer_one :: (Show a, Num a, Eq a) => Int -> Int -> a -> Assertion
 test_all_hammer_one threads iters seed = do
   ref <- newIORef seed
-  logs::[[Bool]] <- forkJoin threads $ \_ -> 
+  logs::[[Bool]] <- forkJoin threads $ \_ ->
     do checkGCStats
        let loop 0 _ _ !acc = return (reverse acc)
            loop n !ticket !expected !acc = do
             -- This line will result in boxing/unboxing and using extra memory locations:
---            let bumped = expected + 1 
+--            let bumped = expected + 1
             bumped <- evaluate$ expected + 1
             (res,tick) <- casIORef ref ticket bumped
             case res of
@@ -375,10 +384,10 @@ test_all_hammer_one threads iters seed = do
               False -> do
                 let v = peekTicket tick
                 when (iters < 30) $
-                  dbgPrint 1 $ 
+                  dbgPrint 1 $
                             "  Fizzled CAS with ticket: "++show ticket ++" containing "++show v++
                             ", expected: "++ show expected ++
-                            " (#"++show (unsafeName expected)++"): " 
+                            " (#"++show (unsafeName expected)++"): "
                             ++ " found " ++ show v ++ " (#"++show (unsafeName v)++", ticket "++show tick++")"
                 loop (n-1) tick v      (False:acc)
 
@@ -403,7 +412,7 @@ test_all_hammer_one threads iters seed = do
 
 ------------------------------------------------------------------------
 -- Reads and Writes with full barriers:
-{- 
+{-
  - WIP
 
 import Data.Atomics (atomicReadIntArray, atomicWriteIntArray)
@@ -462,7 +471,7 @@ test_atomic_read_write_barriers1 iters = do
                     when (x < iters) go
          in go
 -- Peterson's lock: http://en.wikipedia.org/wiki/Peterson%27s_algorithm
--- 
+--
 -- TODO DEBUGGING see https://github.com/rrnewton/haskell-lockfree/issues/43#issuecomment-71294801
 --                for a discussion of issues to be resolved here.
 test_atomic_read_write_barriers2 iters = do
@@ -509,10 +518,10 @@ test_atomic_read_write_barriers2 iters = do
 
     out1 <- newEmptyMVar
     out2 <- newEmptyMVar
-    void $ forkIO $ 
+    void $ forkIO $
         (replicateM iters $ petersonIncr flag0 flag1 1)
           >>= putMVar out1
-    void $ forkIO $ 
+    void $ forkIO $
         (replicateM iters $ petersonIncr flag1 flag0 0)
           >>= putMVar out2
 
@@ -528,21 +537,21 @@ test_atomic_read_write_barriers2 iters = do
     print $ numGaps (0::Int) (-1::Int) res1
     print $ numGaps (0::Int) (-1::Int) res2
     -- ------------------
-    
+
     -- if this fails, fix the test or call with more iters
     assertBool "test_atomic_read_write_barriers2 had enough interleaving to be legit" $
-           numGaps (0::Int) (-1::Int) res1 > 10000 
+           numGaps (0::Int) (-1::Int) res1 > 10000
         && numGaps (0::Int) (-1::Int) res2 > 10000
 
     -- braindead merge check:
-    let ok = sort res1 == res1  
-              &&  sort res2 == res2  
+    let ok = sort res1 == res1
+              &&  sort res2 == res2
               &&  sort (res1++res2) == [0..iters*2-1]
 
     assertBool "test_atomic_read_write_barriers2" ok
 
  -}
-    
+
 ----------------------------------------------------------------------------------------------------
 {-
 
@@ -550,9 +559,9 @@ test_atomic_read_write_barriers2 iters = do
 -- This tests repeated atomicModifyIORefCAS operations.
 
 testCAS3 :: Int -> IORef ElemTy -> IO [()]
-testCAS3 iters ref = 
+testCAS3 iters ref =
   forkJoin numCapabilities (loop iters)
- where 
+ where
    loop 0  = return ()
    loop n  = do
     -- let bumped = expected+1 -- Must do this only once, should be NOINLINE
@@ -568,7 +577,7 @@ testCAS3 iters ref =
 #endif
     loop (n-1)
 
-----------------------------------------------------------------------------------------------------       
+----------------------------------------------------------------------------------------------------
 -- This version uses a non-scalar type for CAS.  It instead
 -- manipulates the tail pointers of a simple linked-list.
 
@@ -581,7 +590,7 @@ type ListC = List C.CASRef
 
 -- testCAS4 :: CASable ref Int => List ref -> IO [Bool]
 testCAS4 :: CASable ref Int => Int -> ref (List ref) -> IO ()
-testCAS4 iters ref = do 
+testCAS4 iters ref = do
   forkJoin numCapabilities $ do
      -- From each thread, attempt to extend the list 'iters' times:
      ref' <- readCASable ref
@@ -590,11 +599,11 @@ testCAS4 iters ref = do
      return ()
 
   return ()
- where 
+ where
   loop 0 _ _ = return ()
   loop n new (Cons _ tl) = do
     tl' <- readCASable tl
-    case tl' of 
+    case tl' of
       Null -> do (b,v) <- cas tl tl' new
          if b then loop (n-1) v
               else loop v
@@ -612,14 +621,14 @@ checkOutput1 msg ls =
   else error$ "Test "++ msg ++ " failed to have the right CAS success pattern: " ++ show ls
 
 checkOutput2 :: String -> Int -> [[Bool]] -> ElemTy -> IO ()
-checkOutput2 msg iters ls fin = do 
+checkOutput2 msg iters ls fin = do
   let totalAttempts = sum $ map length ls
   putStrLn$ "Final value "++show fin++", Total successes "++ show (length $ filter id $ concat ls)
   when (fin < fromIntegral iters) $
-    error$ "ERROR in "++ show msg ++ " expected at least "++show iters++" successful CAS's.." 
+    error$ "ERROR in "++ show msg ++ " expected at least "++show iters++" successful CAS's.."
 
 checkOutput3 :: String -> Int -> [[Bool]] -> ElemTy -> IO ()
-checkOutput3 msg iters ls fin = do 
+checkOutput3 msg iters ls fin = do
 
   return ()
 
@@ -630,12 +639,12 @@ checkOutput3 msg iters ls fin = do
 
 
 -- test x = do
---   a <- newStablePtr x 
---   b <- newStablePtr x 
---   printf "First call, word %d IntPtr %d\n" 
+--   a <- newStablePtr x
+--   b <- newStablePtr x
+--   printf "First call, word %d IntPtr %d\n"
 --   (unsafeCoerce a :: Word)
 --   ((fromIntegral$ ptrToIntPtr $ castStablePtrToPtr a) :: Int)
---   printf "Second call, word %d IntPtr %d\n" 
+--   printf "Second call, word %d IntPtr %d\n"
 --   (unsafeCoerce b :: Word)
 --   ((fromIntegral$ ptrToIntPtr $ castStablePtrToPtr b) :: Int)
 
