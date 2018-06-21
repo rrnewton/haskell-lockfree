@@ -13,7 +13,7 @@
 module Data.Atomics
  (
    -- * Types for atomic operations
-   Ticket, peekTicket, -- CASResult(..),
+   Ticket, peekTicket, peekTicketA, peekTicket#, -- CASResult(..),
 
    -- * Atomic operations on IORefs
    readForCAS, casIORef, casIORef2,
@@ -48,7 +48,8 @@ module Data.Atomics
 import Control.Exception (evaluate)
 import Data.Primitive.Array (MutableArray(MutableArray))
 import Data.Primitive.ByteArray (MutableByteArray(MutableByteArray))
-import Data.Atomics.Internal
+import Data.Atomics.Internal hiding (Ticket (..))
+import Data.Atomics.Internal (Ticket)
 
 import Data.IORef
 import GHC.IORef hiding (atomicModifyIORef)
@@ -70,10 +71,12 @@ import Data.Bits
 import Data.Primitive.ByteArray (readByteArray)
 #endif
 
+#if !MIN_VERSION_base(4,8,0)
+import Control.Applicative (Applicative (..))
+#endif
+
 #ifdef DEBUG_ATOMICS
 #warning "Activating DEBUG_ATOMICS... NOINLINE's and more"
-{-# NOINLINE seal #-}
-
 {-# NOINLINE casIORef #-}
 {-# NOINLINE casArrayElem2 #-}
 {-# NOINLINE readArrayElem #-}
@@ -108,7 +111,6 @@ import Data.Primitive.ByteArray (readByteArray)
 {-# INLINE fetchXorIntArray #-}
 #endif
 
-
 -- GHC 7.8 changed some primops
 #if MIN_VERSION_base(4,7,0)
 (==#) :: Int# -> Int# -> Bool
@@ -136,11 +138,11 @@ casArrayElem2 (MutableArray arr#) (I# i#) old new = IO$ \s1# ->
 
 -- | Ordinary processor load instruction (non-atomic, not implying any memory barriers).
 readArrayElem :: forall a . MutableArray RealWorld a -> Int -> IO (Ticket a)
--- readArrayElem = unsafeCoerce# readArray#
-readArrayElem (MutableArray arr#) (I# i#) = IO $ \ st -> unsafeCoerce# (fn st)
+readArrayElem (MutableArray arr#) (I# i#) = IO fn
   where
-    fn :: State# RealWorld -> (# State# RealWorld, a #)
-    fn = readArray# arr# i#
+    fn :: State# RealWorld -> (# State# RealWorld, Ticket a #)
+    fn s = case readArray# arr# i# s of
+             (# s', a #) -> (# s', seal a #)
 
 -- | Compare and swap on word-sized chunks of a byte-array.  For indexing purposes
 -- the bytearray is treated as an array of words (`Int`s).  Note that UNLIKE
@@ -161,7 +163,7 @@ casByteArrayInt (MutableByteArray mba#) (I# ix#) (I# old#) (I# new#) =
   -- case casByteArrayInt# mba# ix# old# new# s1# of
   --   (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, I# res) #)
 
-  let (# s2#, res #) = casIntArray# mba# ix# old# new# s1# in
+  let !(# s2#, res #) = casIntArray# mba# ix# old# new# s1# in
   (# s2#, (I# res) #)
   -- I don't know if a let will mak any difference here... hopefully not.
 
@@ -176,7 +178,7 @@ fetchAddIntArray :: MutableByteArray RealWorld
                      -> Int    -- ^ The value to be added
                      -> IO Int -- ^ The value *before* the addition
 fetchAddIntArray (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1# ->
-  let (# s2#, res #) = fetchAddIntArray# mba# offset# incr# s1# in
+  let !(# s2#, res #) = fetchAddIntArray# mba# offset# incr# s1# in
 -- fetchAddIntArray# changed behavior in 7.10 to return the OLD value, so we
 -- need this to maintain backwards compatibility:
 #if MIN_VERSION_base(4,8,0)
@@ -262,7 +264,7 @@ doAtomicRMW :: (MutableByteArray# RealWorld -> Int# -> Int# -> State# RealWorld 
 doAtomicRMW atomicOp# =
   \(MutableByteArray mba#) (I# offset#) (I# val#) ->
     IO $ \ s1# ->
-      let (# s2#, res #) = atomicOp# mba# offset# val# s1# in
+      let !(# s2#, res #) = atomicOp# mba# offset# val# s1# in
       (# s2#, (I# res) #)
 #else
 doAtomicRMW :: (Int -> Int -> Int)                                     --  fallback op for CAS loop
@@ -293,7 +295,7 @@ doAtomicRMW op =
 --   such as in GCC's `__sync_add_and_fetch`.
 fetchAddByteArrayInt ::  MutableByteArray RealWorld -> Int -> Int -> IO Int
 fetchAddByteArrayInt (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1# ->
-  let (# s2#, res #) = fetchAddIntArray# mba# offset# incr# s1# in
+  let !(# s2#, res #) = fetchAddIntArray# mba# offset# incr# s1# in
 -- fetchAddIntArray# changed behavior in 7.10 to return the OLD value, so we
 -- need this to maintain forwards compatibility until removed:
 #if MIN_VERSION_base(4,8,0)
@@ -400,20 +402,16 @@ casIORef2 (IORef (STRef var)) old new = casMutVar2 var old new
 
 -- | A ticket contains or can get the usable Haskell value.
 --   This function does just that.
-{-# NOINLINE peekTicket #-}
--- At least this function MUST remain NOINLINE.  Issue5 is an example of a bug that
--- ensues otherwise.
 peekTicket :: Ticket a -> a
-peekTicket = unsafeCoerce#
+peekTicket t = case peekTicket# t of (# a #) -> a
 
--- Not exposing this for now.  Presently the idea is that you must read from the
--- mutable data structure itself to get a ticket.
-seal :: a -> Ticket a
-seal = unsafeCoerce#
+-- | Extract a value from a ticket in an 'Applicative' context.
+peekTicketA :: Applicative f => Ticket a -> f a
+peekTicketA t = case peekTicket# t of (# a #) -> pure a
 
 -- | Like `readForCAS`, but for `MutVar#`.
 readMutVarForCAS :: MutVar# RealWorld a -> IO ( Ticket a )
-readMutVarForCAS mv = IO$ \ st -> readForCAS# mv st
+readMutVarForCAS mv = IO $ \ st -> readForCAS# mv st
 
 -- | MutVar counterpart of `casIORef`.
 --
@@ -502,7 +500,8 @@ atomicModifyIORefCAS ref fn = do
    effort = 30 :: Int -- TODO: Tune this.
    loop _   0     = atomicModifyIORef ref fn -- Fall back to the regular version.
    loop old tries = do
-     (new,result) <- evaluate $ fn $ peekTicket old
+     oldv <- peekTicketA old
+     (new,result) <- return $ fn oldv
      (b,tick) <- casIORef ref old new
      if b
       then return result
@@ -521,7 +520,8 @@ atomicModifyIORefCAS_ ref fn = do
    effort = 30 :: Int -- TODO: Tune this.
    loop _   0     = atomicModifyIORef ref (\ x -> (fn x, ()))
    loop old tries = do
-     new <- evaluate $ fn $ peekTicket old
+     oldv <- peekTicketA old
+     new <- evaluate $ fn oldv
      (b,val) <- casIORef ref old new
      if b
       then return ()
