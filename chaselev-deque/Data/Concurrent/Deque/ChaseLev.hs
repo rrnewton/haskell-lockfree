@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances, NamedFieldPuns, CPP, ScopedTypeVariables, BangPatterns, MagicHash #-}
+{-# LANGUAGE RoleAnnotations #-}
 
 -- | Chase-Lev work stealing Deques
 --
@@ -29,7 +30,8 @@ import qualified Data.Concurrent.Deque.Class as PC
 -- import Data.Vector
 import Control.Monad.Primitive
 import Data.Primitive.Array
-import Data.Primitive.UnliftedArray
+import Data.Primitive.UnliftedArray (PrimUnlifted (..))
+import Data.Primitive.MutVar
 import Text.Printf (printf)
 import Control.Exception (catch, SomeException, throw, evaluate,try)
 import Control.Monad (when, unless, forM_)
@@ -42,7 +44,7 @@ import Data.Atomics.Counter
 import System.IO.Unsafe (unsafePerformIO)
 import Text.Printf (printf)
 import System.Mem.StableName (makeStableName, hashStableName)
-import GHC.Exts (Int(I#), RealWorld)
+import GHC.Exts (Int(I#), RealWorld, Any)
 import GHC.Prim (reallyUnsafePtrEquality#, unsafeCoerce#)
 import qualified Data.Foldable as F
 
@@ -68,34 +70,40 @@ data ChaseLevDeque a = CLD {
     top       :: {-# UNPACK #-} !AtomicCounter
   , bottom    :: {-# UNPACK #-} !AtomicCounter
     -- This is a circular array:
-  , activeArr :: {-# UNPACK #-} !(UnliftedRef RealWorld (MutableArray RealWorld a))
+  , activeArr :: {-# UNPACK #-} !(ArrayRef RealWorld a)
   }
 
-newtype UnliftedRef s a = UnliftedRef (MutableUnliftedArray s a)
+-- We pull a dirty trick to store a MutableArray# in a MutVar#.
+-- ArrayRef s a is a reference to an array of elements of type a.
+newtype ArrayRef s a = ArrayRef (MutVar s Any)
+type role ArrayRef nominal representational
 
-readUnliftedRef :: (PrimMonad m, PrimUnlifted a)
-                => UnliftedRef (PrimState m) a -> m a
-readUnliftedRef (UnliftedRef arr) = readUnliftedArray arr 0
+readArrayRef :: PrimMonad m
+                => ArrayRef (PrimState m) a -> m (MutableArray (PrimState m) a)
+readArrayRef (ArrayRef ref) = do
+  a <- readMutVar ref
+  return (MutableArray (unsafeCoerce# a))
 
-writeUnliftedRef :: (PrimMonad m, PrimUnlifted a)
-                 => UnliftedRef (PrimState m) a -> a -> m ()
-writeUnliftedRef (UnliftedRef arr) a = writeUnliftedArray arr 0 a
+writeArrayRef :: PrimMonad m
+                 => ArrayRef (PrimState m) a -> MutableArray (PrimState m) a -> m ()
+writeArrayRef (ArrayRef ref) (MutableArray a) =
+  writeMutVar ref (unsafeCoerce# a)
 
 {-
-sameUnliftedRef :: UnliftedRef s a -> UnliftedRef s a -> Bool
-sameUnliftedRef (UnliftedRef arr1) (UnliftedRef arr2) =
-  sameMutableUnliftedArray arr1 arr2
+sameArrayRef :: ArrayRef s a -> ArrayRef s a -> Bool
+sameArrayRef (ArrayRef ref1) (ArrayRef ref2) =
+  sameMutableUnliftedArray ref1 ref2
 -}
 
-newUnliftedRef :: (PrimMonad m, PrimUnlifted a)
-               => a -> m (UnliftedRef (PrimState m) a)
-newUnliftedRef a = UnliftedRef <$> newUnliftedArray 1 a
+newArrayRef :: PrimMonad m
+            => MutableArray (PrimState m) a -> m (ArrayRef (PrimState m) a)
+newArrayRef (MutableArray a) = ArrayRef <$> newMutVar (unsafeCoerce# a)
 
 dbgInspectCLD :: Show a => ChaseLevDeque a -> IO String
 dbgInspectCLD CLD{top,bottom,activeArr} = do
   tp <- readCounter top
   bt <- readCounter bottom
-  vc <- readUnliftedRef activeArr
+  vc <- readArrayRef activeArr
   elems  <- fmap F.toList $ freezeArray vc 0 (sizeofMutableArray vc)
   elems' <- mapM safePrint elems
   let sz = sizeofMutableArray vc
@@ -241,7 +249,7 @@ newQ = do
   v  <- newArray 32 $ error "newQ: uninitialized element from beginning"
   r1 <- newCounter 0
   r2 <- newCounter 0
-  r3 <- newUnliftedRef v
+  r3 <- newArrayRef v
   return $! CLD r1 r2 r3
 
 {-# INLINE newQ #-}
@@ -268,7 +276,7 @@ pushL :: ChaseLevDeque a -> a  -> IO ()
 pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
   b   <- readCounter bottom
   t   <- readCounter top
-  arr <- readUnliftedRef activeArr
+  arr <- readArrayRef activeArr
   let len = sizeofMutableArray arr
       size = b - t
 
@@ -277,7 +285,7 @@ pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
   arr' <- if (size >= len - 1) then do
             arr' <- growCirc t b arr -- Double in size, don't change b/t.
             -- Only a single thread will do this!:
-            writeUnliftedRef activeArr arr'
+            writeArrayRef activeArr arr'
             return arr'
           else return arr
 
@@ -304,7 +312,7 @@ tryPopR CLD{top,bottom,activeArr} =  tryit "tryPopR" $ do
   tt  <- readCounterForCAS top
   loadLoadBarrier
   b   <- readCounter bottom
-  arr <- readUnliftedRef activeArr
+  arr <- readArrayRef activeArr
  -- when (dbg && b < t) $ error$ "tryPopR: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
 
   let t = peekCTicket tt
@@ -323,7 +331,7 @@ tryPopR CLD{top,bottom,activeArr} =  tryit "tryPopR" $ do
 tryPopL  :: ChaseLevDeque elt -> IO (Maybe elt)
 tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
   b   <- readCounter bottom
-  arr <- readUnliftedRef activeArr
+  arr <- readArrayRef activeArr
   b   <- evaluate (b-1)
   writeCounter bottom b
 
