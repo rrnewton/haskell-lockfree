@@ -47,7 +47,7 @@ Library
 
   build-depends:     base >= 4.4.0.0 && < 5, array, transformers, 
                      abstract-deque >= 0.3 && < 0.4, vector, ghc-prim,
-                     atomic-primops >= 0.5.0.2, primitive
+                     atomic-primops >= 0.5.0.2, primitive >= 0.6.2.0
 -- This was for reactordeque:
 --		     bits-atomic,
   build-depends: ghc-prim
@@ -65,7 +65,7 @@ Test-Suite test-chaselev-deque
     build-depends: base >= 4.4.0.0 && < 5, 
                    abstract-deque >= 0.3 && < 0.4, abstract-deque-tests >= 0.3,
                    HUnit, test-framework, test-framework-hunit,
-                   atomic-primops >= 0.5.0.2, vector, ghc-prim, array, primitive
+                   atomic-primops >= 0.5.0.2, vector, ghc-prim, array, primitive >= 0.6.2.0
     build-depends: containers
     ghc-options: -O2 -threaded 
     ghc-options: -rtsopts -with-rtsopts=-N4

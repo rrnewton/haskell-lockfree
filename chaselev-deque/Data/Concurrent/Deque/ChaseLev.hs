@@ -30,7 +30,6 @@ import qualified Data.Concurrent.Deque.Class as PC
 -- import Data.Vector
 import Control.Monad.Primitive
 import Data.Primitive.Array
-import Data.Primitive.UnliftedArray (PrimUnlifted (..))
 import Data.Primitive.MutVar
 import Text.Printf (printf)
 import Control.Exception (catch, SomeException, throw, evaluate,try)
