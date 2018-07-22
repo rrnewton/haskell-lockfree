@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances, NamedFieldPuns, CPP, ScopedTypeVariables, BangPatterns, MagicHash #-}
+{-# LANGUAGE RoleAnnotations #-}
 
 -- | Chase-Lev work stealing Deques
 --
@@ -23,10 +24,13 @@ import Data.List (isInfixOf, intersperse)
 import qualified Data.Concurrent.Deque.Class as PC
 
 -- import Data.CAS (casIORef)
-import qualified Data.Vector.Mutable as MV
-import qualified Data.Vector as V
+--import qualified Data.Vector.Mutable as MV
+--import qualified Data.Vector as V
 -- import Data.Vector.Unboxed.Mutable as V
 -- import Data.Vector
+import Control.Monad.Primitive
+import Data.Primitive.Array
+import Data.Primitive.MutVar
 import Text.Printf (printf)
 import Control.Exception (catch, SomeException, throw, evaluate,try)
 import Control.Monad (when, unless, forM_)
@@ -39,8 +43,9 @@ import Data.Atomics.Counter
 import System.IO.Unsafe (unsafePerformIO)
 import Text.Printf (printf)
 import System.Mem.StableName (makeStableName, hashStableName)
-import GHC.Exts (Int(I#))
+import GHC.Exts (Int(I#), RealWorld, Any)
 import GHC.Prim (reallyUnsafePtrEquality#, unsafeCoerce#)
+import qualified Data.Foldable as F
 
 --------------------------------------------------------------------------------
 -- Instances
@@ -64,17 +69,43 @@ data ChaseLevDeque a = CLD {
     top       :: {-# UNPACK #-} !AtomicCounter
   , bottom    :: {-# UNPACK #-} !AtomicCounter
     -- This is a circular array:
-  , activeArr :: {-# UNPACK #-} !(IORef (MV.IOVector a))
+  , activeArr :: {-# UNPACK #-} !(ArrayRef RealWorld a)
   }
+
+-- We pull a dirty trick to store a MutableArray# in a MutVar#.
+-- ArrayRef s a is a reference to an array of elements of type a.
+newtype ArrayRef s a = ArrayRef (MutVar s Any)
+type role ArrayRef nominal representational
+
+readArrayRef :: PrimMonad m
+                => ArrayRef (PrimState m) a -> m (MutableArray (PrimState m) a)
+readArrayRef (ArrayRef ref) = do
+  a <- readMutVar ref
+  return (MutableArray (unsafeCoerce# a))
+
+writeArrayRef :: PrimMonad m
+                 => ArrayRef (PrimState m) a -> MutableArray (PrimState m) a -> m ()
+writeArrayRef (ArrayRef ref) (MutableArray a) =
+  writeMutVar ref (unsafeCoerce# a)
+
+{-
+sameArrayRef :: ArrayRef s a -> ArrayRef s a -> Bool
+sameArrayRef (ArrayRef ref1) (ArrayRef ref2) =
+  sameMutableUnliftedArray ref1 ref2
+-}
+
+newArrayRef :: PrimMonad m
+            => MutableArray (PrimState m) a -> m (ArrayRef (PrimState m) a)
+newArrayRef (MutableArray a) = ArrayRef <$> newMutVar (unsafeCoerce# a)
 
 dbgInspectCLD :: Show a => ChaseLevDeque a -> IO String
 dbgInspectCLD CLD{top,bottom,activeArr} = do
   tp <- readCounter top
   bt <- readCounter bottom
-  vc <- readIORef activeArr
-  elems  <- fmap V.toList$ V.freeze vc
+  vc <- readArrayRef activeArr
+  elems  <- fmap F.toList $ freezeArray vc 0 (sizeofMutableArray vc)
   elems' <- mapM safePrint elems
-  let sz = MV.length vc
+  let sz = sizeofMutableArray vc
   return$ "  {DbgInspectCLD: top "++show tp++", bot "++show bt++", size "++show sz++"\n" ++
           -- show elems ++ "\n"++
           "   [ "++(concat $ intersperse " " elems')++" ]\n"++
@@ -97,31 +128,30 @@ dbgInspectCLD CLD{top,bottom,activeArr} = do
 -- define DEBUGCL
 --define FAKECAS
 
-{-# INLINE rd #-}
-{-# INLINE wr #-}
-{-# INLINE nu #-}
-{-# INLINE cpy #-}
-{-# INLINE slc #-}
 #ifndef DEBUGCL
 dbg = False
-nu  = MV.unsafeNew
-rd  = MV.unsafeRead
-wr  = MV.unsafeWrite
-slc = MV.unsafeSlice
-cpy = MV.unsafeCopy
+nu  = newArray
+rd  = readArray
+wr  = writeArray
 #else
 #warning "Activating DEBUGCL!"
 dbg = True
-nu  = MV.new
-rd  = MV.read
-slc = MV.slice
-cpy = MV.copy
-wr  = MV.write
+nu i a
+  | i >= 0 = newArray i a
+  | otherwise = error "chaselev-deque: negative argument to nu"
+rd mary i
+  | 0 <= i && i <= sizeofMutableArray mary
+  = readArray mary i
+  | otherwise = error "chaselev-deque: rd out of range."
+wr mary i x
+  | 0 <= i && i <= sizeofMutableArray mary
+  = writeArray mary i x
+  | otherwise = error "chaselev-deque: wr out of range."
 -- Temp, debugging: Our own bounds checking, better error:
 -- wr v i x =
---   if i >= MV.length v
---   then error (printf "ERROR: Out of bounds of top of vector index %d, vec length %d\n" i (MV.length v))
---   else MV.write v i x
+--   if i >= sizeofMutableArray v
+--   then error (printf "ERROR: Out of bounds of top of vector index %d, vec length %d\n" i (sizeofMutableArray v))
+--   else writeMutableArray v i x
 #endif
 
 
@@ -142,7 +172,7 @@ tryit msg action = action
 
 
 -- TODO: make a "grow" that uses memcpy.
-growCirc :: Int -> Int -> MV.IOVector a -> IO (MV.IOVector a)
+growCirc :: Int -> Int -> MutableArray RealWorld a -> IO (MutableArray RealWorld a)
 growCirc !strt !end !oldarr = do
   -- let len = MV.length oldarr
   --     strtmod = strt`mod` len
@@ -164,37 +194,48 @@ growCirc !strt !end !oldarr = do
   ----------------------------------------
   -- Easier version first:
   ----------------------------------------
-  let len   = MV.length oldarr
+  let len   = sizeofMutableArray oldarr
       elems = end - strt
   when dbg $ putStrLn$ "Grow to size "++show (len+len)++", copying over "++show elems
-  newarr <- if dbg then
-               nu (len + len)
-            else  -- Better errors:
-                V.thaw $ V.generate (len+len) (\i -> error (" uninitialized element at position " ++ show i
-							    ++" had only initialized "++show elems++" elems: "
-							    ++show(strt`mod`(len+len),end`mod`(len+len))))
-  -- Strictly matches what's in the paper:
-  for_ strt end $ \ind -> do
-    x <- getCirc oldarr ind
-    evaluate x
-    putCirc newarr ind x
-  return $! newarr
+  newarr <- nu (len + len) $ error "uninitialized element following grow"
+  when dbg $
+      -- better errors
+    for_ 0 (len + len) $ \ind ->
+      writeArray newarr ind $ error $
+        "uninitialized element at position "
+          ++ show ind
+          ++ " had only initialized " ++ show elems ++ " elems: "
+          ++ show (strt `mod` (len + len), end `mod` (len + len))
+
+  if strt <= end
+    then
+      do
+        -- TODO: We should consider using copyMutableArray here, but
+        -- that involves some fancy indexing calculations.
+        for_ strt end $ \ind -> do
+          x <- getCirc oldarr ind
+          evaluate x
+          putCirc newarr ind x
+        return newarr
+    else error "ChaseLev invariant failure in growCirc"
 {-# INLINE growCirc #-}
 
-getCirc :: MV.IOVector a -> Int -> IO a
-getCirc !arr !ind   = rd arr (ind `mod` MV.length arr)
+getCirc :: MutableArray RealWorld a -> Int -> IO a
+getCirc !arr !ind   = rd arr (ind `mod` sizeofMutableArray arr)
 {-# INLINE getCirc #-}
 
-putCirc :: MV.IOVector a -> Int -> a -> IO ()
-putCirc !arr !ind x = wr arr (ind `mod` MV.length arr) x
+putCirc :: MutableArray RealWorld a -> Int -> a -> IO ()
+putCirc !arr !ind x = wr arr (ind `mod` sizeofMutableArray arr) x
 {-# INLINE putCirc #-}
 
+{-
 -- Use a potentially-optimized block-copy:
-copyOffset :: MV.IOVector t -> MV.IOVector t -> Int -> Int -> Int -> IO ()
+copyOffset :: MutableArray RealWorld t -> MutableArray RealWorld t -> Int -> Int -> Int -> IO ()
 copyOffset !from !to !iFrom !iTo !len =
   cpy (slc iTo len to)
       (slc iFrom len from)
 {-# INLINE copyOffset #-}
+-}
 
 
 --------------------------------------------------------------------------------
@@ -204,10 +245,10 @@ copyOffset !from !to !iFrom !iTo !len =
 newQ :: IO (ChaseLevDeque elt)
 newQ = do
   -- Arbitrary Knob: We start as size 32 and double from there:
-  v  <- MV.new 32
+  v  <- newArray 32 $ error "newQ: uninitialized element from beginning"
   r1 <- newCounter 0
   r2 <- newCounter 0
-  r3 <- newIORef v
+  r3 <- newArrayRef v
   return $! CLD r1 r2 r3
 
 {-# INLINE newQ #-}
@@ -234,8 +275,8 @@ pushL :: ChaseLevDeque a -> a  -> IO ()
 pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
   b   <- readCounter bottom
   t   <- readCounter top
-  arr <- readIORef activeArr
-  let len = MV.length arr
+  arr <- readArrayRef activeArr
+  let len = sizeofMutableArray arr
       size = b - t
 
 --  when (dbg && size < 0) $ error$ "pushL: INVARIANT BREAKAGE - bottom, top: "++ show (b,t)
@@ -243,7 +284,7 @@ pushL CLD{top,bottom,activeArr} obj = tryit "pushL" $ do
   arr' <- if (size >= len - 1) then do
             arr' <- growCirc t b arr -- Double in size, don't change b/t.
             -- Only a single thread will do this!:
-	    writeIORef activeArr arr'
+            writeArrayRef activeArr arr'
             return arr'
           else return arr
 
@@ -270,7 +311,7 @@ tryPopR CLD{top,bottom,activeArr} =  tryit "tryPopR" $ do
   tt  <- readCounterForCAS top
   loadLoadBarrier
   b   <- readCounter bottom
-  arr <- readIORef activeArr
+  arr <- readArrayRef activeArr
  -- when (dbg && b < t) $ error$ "tryPopR: INVARIANT BREAKAGE - bottom < top: "++ show (b,t)
 
   let t = peekCTicket tt
@@ -289,7 +330,7 @@ tryPopR CLD{top,bottom,activeArr} =  tryit "tryPopR" $ do
 tryPopL  :: ChaseLevDeque elt -> IO (Maybe elt)
 tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
   b   <- readCounter bottom
-  arr <- readIORef activeArr
+  arr <- readArrayRef activeArr
   b   <- evaluate (b-1)
   writeCounter bottom b
 
@@ -308,12 +349,12 @@ tryPopL CLD{top,bottom,activeArr} = tryit "tryPopL" $ do
    else do
     obj <- getCirc arr b
     if size > 0 then do
-      return $! Just obj
+      return $ Just obj
      else do
       (b,ol) <- casCounter top tt (t+1)
       writeCounter bottom (t+1)
-      if b then return $! Just obj
-           else return $  Nothing
+      if b then return $ Just obj
+           else return $ Nothing
 
 ------------------------------------------------------------
 
@@ -325,4 +366,4 @@ for_ !start !end _fn | start > end = error "for_: start is greater than end"
 for_ !start !end fn = loop start
   where
    loop !i | i == end  = return ()
-	   | otherwise = do fn i; loop (i+1)
+           | otherwise = do fn i; loop (i+1)
