@@ -12,7 +12,8 @@ module Data.Atomics.Internal
     seal,
     peekTicket#,
     -- * Very unsafe, not to be used
-    ptrEq
+    ptrEq,
+    reallyUnsafeTicketEquality
    )
   where 
 
@@ -96,8 +97,11 @@ instance Show (Ticket a) where
 ptrEq :: a -> a -> Bool
 ptrEq !x !y = I# (reallyUnsafePtrEquality# x y) == 1
 
-instance Eq (Ticket a) where
-  Ticket x == Ticket y = lazy x `ptrEq` lazy y
+-- | Check whether the contents of two tickets are the
+-- same pointer. This is used only for testing.
+reallyUnsafeTicketEquality :: Ticket a -> Ticket a -> Bool
+reallyUnsafeTicketEquality (Ticket t1) (Ticket t2) =
+  ptrEq (lazy t1) (lazy t2)
 
 --------------------------------------------------------------------------------
 

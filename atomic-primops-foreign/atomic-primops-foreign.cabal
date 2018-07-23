@@ -25,7 +25,7 @@ Library
 
   -- This can go back further than the atomic-primops package in supporting old GHC's:
   -- For now let's say GHC 7.0 through 7.8 and 7.10 (RC)
-  build-depends: base >= 4.3.0.0 && < 4.9.0.0
+  build-depends: base >= 4.3.0.0 && < 4.12.0.0
   CC-Options:       -Wall 
 
 Test-Suite test-atomic-primops-foreign
@@ -36,7 +36,7 @@ Test-Suite test-atomic-primops-foreign
 
     ghc-options: -threaded -rtsopts -with-rtsopts=-N4
     build-depends: bits-atomic
-    build-depends: base >= 4.3.0.0 && < 4.9,
+    build-depends: base >= 4.3.0.0 && < 4.12.0.0,
                    -- For Testing:
                    time, HUnit, test-framework, test-framework-hunit
 
