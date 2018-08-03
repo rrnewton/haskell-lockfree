@@ -13,13 +13,14 @@ maintainer:          peter.p.fogg@gmail.com
 category:            Concurrency
 build-type:          Simple
 -- extra-source-files:
-cabal-version:       >=1.10
+cabal-version:       >=1.18
+tested-with:         GHC == 8.4.3, GHC == 8.2.2
 
 library
   exposed-modules: Data.Atomics.Vector
   -- other-modules:
   -- other-extensions:
-  build-depends: base           >= 4.7
+  build-depends: base           >= 4.7 && < 5
                , vector         >= 0.10
                , atomic-primops >= 0.7
                , primitive      >= 0.5
@@ -29,7 +30,7 @@ library
 
 Test-Suite test-atomic-primops-vector
     type:       exitcode-stdio-1.0
-    hs-source-dirs: ./tests/
+    hs-source-dirs: tests
     main-is:    Main.hs
     build-depends: base   >= 4.7
                  , vector >= 0.10

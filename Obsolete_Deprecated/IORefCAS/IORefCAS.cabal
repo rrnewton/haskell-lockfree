@@ -6,7 +6,8 @@ Author:              Adam C. Foltzer, Ryan Newton
 Maintainer:          acfoltzer@gmail.com, rrnewton@gmail.com
 Category:            Data
 Build-type:          Simple
-Cabal-version:       >=1.8
+Cabal-version:       >=1.18
+tested-with:         GHC == 8.4.3, GHC == 8.2.2
 HomePage: https://github.com/rrnewton/haskell-lockfree/wiki
 
 -- Version History:
@@ -49,9 +50,10 @@ Library
   -- Thus for now we require GHC 7.2 or greater (base 4.4 or greater).
   -- Namely Test.hs observes CAS failing half the time even with only ONE thread.
   -- This is probably a tricky pointer-equality related problem.
-  build-depends:     base >= 4.4.0.0 && < 5,
-                     ghc-prim, bits-atomic
-
+  build-depends:     base >= 4.4 && < 5
+                   , ghc-prim
+                   , bits-atomic
+  default-language:  Haskell2010
 
 -- Executable 
 Test-Suite test-IORefCAS
@@ -61,8 +63,14 @@ Test-Suite test-IORefCAS
     cpp-options: -DT1 -DT2
     if !os(mingw32)
       cpp-options: -DT3
-    build-depends: base >= 4.4 && < 5, time, ghc-prim,
-                   QuickCheck, HUnit, bits-atomic
+    build-depends: base >= 4.4 && < 5
+                 , time
+                 , ghc-prim
+                 , QuickCheck
+                 , HUnit
+                 , bits-atomic
+    default-language:  Haskell2010
+
 -- TODO: Refactor to use test-framework:
 --                 , test-framework, test-framework-hunit
 -- test-framework-quickcheck2

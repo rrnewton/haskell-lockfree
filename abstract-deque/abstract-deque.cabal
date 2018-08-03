@@ -6,8 +6,8 @@ Author:              Ryan R. Newton
 Maintainer:          rrnewton@gmail.com
 Category:            Data 
 Build-type:          Simple
-Cabal-version:       >= 1.8
-
+Cabal-version:       >= 1.18
+tested-with:         GHC == 8.4.3, GHC == 8.2.2
 Homepage: https://github.com/rrnewton/haskell-lockfree/wiki
 Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
 
@@ -48,7 +48,6 @@ Description:
   This package also includes a simple reference implementation based
   on 'IORef' and "Data.Sequence".
 
-
 -- Making this default False because abstract-deque should be VERY depndency-safe.
 -- The reference implementation can be factored out in the future.
 Flag useCAS
@@ -60,15 +59,19 @@ Library
                      Data.Concurrent.Deque.Reference,
                      Data.Concurrent.Deque.Reference.DequeInstance,
                      Data.Concurrent.Deque.Debugger
-  build-depends:     base >= 4 && < 5, array, random,
-                     containers, time
+  build-depends:     base >= 4 && < 5
+                   , array
+                   , random
+                   , containers
+                   , time
   if flag(useCAS) && impl( ghc >= 7.4 ) && !os(mingw32) {
     build-depends:   atomic-primops >= 0.5.0.2
     cpp-options:  -DUSE_CAS -DDEFAULT_SIGNATURES
   }
 
-  extensions: CPP
   ghc-options: -O2
+  default-extensions: CPP
+  default-language: Haskell2010
 
 Source-Repository head
     Type:         git

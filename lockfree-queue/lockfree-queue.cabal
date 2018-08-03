@@ -6,8 +6,8 @@ Author:              Ryan R. Newton
 Maintainer:          rrnewton@gmail.com
 Category:            Data, Concurrent
 Build-type:          Simple
-Cabal-version:       >=1.8
-
+Cabal-version:       >=1.18
+tested-with:         GHC == 8.4.3, GHC == 8.2.2
 Homepage: https://github.com/rrnewton/haskell-lockfree/wiki
 Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
 
@@ -37,12 +37,15 @@ extra-source-files:
 Library
   exposed-modules:   Data.Concurrent.Queue.MichaelScott,
                      Data.Concurrent.Queue.MichaelScott.DequeInstance
-  build-depends:     base >= 4.4.0.0 && < 5,
-                     ghc-prim, abstract-deque >= 0.3, bytestring,
-                     atomic-primops >= 0.6
+  build-depends:     base >= 4.4.0.0 && < 5
+                   , ghc-prim
+                   , abstract-deque >= 0.3
+                   , bytestring
+                   , atomic-primops >= 0.6
   -- Build failure on GHC 7.2:
   --                     queuelike
   ghc-options: -O2
+  default-language: Haskell2010
 
 Source-Repository head
     Type:         git
@@ -51,16 +54,21 @@ Source-Repository head
 
 Test-Suite test-lockfree-queue
     type:       exitcode-stdio-1.0
-    hs-source-dirs: ./tests/
+    hs-source-dirs: tests
     main-is:    Test.hs
     build-depends: lockfree-queue
-    build-depends: base >= 4.4.0.0 && < 5, 
-                   bytestring, 
-                   abstract-deque >= 0.3, abstract-deque-tests >= 0.3, 
-                   HUnit, test-framework, test-framework-hunit,
-                   ghc-prim, atomic-primops >= 0.6
+    build-depends: base >= 4.4 && < 5
+                 , bytestring
+                 , abstract-deque >= 0.3
+                 , abstract-deque-tests >= 0.3
+                 , HUnit
+                 , test-framework
+                 , test-framework-hunit
+                 , ghc-prim
+                 , atomic-primops >= 0.6
 
-    ghc-options: -O2 -threaded -rtsopts 
+    ghc-options: -O2 -threaded -rtsopts
+    default-language: Haskell2010
     -- Debugging generated code:
     -- ghc-options: -keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint
     -- ghc-options: -ddump-ds -ddump-simpl -ddump-stg -ddump-asm -ddump-bcos -ddump-cmm -ddump-opt-cmm -ddump-inlinings

@@ -6,7 +6,7 @@ Author:              Ryan R. Newton, Edward Kmett
 Maintainer:          rrnewton@gmail.com
 Category:            Data, Concurrent
 Build-type:          Simple
-Cabal-version:       >=1.8
+Cabal-version:       >=1.18
 
 -- Version history:
 -- 0.1.1 -- bump for fixing bugs!  First release candidate.
@@ -31,29 +31,32 @@ Description:
   .
   http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.170.1097&rep=rep1&type=pdf
 
-Extra-Source-Files: Test.hs RegressionTests/Issue5.hs RegressionTests/Issue5B.hs
+tested-with: GHC == 8.4.3, GHC == 8.2.2
 
 Flag debug
     Description: Enable the extra internal checks.
     Default: False
 
 Library
-  exposed-modules:   Data.Concurrent.Deque.ChaseLev.DequeInstance,
+  exposed-modules:   Data.Concurrent.Deque.ChaseLev.DequeInstance
                      Data.Concurrent.Deque.ChaseLev
+                     Data.Concurrent.Deque.ChaseLevUnboxed
 --                     Data.Concurrent.Deque.ChaseLev2
 -- Disabling this [2012.03.08].  It got terrible performance anyway:
 --                     Data.Concurrent.Deque.ReactorDeque
-  other-modules:     Data.Concurrent.Deque.ChaseLevUnboxed
+--  other-modules:     Data.Concurrent.Deque.ChaseLevUnboxed
 
-  build-depends:     base >= 4.4.0.0 && < 5, array, transformers, 
-                     abstract-deque >= 0.3 && < 0.4, vector, ghc-prim,
-                     atomic-primops >= 0.5.0.2
--- This was for reactordeque:
---		     bits-atomic,
-  build-depends: ghc-prim
+  build-depends:     base >= 4.4.0.0 && < 5
+                   , array
+                   , transformers
+                   , abstract-deque >= 0.3 && < 0.4
+                   , vector
+                   , ghc-prim
+                   , atomic-primops >= 0.5.0.2
   ghc-options: -O2
   if flag(debug)
     cpp-options: -DDEBUGCL
+  default-language: Haskell2010
 
 Source-Repository head
     Type:         git
@@ -61,17 +64,25 @@ Source-Repository head
 
 Test-Suite test-chaselev-deque
     type:       exitcode-stdio-1.0
+    hs-source-dirs: tests
     main-is:    Test.hs
-    build-depends: base >= 4.4.0.0 && < 5, 
-                   abstract-deque >= 0.3 && < 0.4, abstract-deque-tests >= 0.3,
-                   HUnit, test-framework, test-framework-hunit,
-                   atomic-primops >= 0.5.0.2, vector, ghc-prim, array
-    build-depends: containers
-    ghc-options: -O2 -threaded 
-    ghc-options: -rtsopts -with-rtsopts=-N4
-
+    other-modules: RegressionTests.Issue5
+                   RegressionTests.Issue5B
+    build-depends: base >= 4.4 && < 5
+                 , abstract-deque >= 0.3 && < 0.4
+                 , abstract-deque-tests >= 0.3
+                 , HUnit
+                 , test-framework
+                 , test-framework-hunit
+                 , atomic-primops >= 0.5.0.2
+                 , vector
+                 , containers
+                 , ghc-prim
+                 , array
+                 , chaselev-deque
+    ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-N4
+    default-language: Haskell2010
     -- ghc-options: -O2 -threaded -rtsopts 
     -- -- Debugging generated code:
     -- ghc-options: -keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint
     -- ghc-options: -ddump-ds -ddump-simpl -ddump-stg -ddump-asm -ddump-bcos -ddump-cmm -ddump-opt-cmm -ddump-inlinings
-

@@ -6,39 +6,49 @@ Author:              Ryan Newton
 Maintainer:          rrnewton@gmail.com
 Category:            Data
 Build-type:          Simple
-Cabal-version:       >=1.8
+Cabal-version:       >=1.18
+tested-with:         GHC==8.4.3, GHC==8.22
 HomePage: https://github.com/rrnewton/haskell-lockfree/wiki
 Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
 
 -- 0.6 -- Factored out of parent module to separate dependencies.
 -- 0.6.2.1 -- ver constraints only
 
-Synopsis: An atomic counter implemented using the FFI.
-Description: 
+synopsis: An atomic counter implemented using the FFI.
+
+description:
   This is an alternate implementation of the counter interface 
   provided by the atomic-primops packag.
 
-Library
+library
   exposed-modules: Data.Atomics.Counter.Foreign
+  hs-source-dirs: .
   ghc-options: -O2 -funbox-strict-fields
-  build-depends: bits-atomic >= 0.1.3
 
   -- This can go back further than the atomic-primops package in supporting old GHC's:
   -- For now let's say GHC 7.0 through 7.8 and 7.10 (RC)
-  build-depends: base >= 4.3.0.0 && < 4.9.0.0
+  build-depends:  base >= 4.3 && < 5
+                , bits-atomic >= 0.1.3
   CC-Options:       -Wall 
+  default-language: Haskell2010
 
-Test-Suite test-atomic-primops-foreign
+test-suite test-atomic-primops-foreign
     type:       exitcode-stdio-1.0
-    main-is:    testing/Main.hs
-    other-modules: CounterForeign, CounterCommon, CommonTesting
-    hs-source-dirs: testing/ ./
+    main-is:    Main.hs
+    other-modules: CounterForeign
+                 , CommonTesting
+    hs-source-dirs: testing
 
     ghc-options: -threaded -rtsopts -with-rtsopts=-N4
-    build-depends: bits-atomic
-    build-depends: base >= 4.3.0.0 && < 4.9,
+    build-depends: base >= 4.3 && < 5
                    -- For Testing:
-                   time, HUnit, test-framework, test-framework-hunit
+                 , time
+                 , HUnit
+                 , test-framework
+                 , test-framework-hunit
+                 , bits-atomic
+                 , atomic-primops-foreign
+    default-language: Haskell2010
 
 Source-Repository head
     Type:         git

@@ -6,7 +6,7 @@ Author:              Ryan R. Newton
 Maintainer:          rrnewton@gmail.com
 Category:            Data
 Build-type:          Simple
-Cabal-version:       >=1.2
+Cabal-version:       >=1.18
 
 Homepage: https://github.com/rrnewton/haskell-lockfree/wiki
 
@@ -20,26 +20,31 @@ Description:
    * bounded / unbounded capacity
    * "safe" or potentially duplicating of elements (e.g. Idempotent Work-stealing)
 
+tested-with: GHC == 8.4.3, GHC == 8.2.2
 
 Library
   exposed-modules:   Data.Concurrent.MegaDeque
-  build-depends:     base >= 4.6.0.0,
-                     abstract-deque >= 0.3,
-                     lockfree-queue,
-                     chaselev-deque
-  ghc-options: -O2
-
+  hs-source-dirs:    .
+  build-depends:     base >= 4.6 && < 5
+                   , abstract-deque >= 0.3
+                   , lockfree-queue
+                   , chaselev-deque
+  default-language: Haskell2010
 
 Test-Suite test-mega-deque
     type:       exitcode-stdio-1.0
+    hs-source-dirs: tests
     main-is:    Test.hs
-    build-depends:  base >= 4.6.0.0,
-                    abstract-deque >= 0.3, abstract-deque-tests >= 0.3,
-                    lockfree-queue,
-                    chaselev-deque,
-                    HUnit
-    build-depends: containers
-    ghc-options: -O2 -threaded -rtsopts 
+    build-depends:  base >= 4.6 && < 5
+                  , containers
+                  , abstract-deque >= 0.3
+                  , abstract-deque-tests >= 0.3
+                  , lockfree-queue
+                  , chaselev-deque
+                  , HUnit
+                  , mega-deque
+    ghc-options: -O2 -threaded -rtsopts
+    default-language: Haskell2010
 
 Source-Repository head
     Type:         git
