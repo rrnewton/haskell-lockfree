@@ -7,7 +7,7 @@ Maintainer:          rrnewton@gmail.com
 Category:            Data 
 Build-type:          Simple
 Cabal-version:       >= 1.18
-tested-with:         GHC == 8.4.3, GHC == 8.2.2
+tested-with:         GHC == 8.4.3, GHC == 8.2.2, GHC == 8.0.2, GHC == 7.10.3
 Homepage: https://github.com/rrnewton/haskell-lockfree/wiki
 Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
 
@@ -59,7 +59,7 @@ Library
                      Data.Concurrent.Deque.Reference,
                      Data.Concurrent.Deque.Reference.DequeInstance,
                      Data.Concurrent.Deque.Debugger
-  build-depends:     base >= 4 && < 5
+  build-depends:     base >= 4.8 && < 5
                    , array
                    , random
                    , containers

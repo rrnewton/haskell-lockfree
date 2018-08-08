@@ -7,7 +7,7 @@ Maintainer:          rrnewton@gmail.com
 Category:            Data, Concurrent
 Build-type:          Simple
 Cabal-version:       >=1.18
-tested-with:         GHC == 8.4.3, GHC == 8.2.2
+tested-with:         GHC == 8.4.3, GHC == 8.2.2, GHC == 8.0.2, GHC == 7.10.3
 Homepage: https://github.com/rrnewton/haskell-lockfree/wiki
 Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
 
@@ -37,7 +37,7 @@ extra-source-files:
 Library
   exposed-modules:   Data.Concurrent.Queue.MichaelScott,
                      Data.Concurrent.Queue.MichaelScott.DequeInstance
-  build-depends:     base >= 4.4.0.0 && < 5
+  build-depends:     base >= 4.8 && < 5
                    , ghc-prim
                    , abstract-deque >= 0.3
                    , bytestring
@@ -57,7 +57,7 @@ Test-Suite test-lockfree-queue
     hs-source-dirs: tests
     main-is:    Test.hs
     build-depends: lockfree-queue
-    build-depends: base >= 4.4 && < 5
+    build-depends: base >= 4.8 && < 5
                  , bytestring
                  , abstract-deque >= 0.3
                  , abstract-deque-tests >= 0.3

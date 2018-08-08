@@ -14,13 +14,13 @@ category:            Concurrency
 build-type:          Simple
 -- extra-source-files:
 cabal-version:       >=1.18
-tested-with:         GHC == 8.4.3, GHC == 8.2.2
+tested-with:         GHC == 8.4.3, GHC == 8.2.2, GHC == 8.0.2, GHC == 7.10.3
 
 library
   exposed-modules: Data.Atomics.Vector
   -- other-modules:
   -- other-extensions:
-  build-depends: base           >= 4.7 && < 5
+  build-depends: base           >= 4.8 && < 5
                , vector         >= 0.10
                , atomic-primops >= 0.7
                , primitive      >= 0.5
@@ -32,7 +32,7 @@ Test-Suite test-atomic-primops-vector
     type:       exitcode-stdio-1.0
     hs-source-dirs: tests
     main-is:    Main.hs
-    build-depends: base   >= 4.7
+    build-depends: base   >= 4.8
                  , vector >= 0.10
                  , atomic-primops-vector
     ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-N4

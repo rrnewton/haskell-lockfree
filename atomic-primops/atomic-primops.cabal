@@ -8,7 +8,7 @@ Category:            Data
 -- Portability:         non-portabile (x86_64)
 Build-type:          Simple
 Cabal-version:       >=1.18
-
+tested-with:         GHC == 8.4.3, GHC == 8.2.2, GHC == 8.0.2, GHC == 7.10.3
 HomePage: https://github.com/rrnewton/haskell-lockfree/wiki
 Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
 
@@ -35,8 +35,6 @@ Extra-Source-Files:  CHANGELOG.md, DEVLOG.md,
                      testing/TemplateHaskellSplices.hs
                      testing/Raw781_test.hs
 
-tested-with:         GHC == 8.4.3, GHC == 8.2.2
-
 Flag debug
     Description: Enable extra internal checks.
     Default: False
@@ -49,45 +47,18 @@ Library
   ghc-options: -O2 -funbox-strict-fields
   ghc-options: -Wall
 
-  -- casMutVar# had a bug in GHC 7.2, thus we require GHC 7.4 or greater
-  -- (base 4.5 or greater). We also need the "Any" kind.
-  build-depends:     base >= 4.6 && < 5
+  build-depends:     base >= 4.8 && < 5
                    , ghc-prim
                    , primitive
 
-  -- TODO: Try to push support back to 7.0, but make it default to an implementation
-  -- other than Unboxed.
-
-  -- Ah, but if we don't USE casMutVar# in this package we are ok:
-  -- build-depends:     base >= 4.3, ghc-prim, primitive
-
-  if impl(ghc < 7.7) {
-     Include-Dirs:     cbits
-     C-Sources:        cbits/primops.cmm
-     -- Duplicate RTS functionality for GHC 7.6:
-     C-Sources:        cbits/RtsDup.c
-  } else {
-     if os(windows) {
-        Include-Dirs:     cbits
-        C-Sources:        cbits/RtsDup.c
-     }
+  if os(windows) {
+    Include-Dirs:     cbits
+    C-Sources:        cbits/RtsDup.c
   }
   CC-Options:       -Wall
 
-  -- if( cabal-version < 1.17 ) {
-  --   ghc-prof-options: ERROR_DO_NOT_BUILD_THIS_WITH_PROFILING_YET__SEE_CABAL_ISSUE_1284
-  -- }
-
   if flag(debug)
     cpp-options: -DDEBUG_ATOMICS
-
-
--- -- [2013.04.08] This isn't working presently:
--- -- I'm having problems with building it along with the library; see DEVLOG.
--- -- Switching to a separate package in ./testing/
--- Test-Suite test-atomic-primops
---     type:       exitcode-stdio-1.0
---     ...
 
 Source-Repository head
     Type:         git

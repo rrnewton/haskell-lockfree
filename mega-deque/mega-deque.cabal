@@ -7,7 +7,7 @@ Maintainer:          rrnewton@gmail.com
 Category:            Data
 Build-type:          Simple
 Cabal-version:       >=1.18
-
+tested-with:         GHC == 8.4.3, GHC == 8.2.2, GHC == 8.0.2, GHC == 7.10.3
 Homepage: https://github.com/rrnewton/haskell-lockfree/wiki
 
 Synopsis: Collects together queue packages and selects the right one based on a type family.
@@ -20,12 +20,10 @@ Description:
    * bounded / unbounded capacity
    * "safe" or potentially duplicating of elements (e.g. Idempotent Work-stealing)
 
-tested-with: GHC == 8.4.3, GHC == 8.2.2
-
 Library
   exposed-modules:   Data.Concurrent.MegaDeque
   hs-source-dirs:    .
-  build-depends:     base >= 4.6 && < 5
+  build-depends:     base >= 4.8 && < 5
                    , abstract-deque >= 0.3
                    , lockfree-queue
                    , chaselev-deque
@@ -35,7 +33,7 @@ Test-Suite test-mega-deque
     type:       exitcode-stdio-1.0
     hs-source-dirs: tests
     main-is:    Test.hs
-    build-depends:  base >= 4.6 && < 5
+    build-depends:  base >= 4.8 && < 5
                   , containers
                   , abstract-deque >= 0.3
                   , abstract-deque-tests >= 0.3

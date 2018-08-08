@@ -7,6 +7,7 @@ Maintainer:          rrnewton@gmail.com
 Category:            Data, Concurrent
 Build-type:          Simple
 Cabal-version:       >=1.18
+tested-with:         GHC == 8.4.3, GHC == 8.2.2, GHC == 8.0.2, GHC == 7.10.3
 
 -- Version history:
 -- 0.1.1 -- bump for fixing bugs!  First release candidate.
@@ -31,8 +32,6 @@ Description:
   .
   http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.170.1097&rep=rep1&type=pdf
 
-tested-with: GHC == 8.4.3, GHC == 8.2.2
-
 Flag debug
     Description: Enable the extra internal checks.
     Default: False
@@ -46,7 +45,7 @@ Library
 --                     Data.Concurrent.Deque.ReactorDeque
 --  other-modules:     Data.Concurrent.Deque.ChaseLevUnboxed
 
-  build-depends:     base >= 4.4.0.0 && < 5
+  build-depends:     base >= 4.8 && < 5
                    , array
                    , transformers
                    , abstract-deque >= 0.3 && < 0.4
@@ -68,7 +67,7 @@ Test-Suite test-chaselev-deque
     main-is:    Test.hs
     other-modules: RegressionTests.Issue5
                    RegressionTests.Issue5B
-    build-depends: base >= 4.4 && < 5
+    build-depends: base >= 4.8 && < 5
                  , abstract-deque >= 0.3 && < 0.4
                  , abstract-deque-tests >= 0.3
                  , HUnit
