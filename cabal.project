@@ -1,0 +1,10 @@
+packages: ./abstract-deque
+          ./abstract-deque-tests
+          ./atomic-primops
+          ./atomic-primops/testing
+          ./atomic-primops-foreign
+          ./atomic-primops-vector
+          ./chaselev-deque
+          ./lockfree-queue
+          ./mega-deque
+          -- Only listed here since bits-atomic is broken upstream
