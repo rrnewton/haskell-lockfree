@@ -11,6 +11,6 @@ packages:
   - mega-deque/
 extra-deps:
 - git: https://github.com/wangbj/bits-atomic.git
-  commit: 5137791165cbacea5f10889f04c95c3957cd098e
+  commit: 78c8cd2c0bbf77356b3becba64c7f99e6d4e208b
 
 resolver: lts-12.4
