@@ -446,8 +446,7 @@ casMutVar2 mv tick new = IO$ \st ->
 -- | Memory barrier implemented by the GHC rts (see SMP.h).
 -- writeBarrier :: IO ()
 
--- GHC 7.8+ consistently exposes these symbols while linking:
-
+#if !(defined(mingw32_HOST_OS) && __GLASGOW_HASKELL__ < 802)
 -- | Memory barrier implemented by the GHC rts (see SMP.h).
 foreign import ccall  unsafe "store_load_barrier" storeLoadBarrier
   :: IO ()
@@ -459,6 +458,19 @@ foreign import ccall unsafe "load_load_barrier" loadLoadBarrier
 -- | Memory barrier implemented by the GHC rts (see SMP.h).
 foreign import ccall unsafe "write_barrier" writeBarrier
   :: IO ()
+#else
+#warning "importing store_load_barrier and friends from the package's C code."
+
+-- Workaround for Trac #12846, which affects old GHCs on Windows
+foreign import ccall  unsafe "DUP_store_load_barrier" storeLoadBarrier
+  :: IO ()
+
+foreign import ccall unsafe "DUP_load_load_barrier" loadLoadBarrier
+  :: IO ()
+
+foreign import ccall unsafe "DUP_write_barrier" writeBarrier
+  :: IO ()
+#endif
 
 --------------------------------------------------------------------------------
 
