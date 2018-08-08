@@ -2,7 +2,6 @@ module Fetch (tests) where
 
 -- tests for our fetch-and-* family of functions.
 import Control.Monad
-import Control.Applicative
 import System.Random
 import Test.Framework.Providers.HUnit (testCase)
 import Test.Framework (Test)

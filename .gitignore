@@ -1,4 +1,5 @@
 dist/
+dist-*
 cabal-dev/
 *~
 *#
@@ -6,3 +7,9 @@ cabal-dev/
 *.hi
 *.o
 *onflict*
+.stack-work/
+cabal.project.local
+cabal.project.local~
+.HTF/
+.ghc.environment.*
+test-results.xml

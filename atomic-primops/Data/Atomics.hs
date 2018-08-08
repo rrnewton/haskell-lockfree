@@ -446,10 +446,7 @@ casMutVar2 mv tick new = IO$ \st ->
 -- | Memory barrier implemented by the GHC rts (see SMP.h).
 -- writeBarrier :: IO ()
 
--- GHC 7.8 consistently exposes these symbols while linking:
-
-#if MIN_VERSION_base(4,7,0) && !(defined(mingw32_HOST_OS) && __GLASGOW_HASKELL__ < 802)
-#warning "Assuming that store_load_barrier and friends are defined in the GHC RTS."
+-- GHC 7.8+ consistently exposes these symbols while linking:
 
 -- | Memory barrier implemented by the GHC rts (see SMP.h).
 foreign import ccall  unsafe "store_load_barrier" storeLoadBarrier
@@ -462,22 +459,6 @@ foreign import ccall unsafe "load_load_barrier" loadLoadBarrier
 -- | Memory barrier implemented by the GHC rts (see SMP.h).
 foreign import ccall unsafe "write_barrier" writeBarrier
   :: IO ()
-
-#else
-#warning "importing store_load_barrier and friends from the package's C code."
-
--- GHC 7.6 did not consistently expose them (e.g. in the non-threaded RTS),
--- so rather we grab this functionality from RtsDup.c:
-foreign import ccall  unsafe "DUP_store_load_barrier" storeLoadBarrier
-  :: IO ()
-
-foreign import ccall unsafe "DUP_load_load_barrier" loadLoadBarrier
-  :: IO ()
-
-foreign import ccall unsafe "DUP_write_barrier" writeBarrier
-  :: IO ()
-#endif
-
 
 --------------------------------------------------------------------------------
 

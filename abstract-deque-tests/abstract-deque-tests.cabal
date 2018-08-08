@@ -6,8 +6,7 @@ Author:              Ryan R. Newton
 Maintainer:          rrnewton@gmail.com
 Category:            Data 
 Build-type:          Simple
-Cabal-version:       >= 1.8
-
+Cabal-version:       >= 1.18
 Homepage: https://github.com/rrnewton/haskell-lockfree/wiki
 Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
 
@@ -18,23 +17,43 @@ Description:
   This package provides tests that can be used with any queue implementation 
   that satisfies the `abstract-deque` interface.  
 
+tested-with:         GHC == 8.4.3, GHC == 8.2.2, GHC == 8.0.2, GHC == 7.10.3
 
-Library
+library
   exposed-modules:   Data.Concurrent.Deque.Tests
-  build-depends:     base >= 4 && < 5, abstract-deque >= 0.3, 
-                     random >= 1.0, containers, array, time,
-                     HUnit, test-framework >= 0.6, test-framework-hunit >= 0.2.7
-  extensions: CPP
+  other-modules:
+  hs-source-dirs:    .
+  build-depends:     base >= 4.8 && < 5
+                   , abstract-deque >= 0.3
+                   , random >= 1.0
+                   , containers
+                   , array
+                   , time
+                   , HUnit
+                   , test-framework >= 0.6
+                   , test-framework-hunit >= 0.2.7
   ghc-options: -O2
+  default-language: Haskell2010
+  default-extensions: CPP
 
 Source-Repository head
     Type:         git
     Location:     git://github.com/rrnewton/haskell-lockfree.git
 
-Test-Suite test-abstract-deque
+test-suite test-abstract-deque
     type:       exitcode-stdio-1.0
     main-is:    Test.hs
-    build-depends:  base >= 4 && < 5, abstract-deque >= 0.3,
-                    random >= 1.0, containers, array, 
-                    HUnit, test-framework >= 0.6, test-framework-hunit >= 0.2.7, time
+    hs-source-dirs: tests
+    build-depends:  base >= 4.8 && < 5
+                  , abstract-deque >= 0.3
+                  , random >= 1.0
+                  , containers
+                  , array
+                  , HUnit
+                  , test-framework >= 0.6
+                  , test-framework-hunit >= 0.2.7
+                  , time
+                  , abstract-deque
+                  , abstract-deque-tests
     ghc-options: -O2 -threaded -rtsopts
+    default-language: Haskell2010

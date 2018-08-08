@@ -6,56 +6,30 @@ sudo: false
 cache:
   directories:
   - $HOME/.stack/
+  - $HOME/.local/
 
 matrix:
   include:
-    - env: CABALVER=1.18 GHCVER=7.6.3
-      addons: {apt: {packages: [cabal-install-1.18,ghc-7.6.3,happy,alex], sources: [hvr-ghc]}}
-    - env: CABALVER=1.18 GHCVER=7.8.3
-      addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.3,happy-1.19.4,alex-3.1.3], sources: [hvr-ghc]}}
-    # - env: CABALVER=1.18 GHCVER=7.8.4
-    #   addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.4,happy-1.19.4,alex-3.1.3], sources: [hvr-ghc]}}
-    # - env: CABALVER=1.22 GHCVER=7.10.1
-    #   addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.1,happy-1.19.4,alex-3.1.3],sources: [hvr-ghc]}}
-# Huh, not approved yet [2015.08.23]:
-#    - env: CABALVER=1.22 GHCVER=7.10.2
-#      addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.2],sources: [hvr-ghc]}}
-
-    - env: STACKVER=0.1.3.1 STACK_RESOLVER=lts-2.22
-      addons: {apt: {packages: [ghc-7.8.4,happy-1.19.4,alex-3.1.3],sources: [hvr-ghc]}}
-    - env: STACKVER=0.1.3.1 STACK_RESOLVER=lts-3.2
-      addons: {apt: {packages: [libgmp-dev]}}
-    - env: STACKVER=0.1.3.1 STACK_RESOLVER=nightly-2015-08-21
-      addons: {apt: {packages: [libgmp-dev]}}
-
-    - env: STACKVER=0.1.3.1 STACK_RESOLVER=ghc-7.8
-      addons: {apt: {packages: [ghc-7.8.4,happy-1.19.4,alex-3.1.3],sources: [hvr-ghc]}}
-    - env: STACKVER=0.1.3.1 STACK_RESOLVER=ghc-7.10
-      addons: {apt: {packages: [ghc-7.10.1,happy-1.19.4,alex-3.1.3],sources: [hvr-ghc]}}
-
-    - env: CABALVER=head GHCVER=head
-      addons: {apt: {packages: [cabal-install-head,ghc-head],  sources: [hvr-ghc]}}
-
-  allow_failures:
-    - env: CABALVER=head GHCVER=head
-    # Too many headaches maintaining this for old cabal/ghc:
-    - env: CABALVER=1.18 GHCVER=7.6.3
-
-    # Still debuging these:
-    - env: STACKVER=0.1.3.1 STACK_RESOLVER=ghc-7.8
-    - env: STACKVER=0.1.3.1 STACK_RESOLVER=ghc-7.10
+    - env: STACKVER=1.7.1 STACK_RESOLVER=lts-12.4      # GHC-8.4.3
+    - env: STACKVER=1.7.1 STACK_RESOLVER=lts-11.17     # GHC-8.2.2
+    - env: STACKVER=1.7.1 STACK_RESOLVER=lts-9.21      # GHC-8.0.2
+    - env: STACKVER=1.7.1 STACK_RESOLVER=lts-6.35      # GHC-7.10.3
 
 # This is stack-specific.  Oh well.
 before_install:
  - mkdir -p ~/.local/bin
  - export PATH=~/.local/bin:$PATH
- - cat /proc/cpuinfo | grep name
  - export STACK_YAML=stack-${STACK_RESOLVER}.yaml
+ - export STACK_URL=https://github.com/commercialhaskell/stack/releases/download/v${STACKVER}/stack-${STACKVER}-linux-x86_64.tar.gz
 
 install:
- - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+ - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:~/.local/bin:$PATH
  - ./.travis_install.sh
+ - curl -sSL ${STACK_URL} | tar zxf - --strip-components=1 -C ~/.local/bin stack-${STACKVER}-linux-x86_64/stack
+ - chmod a+x ~/.local/bin/stack
+ - stack setup
+ - stack build
 
 # Here starts the actual work to be performed for the package under test; any command which exits with a non-zero exit code causes the build to fail.
 script:
- - ./.travis_script.sh
+ - stack test

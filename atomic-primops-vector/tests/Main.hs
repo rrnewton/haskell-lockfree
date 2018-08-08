@@ -12,8 +12,7 @@ main = do
   casVectorElem v 5 tik 99
   v' <- unsafeFreeze v  
   print v'
---  assert
-  unless (show v' == "fromList [0,0,0,0,0,99,0,0,0,0]")
+  unless (v' == fromList [0,0,0,0,0,99,0,0,0,0])
     (error "Unexpected result!")
 
     
