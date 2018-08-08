@@ -12,6 +12,8 @@ matrix:
   include:
     - env: STACKVER=1.7.1 STACK_RESOLVER=lts-12.4
     - env: STACKVER=1.7.1 STACK_RESOLVER=lts-11.17
+    - env: STACKVER=1.7.1 STACK_RESOLVER=lts-9.21
+    - env: STACKVER=1.7.1 STACK_RESOLVER=lts-6.35
 
 # This is stack-specific.  Oh well.
 before_install:
