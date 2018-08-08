@@ -1,3 +1,6 @@
+## next [????.??.??]
+* Require GHC 7.10 or later.
+
 ## 0.8.2 [2018.03.08]
 * Allow building with `base-4.11`.
 
