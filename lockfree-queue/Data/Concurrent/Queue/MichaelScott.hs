@@ -21,7 +21,10 @@ module Data.Concurrent.Queue.MichaelScott
 
 import Data.IORef (readIORef, newIORef)
 import System.IO (stderr)
+
+#ifdef DEBUG
 import Data.ByteString.Char8 (hPutStrLn, pack)
+#endif
 
 -- import GHC.Types (Word(W#))
 import GHC.IORef(IORef(IORef))
