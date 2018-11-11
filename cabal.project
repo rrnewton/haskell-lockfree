@@ -7,4 +7,9 @@ packages: ./abstract-deque
           ./chaselev-deque
           ./lockfree-queue
           ./mega-deque
-          -- Only listed here since bits-atomic is broken upstream
+
+-- Only listed here since bits-atomic is broken upstream
+source-repository-package
+  type: git
+  location: https://github.com/wangbj/bits-atomic
+  tag: 78c8cd2c0bbf77356b3becba64c7f99e6d4e208b
