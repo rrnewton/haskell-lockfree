@@ -1,4 +1,5 @@
 ## next [????.??.??]
+* Allow the tests to build with `base-4.13` (GHC 8.8).
 * Require GHC 7.10 or later.
 
 ## 0.8.2 [2018.03.08]

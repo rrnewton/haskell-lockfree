@@ -9,7 +9,7 @@ module Test ( main,
 import Control.Monad
 -- import Control.Monad.ST (stToIO)
 import Control.Exception (evaluate)
-import Data.IORef (modifyIORef')
+import Data.IORef
 import Data.Int
 import Data.Primitive.Array
 import Data.Word
@@ -18,7 +18,7 @@ import Data.List ((\\))
 import Text.Printf
 import GHC.Conc
 import GHC.STRef
-import GHC.IORef
+import GHC.IORef (IORef(..))
 #if MIN_VERSION_base(4,10,0)
 import GHC.Stats (getRTSStats, RTSStats(..))
 #else
