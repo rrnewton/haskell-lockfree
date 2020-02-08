@@ -21,6 +21,9 @@ module Data.Atomics
 
    -- * Atomic operations on mutable arrays
    casArrayElem, casArrayElem2, readArrayElem,
+   atomicModifyArrayElem_,
+   atomicModifyArrayElem,
+   atomicModifyArrayElem',
 
    -- * Atomic operations on byte arrays
    casByteArrayInt,
@@ -62,6 +65,7 @@ import GHC.Prim
 import GHC.Base (Int(I#))
 import GHC.IO (IO(IO))
 -- import GHC.Word (Word(W#))
+import System.IO.Unsafe (unsafeDupablePerformIO)
 
 
 #if MIN_VERSION_base(4,8,0)
@@ -69,6 +73,8 @@ import GHC.IO (IO(IO))
 import Data.Bits
 import Data.Primitive.ByteArray (readByteArray)
 #endif
+
+import GHC.Exts (lazy)
 
 #ifdef DEBUG_ATOMICS
 #warning "Activating DEBUG_ATOMICS... NOINLINE's and more"
@@ -133,6 +139,75 @@ casArrayElem2 :: MutableArray RealWorld a -> Int -> Ticket a -> Ticket a -> IO (
 casArrayElem2 (MutableArray arr#) (I# i#) old new = IO$ \s1# ->
  case casArrayTicketed# arr# i# old new s1# of
    (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, res) #)
+
+-- | A version of 'atomicModifyIORef' for arrays that returns
+-- /both/ the new value and the result. This function is very
+-- lazy; in particular,
+--
+-- @ atomicModifyArrayElem_ mary i (const undefined) @
+--
+-- will succeed, although both the new element and the result will
+-- be undefined.
+--
+atomicModifyArrayElem_ :: forall a b. MutableArray RealWorld a
+        -> Int
+        -> (a -> (a, b))
+        -> IO (a, b)
+-- We should ideally implement this in CMM to avoid the extra
+-- IORef and such. I think the atomicModifyMutVar# primop should
+-- really have been given this type.
+atomicModifyArrayElem_ mary i fn = do
+  original <- readArrayElem mary i
+  oldref <- newIORef original
+  let
+    nr = unsafeDupablePerformIO $ fn . peekTicket <$> readIORef oldref
+    new = seal (fst nr)
+    loop :: Ticket a -> IO (a, b)
+    loop tick = do
+      (b,tick') <- casArrayElem2 mary i tick new
+                   -- We must be *lazy* here;
+                   -- neither new nor nr may be
+                   -- forced until the CAS succeeds.
+      if b
+        then do
+          -- lazy to prevent demand analysis from forcing it early.
+          return (lazy nr)
+        else do
+          writeIORef oldref tick'
+          loop tick'
+  loop original
+
+-- | A version of 'atomicModifyIORef' for arrays. Unlike 'atomicModifyIORef',
+-- the user function is applied eagerly. In particular,
+--
+-- @atomicModifyArrayElem mary i (const undefined)@
+--
+-- will throw an exception immediately.
+atomicModifyArrayElem :: forall a b. MutableArray RealWorld a
+        -> Int
+        -> (a -> (a, b))
+        -> IO b
+atomicModifyArrayElem mary i fn = do
+  (_new, res) <- atomicModifyArrayElem_ mary i fn
+  return res
+
+-- | A version of 'atomicModifyArrayElem' that forces the stored
+-- value to WHNF. This is *lazier* than 'atomicModifyIORef''; in
+-- particular, it does not force the result value.
+--
+-- @
+-- atomicModifyArrayElem' mary i f =
+--   atomicModifyArrayElem mary i (\a -> case f a of (!a', b) -> (a', b))
+-- @
+atomicModifyArrayElem' :: forall a b. MutableArray RealWorld a
+        -> Int
+        -> (a -> (a, b))
+        -> IO b
+atomicModifyArrayElem' mary i fn = do
+  (new, res) <- atomicModifyArrayElem_ mary i fn
+  evaluate new
+  return res
+
 
 -- | Ordinary processor load instruction (non-atomic, not implying any memory barriers).
 readArrayElem :: forall a . MutableArray RealWorld a -> Int -> IO (Ticket a)
