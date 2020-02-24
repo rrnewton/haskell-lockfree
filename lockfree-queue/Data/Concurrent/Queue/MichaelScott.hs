@@ -34,7 +34,6 @@ import qualified Data.Concurrent.Deque.Class as C
 import Data.Atomics (readForCAS, casIORef, Ticket, peekTicket)
 
 -- GHC 7.8 changed some primops
-#if MIN_VERSION_base(4,7,0)
 import GHC.Base  hiding ((==#), sameMutVar#)
 import GHC.Prim hiding ((==#), sameMutVar#)
 import qualified GHC.PrimopWrappers as GPW
@@ -43,10 +42,6 @@ import qualified GHC.PrimopWrappers as GPW
 
 sameMutVar# :: MutVar# s a -> MutVar# s a -> Bool
 sameMutVar# x y = case GPW.sameMutVar# x y of { 0# -> False; _ -> True }
-#else
-import GHC.Base
-import GHC.Prim
-#endif
 
 
 -- Considering using the Queue class definition:

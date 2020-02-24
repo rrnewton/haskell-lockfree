@@ -33,19 +33,13 @@ module Data.Atomics.Counter
 
 
 import Data.Atomics.Internal
-#if MIN_VERSION_base(4,7,0)
 import GHC.Base  hiding ((==#))
 import qualified GHC.PrimopWrappers as GPW
-#else
-import GHC.Base
-#endif
 
 
 -- GHC 7.8 changed some primops
-#if MIN_VERSION_base(4,7,0)
 (==#) :: Int# -> Int# -> Bool
 (==#) x y = case x GPW.==# y of { 0# -> False; _ -> True }
-#endif
 
 
 
@@ -137,19 +131,11 @@ casCounter (AtomicCounter mba#) (I# old#) newBox@(I# new#) = IO$ \s1# ->
 incrCounter :: Int -> AtomicCounter -> IO Int
 incrCounter (I# incr#) (AtomicCounter mba#) = IO $ \ s1# -> 
   let (# s2#, res #) = fetchAddIntArray# mba# 0# incr# s1# in
--- fetchAddIntArray# changed behavior in 7.10 to return the OLD value, so we
--- need this to maintain forwards compatibility:
-#if MIN_VERSION_base(4,8,0)
   (# s2#, (I# (res +# incr#)) #)
-#else
-  (# s2#, (I# res) #)
-#endif
 
 {-# INLINE incrCounter_ #-}
 -- | An alternate version for when you don't care about the old value.
 incrCounter_ :: Int -> AtomicCounter -> IO ()
 incrCounter_ (I# incr#) (AtomicCounter mba#) = IO $ \ s1# -> 
-  -- NOTE: either old or new behavior of fetchAddIntArray# is fine here, since
-  -- we don't inspect the return value:
   let (# s2#, _ #) = fetchAddIntArray# mba# 0# incr# s1# in
   (# s2#, () #)

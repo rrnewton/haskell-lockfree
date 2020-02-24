@@ -1,7 +1,5 @@
 {-# LANGUAGE CPP, ScopedTypeVariables, NamedFieldPuns, BangPatterns #-}
-#if __GLASGOW_HASKELL >= 700
 {-# OPTIONS_GHC -with-rtsopts=-K32M #-}
-#endif
 
 import Data.Concurrent.Deque.Class
 -- import Data.Concurrent.Deque.Class.Reference (newQueue)
@@ -78,7 +76,6 @@ test_parfib_work_stealing_specialized origInput = do
   return (sum partial_sums)
 
 main :: IO ()
-#if __GLASGOW_HASKELL__ >= 700
 main = T.stdTestHarness $ return all_tests
  where 
  all_tests :: Test
@@ -99,7 +96,3 @@ main = T.stdTestHarness $ return all_tests
 --   putStrLn "[ Test executable: test reference deque implementation... ]"
 --   withArgs ["-j1","--jxml=test-results.xml"] $   
 --     defaultMain$ hUnitTestToTests$
- 
-#else
-main = putStrLn "WARNING: Tests disabled for GHC < 7"
-#endif

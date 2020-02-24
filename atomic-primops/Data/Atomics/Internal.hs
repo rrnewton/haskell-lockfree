@@ -17,19 +17,8 @@ module Data.Atomics.Internal
 
 import GHC.Base (Int(I#), Any)
 import GHC.Prim (RealWorld, Int#, State#, MutableArray#, MutVar#,
-                 unsafeCoerce#, reallyUnsafePtrEquality#) 
-
-#if MIN_VERSION_base(4,7,0)
-import GHC.Prim (casArray#, casIntArray#, fetchAddIntArray#, readMutVar#, casMutVar#)
-#elif MIN_VERSION_base(4,6,0)
--- Any is only supported in the FFI in the way we need in GHC 7.6+
-import GHC.Prim (readMutVar#, MutableByteArray#)
-import GHC.Base (Any)
-#else
-#error "Need to figure out how to emulate Any () in GHC <= 7.4 !"
--- import GHC.Prim (Word#)
--- type Any a = Word#
-#endif    
+                 unsafeCoerce#, reallyUnsafePtrEquality#,
+                 casArray#, casIntArray#, fetchAddIntArray#, readMutVar#, casMutVar#)
 
 #ifdef DEBUG_ATOMICS
 {-# NOINLINE readForCAS# #-}
@@ -49,13 +38,7 @@ import GHC.Base (Any)
 casArrayTicketed# :: MutableArray# RealWorld a -> Int# -> Ticket a -> Ticket a 
           -> State# RealWorld -> (# State# RealWorld, Int#, Ticket a #)
 -- WARNING: cast of a function -- need to verify these are safe or eta expand.
-casArrayTicketed# = unsafeCoerce#
-#if MIN_VERSION_base(4,7,0)
-   -- In GHC 7.8 onward we just want to expose the existing primop with a different type:
-   casArray#
-#else
-   casArrayTypeErased#
-#endif
+casArrayTicketed# = unsafeCoerce# casArray#
     
 -- | When performing compare-and-swaps, the /ticket/ encapsulates proof
 -- that a thread observed a specific previous value of a mutable
@@ -98,46 +81,4 @@ readForCAS# mv rw =
 casMutVarTicketed# :: MutVar# RealWorld a -> Ticket a -> Ticket a ->
                State# RealWorld -> (# State# RealWorld, Int#, Ticket a #)
 -- WARNING: cast of a function -- need to verify these are safe or eta expand:
-casMutVarTicketed# =
-#if MIN_VERSION_base(4,7,0) 
-  unsafeCoerce# casMutVar#
-#else
-  unsafeCoerce# casMutVar_TypeErased#
-#endif
-
---------------------------------------------------------------------------------
--- Type-erased versions that call the raw foreign primops:
---------------------------------------------------------------------------------
--- Due to limitations of the "foreign import prim" mechanism, we can't use the
--- polymorphic signature for the below functions.  So we lie to the type system
--- instead.
-
-#if MIN_VERSION_base(4,7,0) 
-#else
-
-foreign import prim "stg_casArrayzh" casArrayTypeErased#
-  :: MutableArray# RealWorld () -> Int# -> Any () -> Any () -> 
-     State# RealWorld  -> (# State# RealWorld, Int#, Any () #) 
---   out_of_line = True
---   has_side_effects = True
-
--- | This alternate version of casMutVar returns an opaque "ticket" for
---   future CAS operations.
-foreign import prim "stg_casMutVar2zh" casMutVar_TypeErased#
-  :: MutVar# RealWorld () -> Any () -> Any () ->
-     State# RealWorld -> (# State# RealWorld, Int#, Any () #)
-
--- foreign import prim "stg_readMutVar2zh" readMutVar_TypeErased#
---   :: MutVar# RealWorld () -> 
---      State# RealWorld -> (# State# RealWorld, Any () #)
-  -- with has_side_effects = True
-  --      commutable = False
-
-foreign import prim "stg_casByteArrayIntzh" casIntArray#
-  :: MutableByteArray# s -> Int# -> Int# -> Int# ->
-     State# s -> (# State# s, Int# #) 
-
-foreign import prim "stg_fetchAddByteArrayIntzh" fetchAddIntArray#
-  :: MutableByteArray# s -> Int# -> Int# -> State# s -> (# State# s, Int# #) 
-
-#endif
+casMutVarTicketed# = unsafeCoerce# casMutVar#

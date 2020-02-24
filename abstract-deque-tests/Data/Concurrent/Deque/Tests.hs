@@ -38,7 +38,8 @@ import           Data.IORef
 import           Data.Int
 import qualified Data.Set as S
 import Text.Printf
-import GHC.Conc (throwTo, threadDelay, myThreadId)
+import GHC.Conc (getNumCapabilities, setNumCapabilities, getNumProcessors,
+                 throwTo, threadDelay, myThreadId)
 import Control.Concurrent.MVar
 import Control.Concurrent (yield, forkOS, forkIO, ThreadId)
 import Control.Exception (catch, SomeException, fromException, bracket, AsyncException(ThreadKilled))
@@ -54,21 +55,6 @@ import Debug.Trace (trace)
 
 import           Data.Concurrent.Deque.Class as C
 import qualified Data.Concurrent.Deque.Reference as R
-
-
-#if __GLASGOW_HASKELL__ >= 704
-import GHC.Conc (getNumCapabilities, setNumCapabilities, getNumProcessors)
-#else
-import GHC.Conc (numCapabilities)
-getNumCapabilities :: IO Int
-getNumCapabilities = return numCapabilities
-
-setNumCapabilities :: Int -> IO ()
-setNumCapabilities = error "setNumCapabilities not supported in this older GHC!  Set NUMTHREADS and +RTS -N to match."
-
-getNumProcessors :: IO Int
-getNumProcessors = return 1 
-#endif    
 
 theEnv :: [(String, String)]
 theEnv = unsafePerformIO getEnvironment
