@@ -4,19 +4,18 @@
 #define CASTFUN
 
 -- | This module provides only the raw primops (and necessary types) for atomic
--- operations.  
-module Data.Atomics.Internal 
+-- operations.
+module Data.Atomics.Internal
    (
-    casIntArray#, fetchAddIntArray#, 
-    readForCAS#, casMutVarTicketed#, casArrayTicketed#, 
+    casIntArray#, fetchAddIntArray#,
+    readForCAS#, casMutVarTicketed#, casArrayTicketed#,
     Ticket,
     -- * Very unsafe, not to be used
     ptrEq
    )
-  where 
+  where
 
-import GHC.Base (Int(I#), Any)
-import GHC.Prim (RealWorld, Int#, State#, MutableArray#, MutVar#,
+import GHC.Exts (Int(I#), Any, RealWorld, Int#, State#, MutableArray#, MutVar#,
                  unsafeCoerce#, reallyUnsafePtrEquality#,
                  casArray#, casIntArray#, fetchAddIntArray#, readMutVar#, casMutVar#)
 
@@ -34,12 +33,12 @@ import GHC.Prim (RealWorld, Int#, State#, MutableArray#, MutVar#,
 -- CAS and friends
 --------------------------------------------------------------------------------
 
--- | Unsafe, machine-level atomic compare and swap on an element within an Array.  
-casArrayTicketed# :: MutableArray# RealWorld a -> Int# -> Ticket a -> Ticket a 
+-- | Unsafe, machine-level atomic compare and swap on an element within an Array.
+casArrayTicketed# :: MutableArray# RealWorld a -> Int# -> Ticket a -> Ticket a
           -> State# RealWorld -> (# State# RealWorld, Int#, Ticket a #)
 -- WARNING: cast of a function -- need to verify these are safe or eta expand.
 casArrayTicketed# = unsafeCoerce# casArray#
-    
+
 -- | When performing compare-and-swaps, the /ticket/ encapsulates proof
 -- that a thread observed a specific previous value of a mutable
 -- variable.  It is provided in lieu of the "old" value to

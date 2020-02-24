@@ -53,9 +53,8 @@ import Data.Atomics.Internal
 import Data.IORef
 import GHC.IORef hiding (atomicModifyIORef)
 import GHC.STRef
-import GHC.Prim hiding ((==#))
+import GHC.Exts hiding ((==#))
 import qualified GHC.PrimopWrappers as GPW
-import GHC.Base (Int(I#))
 import GHC.IO (IO(IO))
 -- import GHC.Word (Word(W#))
 

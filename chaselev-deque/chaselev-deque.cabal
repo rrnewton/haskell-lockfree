@@ -2,22 +2,12 @@ Name:                chaselev-deque
 Version:             0.5.0.5
 License:             BSD3
 License-file:        LICENSE
-Author:              Ryan R. Newton, Edward Kmett 
+Author:              Ryan R. Newton, Edward Kmett
 Maintainer:          rrnewton@gmail.com
 Category:            Data, Concurrent
 Build-type:          Simple
 Cabal-version:       >=1.18
 tested-with:         GHC == 8.4.3, GHC == 8.2.2, GHC == 8.0.2, GHC == 7.10.3
-
--- Version history:
--- 0.1.1 -- bump for fixing bugs!  First release candidate.
--- 0.1.2
--- 0.1.3 -- small release to fix version deps before atomic-primops api change
--- 0.3   -- bump to go along with atomic-primops 0.3
--- 0.4   -- bump to go along with atomic-primops 0.4
--- 0.5.0.2 -- bump to go along with MAJOR bugfix in atomic-primops 0.5.0.2
--- 0.5.0.3 -- minor bump to change abstract-deque dep.
--- 0.5.0.4 -- bugfix
 
 Homepage: https://github.com/rrnewton/haskell-lockfree/wiki
 Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
@@ -31,6 +21,8 @@ Description:
   This implementation derives directly from the pseudocode in the 2005 SPAA paper:
   .
   http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.170.1097&rep=rep1&type=pdf
+
+extra-source-files:  CHANGELOG.md, README.md
 
 Flag debug
     Description: Enable the extra internal checks.
@@ -81,7 +73,7 @@ Test-Suite test-chaselev-deque
                  , chaselev-deque
     ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-N4
     default-language: Haskell2010
-    -- ghc-options: -O2 -threaded -rtsopts 
+    -- ghc-options: -O2 -threaded -rtsopts
     -- -- Debugging generated code:
     -- ghc-options: -keep-tmp-files -dsuppress-module-prefixes -ddump-to-file -ddump-core-stats -ddump-simpl-stats -dcore-lint -dcmm-lint
     -- ghc-options: -ddump-ds -ddump-simpl -ddump-stg -ddump-asm -ddump-bcos -ddump-cmm -ddump-opt-cmm -ddump-inlinings

@@ -39,8 +39,7 @@ import Data.Atomics.Counter
 import System.IO.Unsafe (unsafePerformIO)
 import Text.Printf (printf)
 import System.Mem.StableName (makeStableName, hashStableName)
-import GHC.Exts (Int(I#))
-import GHC.Prim (reallyUnsafePtrEquality#, unsafeCoerce#)
+import GHC.Exts (Int(I#), reallyUnsafePtrEquality#, unsafeCoerce#)
 
 --------------------------------------------------------------------------------
 -- Instances
