@@ -165,11 +165,11 @@ class DequeClass d where
    -- TODO: It would also be possible to include blocking/spinning pops.
    -- But maybe those should go in separate type classes...
 
-   -- | Runtime indication of thread saftey for `pushL` (and `popL`).
+   -- | Runtime indication of thread safety for `pushL` (and `popL`).
    -- (Argument unused.)            
    leftThreadSafe  :: d elt -> Bool
                
-   -- | Runtime indication of thread saftey for `tryPopR` (and `pushR`).
+   -- | Runtime indication of thread safety for `tryPopR` (and `pushR`).
    -- (Argument unused.) 
    rightThreadSafe :: d elt -> Bool
 
