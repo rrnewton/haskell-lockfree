@@ -111,7 +111,7 @@ peekCTicket !x = x
 casCounter :: AtomicCounter -> CTicket -> Int -> IO (Bool, CTicket)
 -- casCounter (AtomicCounter barr) !old !new =
 casCounter (AtomicCounter mba#) (I# old#) newBox@(I# new#) = IO$ \s1# ->
-  let (# s2#, res# #) = casIntArray# mba# 0# old# new# s1# in
+  let !(# s2#, res# #) = casIntArray# mba# 0# old# new# s1# in
   case res# ==# old# of 
     False -> (# s2#, (False, I# res# ) #) -- Failure
     True  -> (# s2#, (True , newBox ) #) -- Success
@@ -130,12 +130,12 @@ casCounter (AtomicCounter mba#) (I# old#) newBox@(I# new#) = IO$ \s1# ->
 --   loop like CAS.
 incrCounter :: Int -> AtomicCounter -> IO Int
 incrCounter (I# incr#) (AtomicCounter mba#) = IO $ \ s1# -> 
-  let (# s2#, res #) = fetchAddIntArray# mba# 0# incr# s1# in
+  let !(# s2#, res #) = fetchAddIntArray# mba# 0# incr# s1# in
   (# s2#, (I# (res +# incr#)) #)
 
 {-# INLINE incrCounter_ #-}
 -- | An alternate version for when you don't care about the old value.
 incrCounter_ :: Int -> AtomicCounter -> IO ()
 incrCounter_ (I# incr#) (AtomicCounter mba#) = IO $ \ s1# -> 
-  let (# s2#, _ #) = fetchAddIntArray# mba# 0# incr# s1# in
+  let !(# s2#, _ #) = fetchAddIntArray# mba# 0# incr# s1# in
   (# s2#, () #)
