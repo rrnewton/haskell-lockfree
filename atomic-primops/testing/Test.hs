@@ -32,6 +32,7 @@ import System.Mem (performGC)
 
 ----------------------------------------
 import Data.Atomics as A
+import Data.Atomics.Internal (reallyUnsafeTicketEquality)
 
 import qualified Issue28
 
@@ -158,7 +159,7 @@ test_random_array_comm threads size iters = do
   tick0 <- A.readArrayElem arr 0
   for_ 1 size $ \ i -> do
     t2 <- A.readArrayElem arr i
-    assertEqual "All initial Nothings in the array should be ticket-equal:" tick0 t2
+    assertBool "All initial Nothings in the array should be ticket-equal:" (reallyUnsafeTicketEquality tick0 t2)
 
   ls <- forkJoin threads $ \_tid -> do
     localAcc <- newIORef 0

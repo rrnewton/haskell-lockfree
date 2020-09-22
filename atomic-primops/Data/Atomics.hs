@@ -51,7 +51,7 @@ import Data.Primitive.ByteArray (MutableByteArray(MutableByteArray))
 import Data.Atomics.Internal
 
 import Data.IORef
-import GHC.IORef hiding (atomicModifyIORef)
+import GHC.IORef (IORef (..))
 import GHC.STRef
 import GHC.Exts hiding ((==#))
 import qualified GHC.PrimopWrappers as GPW
@@ -60,8 +60,6 @@ import GHC.IO (IO(IO))
 
 #ifdef DEBUG_ATOMICS
 #warning "Activating DEBUG_ATOMICS... NOINLINE's and more"
-{-# NOINLINE seal #-}
-
 {-# NOINLINE casIORef #-}
 {-# NOINLINE casArrayElem2 #-}
 {-# NOINLINE readArrayElem #-}
@@ -122,11 +120,8 @@ casArrayElem2 (MutableArray arr#) (I# i#) old new = IO$ \s1# ->
 
 -- | Ordinary processor load instruction (non-atomic, not implying any memory barriers).
 readArrayElem :: forall a . MutableArray RealWorld a -> Int -> IO (Ticket a)
--- readArrayElem = unsafeCoerce# readArray#
-readArrayElem (MutableArray arr#) (I# i#) = IO $ \ st -> unsafeCoerce# (fn st)
-  where
-    fn :: State# RealWorld -> (# State# RealWorld, a #)
-    fn = readArray# arr# i#
+readArrayElem (MutableArray arr#) (I# i#) = IO $ \ st ->
+  readArrayElem# arr# i# st
 
 -- | Compare and swap on word-sized chunks of a byte-array.  For indexing purposes
 -- the bytearray is treated as an array of words (`Int`s).  Note that UNLIKE
@@ -147,7 +142,7 @@ casByteArrayInt (MutableByteArray mba#) (I# ix#) (I# old#) (I# new#) =
   -- case casByteArrayInt# mba# ix# old# new# s1# of
   --   (# s2#, x#, res #) -> (# s2#, (x# ==# 0#, I# res) #)
 
-  let (# s2#, res #) = casIntArray# mba# ix# old# new# s1# in
+  let !(# s2#, res #) = casIntArray# mba# ix# old# new# s1# in
   (# s2#, (I# res) #)
   -- I don't know if a let will mak any difference here... hopefully not.
 
@@ -162,7 +157,7 @@ fetchAddIntArray :: MutableByteArray RealWorld
                      -> Int    -- ^ The value to be added
                      -> IO Int -- ^ The value *before* the addition
 fetchAddIntArray (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1# ->
-  let (# s2#, res #) = fetchAddIntArray# mba# offset# incr# s1# in
+  let !(# s2#, res #) = fetchAddIntArray# mba# offset# incr# s1# in
   (# s2#, (I# res) #)
 
 
@@ -215,7 +210,7 @@ doAtomicRMW :: (MutableByteArray# RealWorld -> Int# -> Int# -> State# RealWorld 
 doAtomicRMW atomicOp# =
   \(MutableByteArray mba#) (I# offset#) (I# val#) ->
     IO $ \ s1# ->
-      let (# s2#, res #) = atomicOp# mba# offset# val# s1# in
+      let !(# s2#, res #) = atomicOp# mba# offset# val# s1# in
       (# s2#, (I# res) #)
 
 
@@ -227,7 +222,7 @@ doAtomicRMW atomicOp# =
 --   such as in GCC's `__sync_add_and_fetch`.
 fetchAddByteArrayInt ::  MutableByteArray RealWorld -> Int -> Int -> IO Int
 fetchAddByteArrayInt (MutableByteArray mba#) (I# offset#) (I# incr#) = IO $ \ s1# ->
-  let (# s2#, res #) = fetchAddIntArray# mba# offset# incr# s1# in
+  let !(# s2#, res #) = fetchAddIntArray# mba# offset# incr# s1# in
   (# s2#, (I# (res +# incr#)) #)
 
 
@@ -300,19 +295,6 @@ casIORef2 (IORef (STRef var)) old new = casMutVar2 var old new
 
 
 --------------------------------------------------------------------------------
-
--- | A ticket contains or can get the usable Haskell value.
---   This function does just that.
-{-# NOINLINE peekTicket #-}
--- At least this function MUST remain NOINLINE.  Issue5 is an example of a bug that
--- ensues otherwise.
-peekTicket :: Ticket a -> a
-peekTicket = unsafeCoerce#
-
--- Not exposing this for now.  Presently the idea is that you must read from the
--- mutable data structure itself to get a ticket.
-seal :: a -> Ticket a
-seal = unsafeCoerce#
 
 -- | Like `readForCAS`, but for `MutVar#`.
 readMutVarForCAS :: MutVar# RealWorld a -> IO ( Ticket a )
