@@ -1,5 +1,5 @@
-## next [????.??.??]
-* Allow building with `base-4.15`.
+## 0.8.4 [2020.10.03]
+* Allow building with `base-4.15` (GHC 9.0).
 
 ## 0.8.3 [2019.05.02]
 * Allow the tests to build with `base-4.13` (GHC 8.8).
