@@ -27,7 +27,7 @@ import Data.IORef
 
 #ifdef USE_CAS
 #warning "abstract-deque: reference implementation using CAS..."
-import Data.Atomic (atomicModifyIORefCAS)
+import Data.Atomics (atomicModifyIORefCAS)
 -- Toggle these and compare performance:
 modify = atomicModifyIORefCAS
 _is_using_CAS = True
