@@ -7,7 +7,7 @@ Maintainer:          rrnewton@gmail.com
 Category:            Data
 -- Portability:         non-portabile (x86_64)
 Build-type:          Simple
-Cabal-version:       >=1.18
+Cabal-version:       1.18
 tested-with:         GHC == 8.4.3, GHC == 8.2.2, GHC == 8.0.2, GHC == 7.10.3
 HomePage: https://github.com/rrnewton/haskell-lockfree/wiki
 Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
