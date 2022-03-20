@@ -17,7 +17,7 @@ import Data.Concurrent.Deque.Class
 -- deque is non-threadsafe then it may ever only be touched by one thread during its
 -- entire lifetime.
 --
--- This extreme form of monagamy is easier to verify, because we don't have enough
+-- This extreme form of monogamy is easier to verify, because we don't have enough
 -- information to know if two operations on different threads are racing with one
 -- another or are properly synchronized.
 --
