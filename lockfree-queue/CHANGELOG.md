@@ -1,3 +1,6 @@
+## 0.2.4
+* Allow building with GHC 9.4.
+
 ## 0.2.3
 * bump for upstream change
 
