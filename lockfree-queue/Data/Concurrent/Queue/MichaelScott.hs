@@ -35,13 +35,13 @@ import Data.Atomics (readForCAS, casIORef, Ticket, peekTicket)
 
 -- GHC 7.8 changed some primops
 import GHC.Base  hiding ((==#), sameMutVar#)
-import GHC.Prim hiding ((==#), sameMutVar#)
-import qualified GHC.PrimopWrappers as GPW
+import GHC.Exts hiding ((==#), sameMutVar#)
+import qualified GHC.Exts as Exts
 (==#) :: Int# -> Int# -> Bool
-(==#) x y = case x GPW.==# y of { 0# -> False; _ -> True }
+(==#) x y = case x Exts.==# y of { 0# -> False; _ -> True }
 
 sameMutVar# :: MutVar# s a -> MutVar# s a -> Bool
-sameMutVar# x y = case GPW.sameMutVar# x y of { 0# -> False; _ -> True }
+sameMutVar# x y = case Exts.sameMutVar# x y of { 0# -> False; _ -> True }
 
 
 -- Considering using the Queue class definition:
