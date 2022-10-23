@@ -1,6 +1,9 @@
 ## next [????.??.??]
 * Allow building with `base-4.15`.
 
+## 0.5.0.5
+* Remove an unused dependency on the `bits-atomic` library.
+
 ## 0.5.0.4
 * bugfix
 
