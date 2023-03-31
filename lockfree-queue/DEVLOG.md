@@ -58,7 +58,7 @@ implementation.
    Divergence problem:
    -------------------
 
-Actually, in additon to this problem I'll ALSO seeing some
+Actually, in addition to this problem I'll ALSO seeing some
 nontermination.  It looks like there may be a bug that's losing data
 leaving consumers to wait forever...  Under -N4 it when it diverges it
 uses 200% CPU which is consistent with this hypothesis (i.e. the

@@ -5,7 +5,7 @@ Name:                test-atomic-primops
 Version:             0.6.0.5
 Build-type:          Simple
 Cabal-version:       >=1.18
--- This is generally controled by the continuous integration script at a more granular level:
+-- This is generally controlled by the continuous integration script at a more granular level:
 tested-with:         GHC == 8.4.3, GHC == 8.2.2, GHC == 8.0.2, GHC == 7.10.3
 
 Flag opt

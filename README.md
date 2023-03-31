@@ -29,7 +29,7 @@ How to Test and Install
 ================================================================================
 
 First, to use compare-and-swap based data structures, you should be
-using GHC 7.4.1 or later.  Some of these libaries will be forced to
+using GHC 7.4.1 or later.  Some of these libraries will be forced to
 "fake it" on earlier versions of GHC.
 
 You can install all of the packages in your user's .cabal directory

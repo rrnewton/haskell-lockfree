@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
--- | Test the invocation of the GHCi bytecode intepreter with atomic-primops.
+-- | Test the invocation of the GHCi bytecode interpreter with atomic-primops.
 
 module Main where
 

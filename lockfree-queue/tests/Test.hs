@@ -19,7 +19,7 @@ main = do
   putStrLn$ "Running with numElems "++show numElems++" and numAgents "++ show numAgents
   putStrLn "Use NUMELEMS and +RTS to control the size of this benchmark."
   args <- getArgs
-  -- Don't allow concurent tests (the tests are concurrent!):
+  -- Don't allow concurrent tests (the tests are concurrent!):
   withArgs (args ++ ["-j1","--jxml=test-results.xml"]) $ 
     defaultMain$ hUnitTestToTests$
     TestList

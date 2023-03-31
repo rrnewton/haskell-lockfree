@@ -91,7 +91,7 @@ overflowTest tries = do
    loop r tries last = do
      putStrLn$ " [incrloop4B] Looping with tries left "++show tries 
      n <- C4.incrCounter last r
-     -- This is HANGING afer passing 2,147,483,648.
+     -- This is HANGING after passing 2,147,483,648.
      -- Is there some defect wrt overflow?
      putStrLn$ " [incrloop4B] Done incr, received "++show n
      loop r (tries-1) n

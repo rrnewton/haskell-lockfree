@@ -383,7 +383,7 @@ stealWSDeque_ (WSDeque *q)
     
     {- now decide whether we have won -}
     if ( !(CASTOP(&(q->top),t,t+1)) ) {
-        {- lost the race, someon else has changed top in the meantime -}
+        {- lost the race, someone else has changed top in the meantime -}
         return NULL;
     }  {- else: OK, top has been incremented by the cas call -}
 

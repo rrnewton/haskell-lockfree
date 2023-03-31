@@ -167,7 +167,7 @@ stdTestHarness genTests = do
   putStrLn $"Running tests for these thread settings: "  ++show all_threads
   all_tests <- genTests 
 
-  -- Don't allow concurent tests (the tests are concurrent!):
+  -- Don't allow concurrent tests (the tests are concurrent!):
   withArgs (args ++ ["-j1","--jxml=test-results.xml"]) $ do 
 
     -- Hack, this shouldn't be necessary, but I'm having problems with -t:
@@ -308,7 +308,7 @@ test_contention_free_parallel doBackoff total newqueue =
                                           else spinPopHard  q
                 when (i < 10) $ dbgPrint 1 $ printf " [%d] popped #%d = %d \n" id i x
                 unless (x == fromIntegral i) $
-                  error $ "Message out of order! Expected "++show i++" recevied "++show x
+                  error $ "Message out of order! Expected "++show i++" received "++show x
                 consume_loop (sum+x) (max maxiters iters) (i+1)
           pr <- consume_loop 0 0 0
 	  putMVar mv pr
@@ -489,7 +489,7 @@ test_random_work_stealing total newqueue = do
                  if b then do
                    x <- spinPopN 100 (tryPopL myQ)
                    -- In the case where we pop, we do NOT advance 'i', saving that
-                   -- for the next iteration that acutally does a push.
+                   -- for the next iteration that actually does a push.
                    case x of
                      Nothing -> loop i  pops    acc
                      Just n  -> loop i (pops+1) (n+acc)

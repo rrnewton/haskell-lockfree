@@ -67,7 +67,7 @@ forkJoin numthreads action =
 -- Describe a structure of forking and joining threads for tests:
 data Forkable a = Fork Int (IO a)
                 | Parallel (Forkable a) (Forkable a) -- Parallel composition
-                | Sequence (Forkable a) (Forkable a) -- Sequential compositon, with barrier
+                | Sequence (Forkable a) (Forkable a) -- Sequential composition, with barrier
 --                | Barrier Forkable
 
 

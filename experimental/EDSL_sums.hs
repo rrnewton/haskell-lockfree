@@ -3,13 +3,13 @@
 
 -- Experimenting with sum and product types in an EDSL.
 
--- Tuple / untuple approach.... that's Accelerate's aproach.
+-- Tuple / untuple approach.... that's Accelerate's approach.
 
 
 import Data.IORef
 import qualified Data.CAS as CAS
 
--- Let's imagine that we could have a single data definition that coud
+-- Let's imagine that we could have a single data definition that could
 -- be used both for generating Haskell data structures, and for
 -- external (say, C++) data structures.  
 
@@ -182,7 +182,7 @@ class Callable a where
 -- ==================================================================================================
 
 -- | Push a new element onto the queue.  Because the queue can grow,
---   this alway succeeds.
+--   this always succeeds.
 
 pushL :: (LinkedQueueOps e m, PairOps e m )
       => e (LinkedQueue a) -> e a -> m ()
@@ -208,7 +208,7 @@ pushL lq val = do
 	-- The algorithm rereads tailPtr here to make sure it is still good.
 	-- 
 	-- There's a possibility for an infinite loop here with StableName based ptrEq.
-	-- (And at one point I observerd such an infinite loop.)
+	-- (And at one point I observed such an infinite loop.)
 	-- But with one based on reallyUnsafePtrEquality# we should be ok.
 	tail' <- readRef tailPtr
 --        b <- refEq tailPtr  -- Could only allow ptr comparison for references...
