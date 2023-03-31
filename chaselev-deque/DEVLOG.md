@@ -376,7 +376,7 @@ result of peekTicket ALSO becomes the input to casIORef.  I.e.:
 How and why could that happen?  Again, is it special rules for coerce,
 or a general optimization?
 
-First, let's get a litle more specific about the above sketches of the
+First, let's get a little more specific about the above sketches of the
 dataflow graph.  If we look at the desugared Haskell, *.dump-ds, we
 see the following:
    
@@ -496,7 +496,7 @@ the thread/queue contract:
 ### Pump up the NOINLINE's in Data.Atomics
 
 I don't currently know how many functions have to be marked NOINLINE
-to avoid problems analagous to the one exposed by "peekTicket".  If we
+to avoid problems analogous to the one exposed by "peekTicket".  If we
 conservatively apply NOINLINE to ALL functions in Data.Atomics.hs,
 what happens?
 
@@ -513,7 +513,7 @@ The short answer is that we still get those same failures:
 
 Hmm, these answers, even if we pump the size up to 5M, are still
 around 42 bits big.  I don't think any kind of overflow could possible
-be occuring, given as we use 64 bit ints on a 64 bit machine.  But it
+be occurring, given as we use 64 bit ints on a 64 bit machine.  But it
 wouldn't hurt to make them explicitly 64 bit to make sure.. (or
 Integer)... ok, did that.  No change as expected.
 
@@ -679,5 +679,5 @@ Deja vu, I just started seeing this on hive (but not on limestone):
     Checking that queue is finally null...
     :ChaseLev_work-stealing-deque-tests_test_random_work_stealing: [Failed]
 
-It happens constently at four threads and not at all at 2 or 3.
+It happens constantly at four threads and not at all at 2 or 3.
 

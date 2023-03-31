@@ -38,7 +38,7 @@ A few notes on performance results
   for so little allocation??  For only two threads the Foreign
   implementation drops to 22s, but still 17.97s elapsed in Gen 0 GC.
   
-  What about the Raw haskell CAS?  It also wil stack overflow with the
+  What about the Raw haskell CAS?  It also will stack overflow with the
   current version of the test.  With a 1G stack it can do 5Mx4 CAS's
   (8,9M successful) in 6.7 seconds.  10M in 17s.  And STILL not seeing
   the previous segfault with the Raw CAS version...
@@ -55,7 +55,7 @@ A few notes on performance results
     'Fake' CAS:       11.8s (91% prod, 0.8s total Gen 0 GC)
     Foreign CAS:      52s  (6% prod)
   
-  And then adding -A1M makes a neglible change in runtime for Raw, but
+  And then adding -A1M makes a negligible change in runtime for Raw, but
   reduces the # of gen0 collections from 484 to 235.
 
   Ok, how about testing on a 3.1GHz Westmere.

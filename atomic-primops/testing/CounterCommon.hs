@@ -90,7 +90,7 @@ overflowTest tries = do
    loop r i l = do
      --putStrLn$ " [incrloop4B] Looping with tries left "++show i 
      n <- C.incrCounter l r
-     -- This is HANGING afer passing 2,147,483,648.  (using Unboxed)
+     -- This is HANGING after passing 2,147,483,648.  (using Unboxed)
      -- Is there some defect wrt overflow?
      --putStrLn$ " [incrloop4B] Done incr, received "++show n
      loop r (i-1) n

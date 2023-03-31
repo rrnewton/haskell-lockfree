@@ -18,7 +18,7 @@ synopsis: An atomic counter implemented using the FFI.
 
 description:
   This is an alternate implementation of the counter interface 
-  provided by the atomic-primops packag.
+  provided by the atomic-primops package.
 
 library
   exposed-modules: Data.Atomics.Counter.Foreign

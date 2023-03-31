@@ -12,7 +12,7 @@ Ok, here's the weird state of affairs at the moment.
 
 Weird, right?  Well, I'm not surprised by the failed link, because
 right now the foreign primops are trying to use a function defined in
-SMP.h inside the GHC RTS.  That may be illegitemate.  (But at the same
+SMP.h inside the GHC RTS.  That may be illegitimate.  (But at the same
 time it is EXTERN_INLINE so shouldn't it just inline it before link
 time?)
 
@@ -307,7 +307,7 @@ On machine basalt, ghc 7.6.3.  But is it reproducible?
     run_barriers: [OK]
 
 
-[2014.01.31] {Working on debugging CAS problems wiht n_threads_mutate test}
+[2014.01.31] {Working on debugging CAS problems with n_threads_mutate test}
 ---------------------------------------------------------------------------
 
 Now n_threads_mutate is failing consistently.  It seems that I'm
@@ -350,7 +350,7 @@ executable or as part of the bigger test suite:
     cabal install --reinstall --with-ghc=ghc-7.8.2 .. . --enable-tests 
     ./dist/build/test-atomic-primops/test-atomic-primops -j1 -t stand
 
-And taht is in the same batch of tests where SIMILAR tests such as
+And that is in the same batch of tests where SIMILAR tests such as
 case_casTicket1 pass.  Next, I also copied the same Issue28.hs code
 into Test.hs with the other tests.
 

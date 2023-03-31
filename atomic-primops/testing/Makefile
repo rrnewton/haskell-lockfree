@@ -38,7 +38,7 @@ full:
 	$(CBL) $(NOPROF) -f-opt  -f-threaded # --builddir=dist_reg__
 	$(CBL) $(PROF)   -f-opt  -f-threaded # --builddir=dist_prof__
 
-# These shoud be redundant with the above, but we run them anyway:
+# These should be redundant with the above, but we run them anyway:
 	for f in `ls dist_*/build/hello-world-atomic-primops/hello-world-atomic-primops`; do ./$f; done
 
 	tail dist_*/test/test-atomic-primops-*-test-atomic-primops.log

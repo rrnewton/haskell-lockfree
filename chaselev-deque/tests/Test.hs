@@ -215,7 +215,7 @@ Aha!  With the specialized version we can get it down to this:
 WEIRD! Switching back to Counter.Reference actually gets a SPEEDUP at this point,
 bringing the above down to as low as 4.48s, in spite of a whopping 23GB allocation
 and 50% productivity.  While Counter.Foreign dominates in the highest contention
-scenarious, the FFI tax must be hurting in this lower-contention example.
+scenarios, the FFI tax must be hurting in this lower-contention example.
 Perhaps if we exposed primops to perf atomic ops directly on byte arrays...
 
 Hmm... I think the variance is higher in this mode.  Let's try Counter.IORef.

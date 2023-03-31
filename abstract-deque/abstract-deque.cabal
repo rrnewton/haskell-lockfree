@@ -37,7 +37,7 @@ Description:
   .
     * double-ended, threadsafe, growable queues
   .
-  ... with important points inbetween (such as
+  ... with important points in between (such as
   the queues used for work-stealing).
   .
   This package includes an interface for Deques that allows the

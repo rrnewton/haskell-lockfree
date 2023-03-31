@@ -57,7 +57,7 @@ forkJoin numthreads action =
 -- tests, then we can stress test it by running different interleavings explicitly.
 data Forkable a = Fork Int (IO a)
                 | Parallel (Forkable a) (Forkable a) -- Parallel composition
-                | Sequence (Forkable a) (Forkable a) -- Sequential compositon, with barrier
+                | Sequence (Forkable a) (Forkable a) -- Sequential composition, with barrier
 --                | Barrier Forkable
 
 -- | Grab a GC-invariant stable "address" for any value.

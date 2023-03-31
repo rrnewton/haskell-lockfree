@@ -1,7 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 
 -- | This version uses a boxed IORef representation, but it can be somewhat cheaper
--- than the Refence version because it uses raw CAS rather than full
+-- than the Reference version because it uses raw CAS rather than full
 -- atomicModifyIORef.
 
 module Data.Atomics.Counter.IORef

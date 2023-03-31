@@ -149,7 +149,7 @@ casByteArrayInt (MutableByteArray mba#) (I# ix#) (I# old#) (I# new#) =
 
   let (# s2#, res #) = casIntArray# mba# ix# old# new# s1# in
   (# s2#, (I# res) #)
-  -- I don't know if a let will mak any difference here... hopefully not.
+  -- I don't know if a let will make any difference here... hopefully not.
 
 
 --------------------------------------------------------------------------------
@@ -268,7 +268,7 @@ readForCAS (IORef (STRef mv)) = readMutVarForCAS mv
 -- 'IORef'. Returns a tuple containing a 'Bool' which is 'True' when a
 -- swap is performed, along with the most 'current' value from the 'IORef'.
 -- Note that this differs from the more common CAS behavior, which is to
--- return the /old/ value before the CAS occured.
+-- return the /old/ value before the CAS occurred.
 --
 -- The reason for the difference is the ticket API.  This function always returns the
 -- ticket that you should use in your next CAS attempt.  In case of success, this ticket
@@ -282,7 +282,7 @@ readForCAS (IORef (STRef mv)) = readMutVarForCAS mv
 -- implementation (GHC).
 --
 -- By convention this function is strict in the "new" value argument.  This isn't
--- absolutely necesary, but we think it's a bad habit to use unevaluated thunks in
+-- absolutely necessary, but we think it's a bad habit to use unevaluated thunks in
 -- this context.
 casIORef :: IORef a  -- ^ The 'IORef' containing a value 'current'
          -> Ticket a -- ^ A ticket for the 'old' value
