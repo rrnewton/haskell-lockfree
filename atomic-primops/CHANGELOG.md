@@ -1,3 +1,6 @@
+## next [????.??.??]
+* Allow building with GHC 9.10.
+
 ## 0.8.4 [2020.10.03]
 * Allow building with `base-4.15` (GHC 9.0).
 

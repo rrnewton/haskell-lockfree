@@ -1,13 +1,13 @@
+Cabal-version:       3.0
 Name:                atomic-primops
 Version:             0.8.4
-License:             BSD3
+License:             BSD-3-Clause
 License-file:        LICENSE
 Author:              Ryan Newton
 Maintainer:          rrnewton@gmail.com
 Category:            Data
 -- Portability:         non-portabile (x86_64)
 Build-type:          Simple
-Cabal-version:       1.18
 tested-with:         GHC == 8.4.3, GHC == 8.2.2, GHC == 8.0.2, GHC == 7.10.3
 HomePage: https://github.com/rrnewton/haskell-lockfree/wiki
 Bug-Reports: https://github.com/rrnewton/haskell-lockfree/issues
@@ -28,12 +28,13 @@ Description:
   This library is engineered to work pre- and post-GHC-7.8, while exposing the
   same interface.
 
-Extra-Source-Files:  CHANGELOG.md, DEVLOG.md,
-                     testing/Test.hs, testing/test-atomic-primops.cabal, testing/ghci-test.hs
-                     testing/Makefile, testing/CommonTesting.hs, testing/Counter.hs, testing/CounterCommon.hs, testing/hello.hs, testing/Fetch.hs
+Extra-Source-Files:  DEVLOG.md
+                     testing/Test.hs testing/test-atomic-primops.cabal testing/ghci-test.hs
+                     testing/Makefile testing/CommonTesting.hs testing/Counter.hs testing/CounterCommon.hs testing/hello.hs testing/Fetch.hs
                      testing/Issue28.hs
                      testing/TemplateHaskellSplices.hs
                      testing/Raw781_test.hs
+extra-doc-files:     CHANGELOG.md
 
 Flag debug
     Description: Enable extra internal checks.
@@ -50,6 +51,9 @@ Library
   build-depends:     base >= 4.8 && < 5
                    , ghc-prim
                    , primitive
+
+  if impl(ghc >= 9.9)
+    cmm-sources: cbits/atomics.cmm
 
   if os(windows) {
     Include-Dirs:     cbits
