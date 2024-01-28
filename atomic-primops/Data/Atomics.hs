@@ -349,7 +349,24 @@ casMutVar2 mv tick new = IO$ \st ->
 -- | Memory barrier implemented by the GHC rts (see SMP.h).
 -- writeBarrier :: IO ()
 
-#if !(defined(mingw32_HOST_OS) && __GLASGOW_HASKELL__ < 802)
+#if __GLASGOW_HASKELL__ >= 909
+
+-- | A memory barrier that prevents future loads occurring before preceding
+-- stores.
+foreign import ccall  unsafe "hs_atomics_primops_store_load_barrier" storeLoadBarrier
+  :: IO ()
+
+-- | A memory barrier that prevents future loads occurring before earlier loads.
+foreign import ccall unsafe "hs_atomics_primops_load_load_barrier" loadLoadBarrier
+  :: IO ()
+
+-- | A memory barrier that prevents future stores occurring before preceding
+-- stores.
+foreign import ccall unsafe "hs_atomics_primops_write_barrier" writeBarrier
+  :: IO ()
+
+#elif !(defined(mingw32_HOST_OS) && __GLASGOW_HASKELL__ < 802)
+
 -- | Memory barrier implemented by the GHC rts (see SMP.h).
 foreign import ccall  unsafe "store_load_barrier" storeLoadBarrier
   :: IO ()

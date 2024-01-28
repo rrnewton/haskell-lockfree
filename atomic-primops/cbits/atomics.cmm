@@ -1,0 +1,17 @@
+#include "Cmm.h"
+
+// These approximate GHC's old barrier operations in terms of the new C11-style
+// ordered atomic fences.
+
+hs_atomic_primops_store_load_barrier() {
+  prim %fence_seq_cst();
+}
+
+hs_atomic_primops_load_load_barrier() {
+  prim %fence_acquire();
+}
+
+hs_atomic_primops_write_barrier() {
+  prim %fence_release();
+}
+
