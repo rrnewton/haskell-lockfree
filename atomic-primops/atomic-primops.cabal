@@ -1,6 +1,6 @@
 Cabal-version:       3.0
 Name:                atomic-primops
-Version:             0.8.4
+Version:             0.8.5
 License:             BSD-3-Clause
 License-file:        LICENSE
 Author:              Ryan Newton
