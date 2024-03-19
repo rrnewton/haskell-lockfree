@@ -24,7 +24,10 @@ module Data.Atomics.Counter
 
          -- * Atomic memory operations
          casCounter, incrCounter, incrCounter_,
-                                  
+#if MIN_VERSION_base(4,8,0)
+         decrCounter, decrCounter_,
+#endif
+
          -- * Non-atomic operations
          readCounter, readCounterForCAS,
          writeCounter
@@ -139,3 +142,20 @@ incrCounter_ :: Int -> AtomicCounter -> IO ()
 incrCounter_ (I# incr#) (AtomicCounter mba#) = IO $ \ s1# -> 
   let (# s2#, _ #) = fetchAddIntArray# mba# 0# incr# s1# in
   (# s2#, () #)
+
+#if MIN_VERSION_base(4,8,0)
+{-# INLINE decrCounter #-}
+-- | Decrement the counter by a given amount.  Returns the value
+-- BEFORE the decrement.
+decrCounter :: Int -> AtomicCounter -> IO Int
+decrCounter (I# decr#) (AtomicCounter mba#) = IO $ \ s1# ->
+  let (# s2#, res #) = fetchSubIntArray# mba# 0# decr# s1# in
+  (# s2#, (I# res) #)
+
+{-# INLINE decrCounter_ #-}
+-- | An alternate version for when you don't care about the old value.
+decrCounter_ :: Int -> AtomicCounter -> IO ()
+decrCounter_ (I# decr#) (AtomicCounter mba#) = IO $ \ s1# ->
+  let (# s2#, _ #) = fetchAddIntArray# mba# 0# decr# s1# in
+  (# s2#, () #)
+#endif
