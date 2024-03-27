@@ -1,5 +1,9 @@
-{-# LANGUAGE  MagicHash, UnboxedTuples, ScopedTypeVariables, BangPatterns, CPP #-}
+{-# LANGUAGE MagicHash, UnboxedTuples, ScopedTypeVariables, BangPatterns, CPP #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
+#if __GLASGOW_HASKELL__ >= 909
+{-# LANGUAGE GHCForeignImportPrim #-}
+{-# LANGUAGE UnliftedFFITypes #-}
+#endif
 
 -- | Provides atomic memory operations on IORefs and Mutable Arrays.
 --
@@ -351,19 +355,28 @@ casMutVar2 mv tick new = IO$ \st ->
 
 #if __GLASGOW_HASKELL__ >= 909
 
+foreign import prim "hs_atomics_primops_store_load_barrier" storeLoadBarrier#
+  :: State# RealWorld -> State# RealWorld
+
 -- | A memory barrier that prevents future loads occurring before preceding
 -- stores.
-foreign import ccall  unsafe "hs_atomics_primops_store_load_barrier" storeLoadBarrier
-  :: IO ()
+storeLoadBarrier :: IO ()
+storeLoadBarrier = IO $ \s -> case storeLoadBarrier# s of s' -> (# s', () #)
+
+foreign import prim "hs_atomics_primops_load_load_barrier" loadLoadBarrier#
+  :: State# RealWorld -> State# RealWorld
 
 -- | A memory barrier that prevents future loads occurring before earlier loads.
-foreign import ccall unsafe "hs_atomics_primops_load_load_barrier" loadLoadBarrier
-  :: IO ()
+loadLoadBarrier :: IO ()
+loadLoadBarrier = IO $ \s -> case loadLoadBarrier# s of s' -> (# s', () #)
+
+foreign import prim "hs_atomics_primops_write_barrier" writeBarrier#
+  :: State# RealWorld -> State# RealWorld
 
 -- | A memory barrier that prevents future stores occurring before preceding
 -- stores.
-foreign import ccall unsafe "hs_atomics_primops_write_barrier" writeBarrier
-  :: IO ()
+writeBarrier :: IO ()
+writeBarrier = IO $ \s -> case writeBarrier# s of s' -> (# s', () #)
 
 #elif !(defined(mingw32_HOST_OS) && __GLASGOW_HASKELL__ < 802)
 
