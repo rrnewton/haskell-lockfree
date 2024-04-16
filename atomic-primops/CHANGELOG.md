@@ -1,3 +1,7 @@
+## 0.8.6 [2024.04.16]
+* Use `prim`, not `ccall`, for the `foreign import`s used when building the
+  library with GHC 9.10 or later. This fixes a GHC 9.10-specific build issue.
+
 ## 0.8.5 [2024.02.17]
 * Allow building with GHC 9.10.
 
