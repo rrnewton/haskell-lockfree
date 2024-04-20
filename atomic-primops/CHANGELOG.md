@@ -1,4 +1,4 @@
-## next [????.??.??]
+## 0.8.7 [2024.04.20]
 * Fix typos in the `foreign import`s introduced in `atomic-primops-0.8.5` and
   `atomic-primops-0.8.6`, which would lead to linker errors when building
   executables with GHC 9.10.
