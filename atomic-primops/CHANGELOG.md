@@ -1,3 +1,8 @@
+## next [????.??.??]
+* Fix typos in the `foreign import`s introduced in `atomic-primops-0.8.5` and
+  `atomic-primops-0.8.6`, which would lead to linker errors when building
+  executables with GHC 9.10.
+
 ## 0.8.6 [2024.04.16]
 * Use `prim`, not `ccall`, for the `foreign import`s used when building the
   library with GHC 9.10 or later. This fixes a GHC 9.10-specific build issue.

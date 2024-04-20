@@ -355,7 +355,7 @@ casMutVar2 mv tick new = IO$ \st ->
 
 #if __GLASGOW_HASKELL__ >= 909
 
-foreign import prim "hs_atomics_primops_store_load_barrier" storeLoadBarrier#
+foreign import prim "hs_atomic_primops_store_load_barrier" storeLoadBarrier#
   :: State# RealWorld -> State# RealWorld
 
 -- | A memory barrier that prevents future loads occurring before preceding
@@ -363,14 +363,14 @@ foreign import prim "hs_atomics_primops_store_load_barrier" storeLoadBarrier#
 storeLoadBarrier :: IO ()
 storeLoadBarrier = IO $ \s -> case storeLoadBarrier# s of s' -> (# s', () #)
 
-foreign import prim "hs_atomics_primops_load_load_barrier" loadLoadBarrier#
+foreign import prim "hs_atomic_primops_load_load_barrier" loadLoadBarrier#
   :: State# RealWorld -> State# RealWorld
 
 -- | A memory barrier that prevents future loads occurring before earlier loads.
 loadLoadBarrier :: IO ()
 loadLoadBarrier = IO $ \s -> case loadLoadBarrier# s of s' -> (# s', () #)
 
-foreign import prim "hs_atomics_primops_write_barrier" writeBarrier#
+foreign import prim "hs_atomic_primops_write_barrier" writeBarrier#
   :: State# RealWorld -> State# RealWorld
 
 -- | A memory barrier that prevents future stores occurring before preceding
