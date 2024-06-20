@@ -1,4 +1,4 @@
-## next [????.??.??]
+## 0.8.8 [2024.06.20]
 * Fix infinite loops in the implementations of `storeLoadBarrier`,
   `loadLoadBarrier`, and `writeBarrier` when building with GHC 9.10 or later.
 
