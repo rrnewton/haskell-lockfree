@@ -1,3 +1,7 @@
+## next [????.??.??]
+* Fix infinite loops in the implementations of `storeLoadBarrier`,
+  `loadLoadBarrier`, and `writeBarrier` when building with GHC 9.10 or later.
+
 ## 0.8.7 [2024.04.20]
 * Fix typos in the `foreign import`s introduced in `atomic-primops-0.8.5` and
   `atomic-primops-0.8.6`, which would lead to linker errors when building
