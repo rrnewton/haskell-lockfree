@@ -5,13 +5,16 @@
 
 hs_atomic_primops_store_load_barrier() {
   prim %fence_seq_cst();
+  return ();
 }
 
 hs_atomic_primops_load_load_barrier() {
   prim %fence_acquire();
+  return ();
 }
 
 hs_atomic_primops_write_barrier() {
   prim %fence_release();
+  return ();
 }
 
